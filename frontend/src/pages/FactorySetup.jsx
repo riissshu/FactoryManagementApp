@@ -1,11 +1,15 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import api from "../services/api";
 
-export default function FactorySetup() {
+export default function FactorySetup({ onSetupComplete }) {
   const [factoryName, setFactoryName] = useState("");
   const [logo, setLogo] = useState(null);
 
   const fileInputRef = useRef(null);
+  useEffect(() => {
+  loadSettings();
+}, []);
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
@@ -15,12 +19,37 @@ export default function FactorySetup() {
     }
   };
 
-  const handleSave = () => {
+  const loadSettings = async () => {
+  try {
+    const settings = await api.getSettings();
+
+    if (settings) {
+      setFactoryName(settings.factory_name);
+
+      if (settings.factory_logo) {
+        setLogo(settings.factory_logo);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+  const handleSave = async () => {
+  try {
+    await api.saveSettings(factoryName, logo);
+
     alert("Factory Setup Saved");
+
+    onSetupComplete();
 
     console.log("Factory Name :", factoryName);
     console.log("Factory Logo :", logo);
-  };
+  } catch (error) {
+    console.error(error);
+    alert("Unable to save factory settings.");
+  }
+};
 
   return (
     <div

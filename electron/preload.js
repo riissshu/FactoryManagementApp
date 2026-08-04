@@ -1,11 +1,13 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  send: (channel, data) => ipcRenderer.send(channel, data),
+contextBridge.exposeInMainWorld("api", {
 
-  receive: (channel, callback) => {
-    ipcRenderer.on(channel, (event, ...args) => callback(...args));
-  },
+  getSettings: () => ipcRenderer.invoke("settings:get"),
 
-  invoke: (channel, data) => ipcRenderer.invoke(channel, data),
+  saveSettings: (factoryName, factoryLogo) =>
+    ipcRenderer.invoke("settings:save", {
+      factoryName,
+      factoryLogo,
+    }),
+
 });

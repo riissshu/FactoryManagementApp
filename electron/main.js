@@ -1,7 +1,7 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 
-require("./database");
+const database = require("./database");
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -42,6 +42,19 @@ app.whenReady().then(() => {
     }
   });
 });
+
+
+ipcMain.handle("settings:get", () => {
+  return database.getSettings();
+});
+
+ipcMain.handle("settings:save", (event, data) => {
+  return database.saveSettings(
+    data.factoryName,
+    data.factoryLogo
+  );
+});
+
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
