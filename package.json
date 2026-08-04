@@ -1,0 +1,39 @@
+{
+  "name": "factory-stock-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
+    "dev:react": "npm --prefix Frontend run dev",
+    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+
+    "build": "npm --prefix Frontend run build",
+
+    "start": "electron ."
+  },
+
+  
+
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riissshu/FACTORY-STOCK-APP.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/riissshu/FACTORY-STOCK-APP/issues"
+  },
+  "homepage": "https://github.com/riissshu/FACTORY-STOCK-APP#readme",
+  "dependencies": {
+    "better-sqlite3": "^13.0.2"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4",
+    "cross-env": "^10.1.0",
+    "electron": "^43.2.0",
+    "wait-on": "^9.1.0"
+  }
+}
