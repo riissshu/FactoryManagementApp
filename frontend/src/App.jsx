@@ -1,17 +1,9 @@
-// import StockItem from "./pages/StockItem"
-// import DailyReport from "./pages/DailyReport"
-// import StockReport from "./pages/StockReport"
-// import DailyReportRegister from "./pages/DailyReportRegister"
-import Dashboard from "./pages/Dashboard"
+import Layout from "./components/Layout";
 
 function App() {
 
   return (
-    // <StockItem/>
-    // <DailyReport/>
-    // <StockReport/>
-    // <DailyReportRegister/>
-    <Dashboard/>
+    <Layout/>
   )
 }
 
