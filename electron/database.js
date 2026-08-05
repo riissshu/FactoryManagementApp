@@ -20,6 +20,25 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS stock_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    item_name TEXT NOT NULL,
+    stock_group TEXT NOT NULL,
+
+    unit TEXT NOT NULL,
+    alternate_unit TEXT,
+    conversion REAL DEFAULT 0,
+
+    opening_qty REAL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`);
+
+
 // =======================
 // Settings Functions
 // =======================
@@ -53,7 +72,81 @@ function saveSettings(factoryName, factoryLogo) {
     return true;
 }
 
+function getStockItems() {
+    return db.prepare(`
+        SELECT *
+        FROM stock_items
+        WHERE is_active = 1
+        ORDER BY item_name
+    `).all();
+}
+
+function saveStockItem(item) {
+    db.prepare(`
+        INSERT INTO stock_items
+        (
+            item_name,
+            stock_group,
+            unit,
+            alternate_unit,
+            conversion,
+            opening_qty,
+            is_active
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+        item.item_name,
+        item.stock_group,
+        item.unit,
+        item.alternate_unit,
+        item.conversion,
+        item.opening_qty,
+        1
+    );
+
+    return true;
+}
+
+function updateStockItem(item) {
+    db.prepare(`
+        UPDATE stock_items
+        SET
+            item_name = ?,
+            stock_group = ?,
+            unit = ?,
+            alternate_unit = ?,
+            conversion = ?,
+            opening_qty = ?
+        WHERE id = ?
+    `).run(
+        item.item_name,
+        item.stock_group,
+        item.unit,
+        item.alternate_unit,
+        item.conversion,
+        item.opening_qty,
+        item.id
+    );
+
+    return true;
+}
+
+function inactivateStockItem(id) {
+    db.prepare(`
+        UPDATE stock_items
+        SET is_active = 0
+        WHERE id = ?
+    `).run(id);
+
+    return true;
+}
+
 module.exports = {
     getSettings,
-    saveSettings
+    saveSettings,
+
+    getStockItems,
+    saveStockItem,
+    updateStockItem,
+    inactivateStockItem,
 };

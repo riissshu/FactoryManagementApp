@@ -1,11 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
+import api from "../services/api";
 
-const stockGroups = [
-  "Raw Material",
-  "Finished Goods",
-  "Packaging Material",
-];
+const stockGroups = ["Raw Material", "Finished Goods", "Packaging Material"];
 
 const units = [
   "Kg",
@@ -23,6 +20,7 @@ const units = [
 
 export default function StockItem() {
   const emptyItem = {
+    id: null,
     itemName: "",
     stockGroup: "Raw Material",
     unit: "Kg",
@@ -33,33 +31,11 @@ export default function StockItem() {
   };
 
   const [item, setItem] = useState(emptyItem);
+  const [items, setItems] = useState([]);
 
-  const [items] = useState([
-    {
-      itemName: "Cement",
-      stockGroup: "Raw Material",
-      unit: "Bag",
-      altUnit: "Kg",
-      conversion: 50,
-      openingQty: 100,
-    },
-    {
-      itemName: "Plastic Bag",
-      stockGroup: "Packaging Material",
-      unit: "Nos",
-      altUnit: "Kg",
-      conversion: 0.02,
-      openingQty: 5000,
-    },
-    {
-      itemName: "Concrete Block",
-      stockGroup: "Finished Goods",
-      unit: "Nos",
-      altUnit: "Kg",
-      conversion: 12,
-      openingQty: 800,
-    },
-  ]);
+  useEffect(() => {
+    loadItems();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,23 +59,95 @@ export default function StockItem() {
     setItem(emptyItem);
   };
 
-  const saveItem = () => {
-    alert("Save functionality will be connected to SQLite later.");
+  const loadItems = async () => {
+    try {
+      const data = await api.getStockItems();
+      setItems(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const editItem = (row) => {
+    setItem({
+      id: row.id,
+      itemName: row.item_name,
+      stockGroup: row.stock_group,
+      unit: row.unit,
+      altUnit: row.alternate_unit,
+      conversion: row.conversion,
+      openingQty: row.opening_qty,
+    });
+  };
+
+  const saveItem = async () => {
+    try {
+      if (item.itemName.trim() === "") {
+        alert("Please enter Item Name.");
+        return;
+      }
+
+      const stockData = {
+        id: item.id,
+        item_name: item.itemName,
+        stock_group: item.stockGroup,
+        unit: item.unit,
+        alternate_unit: item.altUnit,
+        conversion: Number(item.conversion) || 0,
+        opening_qty: Number(item.openingQty) || 0,
+      };
+
+      if (item.id) {
+        await api.updateStockItem(stockData);
+        alert("Stock Item Updated Successfully.");
+      } else {
+        await api.saveStockItem(stockData);
+        alert("Stock Item Saved Successfully.");
+      }
+
+      resetForm();
+      await loadItems();
+    } catch (error) {
+      console.error("Save Error:", error);
+      alert(error.message);
+    }
+  };
+
+  const inactivateItem = async () => {
+    if (!item.id) {
+      alert("Please select a stock item.");
+      return;
+    }
+
+    const confirmAction = window.confirm(
+      "Are you sure you want to inactivate this stock item?",
+    );
+
+    if (!confirmAction) return;
+
+    try {
+      await api.inactivateStockItem(item.id);
+
+      alert("Stock Item Inactivated Successfully.");
+
+      resetForm();
+
+      await loadItems();
+    } catch (error) {
+      console.error(error);
+      alert("Unable to inactivate stock item.");
+    }
   };
 
   return (
     <div className="container mt-4">
-
       <div className="card shadow">
-
         <div className="card-header bg-primary text-white">
           <h4 className="mb-0">Stock Item Master</h4>
         </div>
 
         <div className="card-body">
-
           <div className="row">
-
             <div className="col-md-6 mb-3">
               <label className="form-label">Item Name</label>
               <input
@@ -140,18 +188,12 @@ export default function StockItem() {
 
             <div className="col-md-4 mb-3">
               <label className="form-label">Alternate Unit</label>
-              <input
-                className="form-control"
-                value={item.altUnit}
-                readOnly
-              />
+              <input className="form-control" value={item.altUnit} readOnly />
             </div>
 
             {item.altUnit === "Kg" && (
               <div className="col-md-4 mb-3">
-                <label className="form-label">
-                  1 {item.unit} =
-                </label>
+                <label className="form-label">1 {item.unit} =</label>
                 <div className="input-group">
                   <input
                     type="number"
@@ -175,38 +217,29 @@ export default function StockItem() {
                 onChange={handleChange}
               />
             </div>
-
           </div>
 
           <div className="mt-3">
-            <button
-              className="btn btn-primary me-2"
-              onClick={saveItem}
-            >
+            <button className="btn btn-primary me-2" onClick={saveItem}>
               Save
             </button>
 
-            <button
-              className="btn btn-secondary"
-              onClick={resetForm}
-            >
+            <button className="btn btn-secondary me-2" onClick={resetForm}>
               Reset
             </button>
-          </div>
 
+            <button className="btn btn-danger" onClick={inactivateItem}>
+              Inactivate
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="card shadow mt-4">
-
-        <div className="card-header">
-          Existing Items
-        </div>
+        <div className="card-header">Existing Items</div>
 
         <div className="table-responsive">
-
           <table className="table table-bordered table-hover mb-0">
-
             <thead className="table-light">
               <tr>
                 <th>Item</th>
@@ -219,30 +252,28 @@ export default function StockItem() {
             </thead>
 
             <tbody>
-
               {items.map((row, index) => (
-                <tr key={index}>
-                  <td>{row.itemName}</td>
-                  <td>{row.stockGroup}</td>
+                <tr
+                  key={row.id}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => editItem(row)}
+                >
+                  <td>{row.item_name}</td>
+                  <td>{row.stock_group}</td>
                   <td>{row.unit}</td>
-                  <td>{row.altUnit || "-"}</td>
+                  <td>{row.alternate_unit || "-"}</td>
                   <td>
-                    {row.altUnit
+                    {row.alternate_unit
                       ? `1 ${row.unit} = ${row.conversion} Kg`
                       : "-"}
                   </td>
-                  <td>{row.openingQty}</td>
+                  <td>{row.opening_qty}</td>
                 </tr>
               ))}
-
             </tbody>
-
           </table>
-
         </div>
-
       </div>
-
     </div>
   );
 }

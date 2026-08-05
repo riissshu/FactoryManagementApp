@@ -56,6 +56,22 @@ ipcMain.handle("settings:save", (event, data) => {
 });
 
 
+ipcMain.handle("stock:get", () => {
+  return database.getStockItems();
+});
+
+ipcMain.handle("stock:save", (event, item) => {
+  return database.saveStockItem(item);
+});
+
+ipcMain.handle("stock:update", (event, item) => {
+  return database.updateStockItem(item);
+});
+
+ipcMain.handle("stock:inactivate", (event, id) => {
+    return database.inactivateStockItem(id);
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

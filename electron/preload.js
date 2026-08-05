@@ -10,4 +10,15 @@ contextBridge.exposeInMainWorld("api", {
       factoryLogo,
     }),
 
+    getStockItems: () => ipcRenderer.invoke("stock:get"),
+
+saveStockItem: (item) =>
+  ipcRenderer.invoke("stock:save", item),
+
+updateStockItem: (item) =>
+  ipcRenderer.invoke("stock:update", item),
+
+inactivateStockItem: (id) =>
+    ipcRenderer.invoke("stock:inactivate", id),
+
 });
