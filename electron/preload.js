@@ -21,4 +21,10 @@ updateStockItem: (item) =>
 inactivateStockItem: (id) =>
     ipcRenderer.invoke("stock:inactivate", id),
 
+getDailyReports: () =>
+  ipcRenderer.invoke("dailyReport:get"),
+
+saveDailyReport: (report) =>
+  ipcRenderer.invoke("dailyReport:save", report),
+
 });

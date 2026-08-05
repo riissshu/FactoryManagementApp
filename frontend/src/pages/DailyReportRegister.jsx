@@ -1,32 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const sampleReports = [
-  {
-    date: "2026-08-03",
-    purchase: 2,
-    gatePass: 3,
-    manufacturing: 2,
-  },
-  {
-    date: "2026-08-02",
-    purchase: 1,
-    gatePass: 2,
-    manufacturing: 1,
-  },
-  {
-    date: "2026-08-01",
-    purchase: 3,
-    gatePass: 1,
-    manufacturing: 2,
-  },
-  {
-    date: "2026-07-31",
-    purchase: 2,
-    gatePass: 2,
-    manufacturing: 3,
-  },
-];
+
 
 export default function DailyReportRegister() {
   const today = new Date().toISOString().split("T")[0];
@@ -34,15 +10,33 @@ export default function DailyReportRegister() {
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [search, setSearch] = useState("");
+  const [reports, setReports] = useState([]);
+
+  useEffect(() => {
+  loadReports();
+}, []);
+
+const loadReports = async () => {
+  try {
+    const data = await api.getDailyReports();
+    setReports(data);
+  } catch (error) {
+    console.error(error);
+  }
+};
 
   const filteredReports = useMemo(() => {
-    return sampleReports.filter((report) => {
-      const matchSearch = report.date.includes(search);
+    return reports.filter((report) => {
 
-      const matchDate = report.date >= fromDate && report.date <= toDate;
+  const matchSearch =
+    report.report_date.includes(search);
 
-      return matchSearch && matchDate;
-    });
+  const matchDate =
+    report.report_date >= fromDate &&
+    report.report_date <= toDate;
+
+  return matchSearch && matchDate;
+});
   }, [fromDate, toDate, search]);
 
   return (
@@ -104,19 +98,19 @@ export default function DailyReportRegister() {
                 {filteredReports.length > 0 ? (
                   filteredReports.map((row, index) => (
                     <tr key={index}>
-                      <td>{row.date}</td>
+                      <td>{row.report_date}</td>
 
-                      <td className="text-center">{row.purchase}</td>
+                      <td className="text-center">{row.purchase_count}</td>
 
-                      <td className="text-center">{row.gatePass}</td>
+                      <td className="text-center">{row.gatepass_count}</td>
 
-                      <td className="text-center">{row.manufacturing}</td>
+                      <td className="text-center">{row.manufacturing_count}</td>
 
                       <td className="text-center">
                         <button
                           className="btn btn-primary btn-sm"
                           onClick={() =>
-                            alert(`Open Daily Report : ${row.date}`)
+                            alert(`Open Daily Report : ${row.id}`)
                           }
                         >
                           Open
@@ -139,3 +133,4 @@ export default function DailyReportRegister() {
     </div>
   );
 }
+

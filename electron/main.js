@@ -72,6 +72,18 @@ ipcMain.handle("stock:inactivate", (event, id) => {
     return database.inactivateStockItem(id);
 });
 
+ipcMain.handle("dailyReport:get", () => {
+  return database.getDailyReports();
+});
+
+ipcMain.handle("dailyReport:save", (event, report) => {
+  return database.saveDailyReport(report);
+});
+
+ipcMain.handle("dailyReport:getById", (event, id) => {
+    return database.getDailyReportById(id);
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

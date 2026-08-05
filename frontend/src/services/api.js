@@ -23,6 +23,18 @@ updateStockItem(item) {
 inactivateStockItem(id) {
     return window.api.inactivateStockItem(id);
 },
+
+getDailyReports() {
+  return window.api.getDailyReports();
+},
+
+saveDailyReport(report) {
+  return window.api.saveDailyReport(report);
+},
+
+getDailyReportById(id) {
+    return window.api.getDailyReportById(id);
+},
   
 };
 
