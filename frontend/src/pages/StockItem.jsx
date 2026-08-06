@@ -14,7 +14,7 @@ const units = [
   "Roll",
   "Bundle",
   "Drum",
-  "Carton",
+  "Ctn",
   "Ltr",
 ];
 

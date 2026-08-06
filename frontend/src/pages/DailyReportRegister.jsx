@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-
-
 export default function DailyReportRegister({ openDailyReport }) {
   const today = new Date().toISOString().split("T")[0];
 
@@ -13,40 +11,33 @@ export default function DailyReportRegister({ openDailyReport }) {
   const [reports, setReports] = useState([]);
 
   useEffect(() => {
-  loadReports();
-}, []);
+    loadReports();
+  }, []);
 
-const loadReports = async () => {
-  try {
-    const data = await api.getDailyReports();
+  const loadReports = async () => {
+    try {
+      const data = await api.getDailyReports();
 
-    setReports(data);
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-
+      setReports(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const filteredReports = useMemo(() => {
     return reports.filter((report) => {
+      const matchSearch = report.report_date.includes(search);
 
-  const matchSearch =
-    report.report_date.includes(search);
+      const matchDate =
+        report.report_date >= fromDate && report.report_date <= toDate;
 
-  const matchDate =
-    report.report_date >= fromDate &&
-    report.report_date <= toDate;
-
-  return matchSearch && matchDate;
-});
+      return matchSearch && matchDate;
+    });
   }, [reports, fromDate, toDate, search]);
-
 
   const openReport = (id) => {
     openDailyReport(id);
-};
-
+  };
 
   return (
     <div className="container-fluid mt-4">
@@ -104,10 +95,10 @@ const loadReports = async () => {
                 {filteredReports.length > 0 ? (
                   filteredReports.map((row, index) => (
                     <tr
-  key={row.id}
-  style={{ cursor: "pointer" }}
-  onClick={() => openReport(row.id)}
->
+                      key={row.id}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => openReport(row.id)}
+                    >
                       <td>{row.report_date}</td>
 
                       <td className="text-center">{row.purchase_count}</td>
@@ -115,7 +106,6 @@ const loadReports = async () => {
                       <td className="text-center">{row.gatepass_count}</td>
 
                       <td className="text-center">{row.manufacturing_count}</td>
-
                     </tr>
                   ))
                 ) : (
@@ -133,4 +123,3 @@ const loadReports = async () => {
     </div>
   );
 }
-

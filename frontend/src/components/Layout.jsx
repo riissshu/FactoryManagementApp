@@ -14,7 +14,7 @@ export default function Layout() {
   const [activeMenu, setActiveMenu] = useState("dashboard");
 
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
-const [dailyReportMode, setDailyReportMode] = useState("new");
+  const [dailyReportMode, setDailyReportMode] = useState("new");
 
   // Temporary values
   // Later these will come from SQLite
@@ -30,24 +30,28 @@ const [dailyReportMode, setDailyReportMode] = useState("new");
         return <StockItem />;
 
       case "dailyreport":
-        return (<DailyReport
-    reportId={selectedDailyReportId}
-    mode={dailyReportMode}
-    onClose={() => setActiveMenu("dailyreportregister")}
-    onSaved={() => setActiveMenu("dailyreportregister")}
-/>);
+        return (
+          <DailyReport
+            reportId={selectedDailyReportId}
+            mode={dailyReportMode}
+            onClose={() => setActiveMenu("dailyreportregister")}
+            onSaved={() => setActiveMenu("dailyreportregister")}
+          />
+        );
 
       case "stockreport":
         return <StockReport />;
 
       case "dailyreportregister":
-        return <DailyReportRegister
-  openDailyReport={(id) => {
-      setSelectedDailyReportId(id);
-      setDailyReportMode("view");
-      setActiveMenu("dailyreport");
-  }}
-/>;
+        return (
+          <DailyReportRegister
+            openDailyReport={(id) => {
+              setSelectedDailyReportId(id);
+              setDailyReportMode("view");
+              setActiveMenu("dailyreport");
+            }}
+          />
+        );
 
       default:
         return <Dashboard />;
@@ -63,12 +67,13 @@ const [dailyReportMode, setDailyReportMode] = useState("new");
   };
 
   return (
-    <>       <Sidebar
+    <>
+      {" "}
+      <Sidebar
         activeMenu={activeMenu}
         setActiveMenu={selectMenu}
         collapsed={collapsed}
       />
-
       <div
         style={{
           marginLeft: collapsed ? "70px" : "240px",
@@ -84,12 +89,15 @@ const [dailyReportMode, setDailyReportMode] = useState("new");
           setCollapsed={setCollapsed}
         />
 
-        <main className="p-4" style={{
-    marginTop: "65px",
-  }}>
+        <main
+          className="p-4"
+          style={{
+            marginTop: "65px",
+          }}
+        >
           {renderPage()}
         </main>
       </div>
-          </>
+    </>
   );
 }

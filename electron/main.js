@@ -69,7 +69,7 @@ ipcMain.handle("stock:update", (event, item) => {
 });
 
 ipcMain.handle("stock:inactivate", (event, id) => {
-    return database.inactivateStockItem(id);
+  return database.inactivateStockItem(id);
 });
 
 ipcMain.handle("dailyReport:get", () => {
@@ -81,7 +81,7 @@ ipcMain.handle("dailyReport:save", (event, report) => {
 });
 
 ipcMain.handle("dailyReport:getById", (event, id) => {
-    return database.getDailyReportById(id);
+  return database.getDailyReportById(id);
 });
 
 ipcMain.handle("dailyReport:update", (event, id, report) => {

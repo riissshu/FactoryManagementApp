@@ -7,14 +7,9 @@
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "npm --prefix frontend run dev",
     "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
-
     "build": "npm --prefix frontend run build",
-
     "start": "electron ."
   },
-
-  
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/riissshu/FACTORY-STOCK-APP.git"

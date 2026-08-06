@@ -10,33 +10,33 @@ contextBridge.exposeInMainWorld("api", {
       factoryLogo,
     }),
 
-    getStockItems: () => ipcRenderer.invoke("stock:get"),
+  getStockItems: () => ipcRenderer.invoke("stock:get"),
 
-saveStockItem: (item) =>
-  ipcRenderer.invoke("stock:save", item),
+  saveStockItem: (item) =>
+    ipcRenderer.invoke("stock:save", item),
 
-updateStockItem: (item) =>
-  ipcRenderer.invoke("stock:update", item),
+  updateStockItem: (item) =>
+    ipcRenderer.invoke("stock:update", item),
 
-inactivateStockItem: (id) =>
+  inactivateStockItem: (id) =>
     ipcRenderer.invoke("stock:inactivate", id),
 
-getDailyReports: () =>
-  ipcRenderer.invoke("dailyReport:get"),
+  getDailyReports: () =>
+    ipcRenderer.invoke("dailyReport:get"),
 
-saveDailyReport: (report) =>
-  ipcRenderer.invoke("dailyReport:save", report),
+  saveDailyReport: (report) =>
+    ipcRenderer.invoke("dailyReport:save", report),
 
-getDailyReportById: (id) =>
-  ipcRenderer.invoke("dailyReport:getById", id),
+  getDailyReportById: (id) =>
+    ipcRenderer.invoke("dailyReport:getById", id),
 
-updateDailyReport: (id, report) =>
-  ipcRenderer.invoke("dailyReport:update", id, report),
+  updateDailyReport: (id, report) =>
+    ipcRenderer.invoke("dailyReport:update", id, report),
 
-deleteDailyReport: (id) =>
-  ipcRenderer.invoke("dailyReport:delete", id),
+  deleteDailyReport: (id) =>
+    ipcRenderer.invoke("dailyReport:delete", id),
 
-getStockReport: () =>
-  ipcRenderer.invoke("stock:report"),
+  getStockReport: () =>
+    ipcRenderer.invoke("stock:report"),
 
 });

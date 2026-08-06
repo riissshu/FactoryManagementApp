@@ -313,25 +313,25 @@ function getDailyReportById(id) {
     WHERE daily_report_id = ?
 `).all(id);
 
-report.purchases = purchases.map((purchase) => {
+    report.purchases = purchases.map((purchase) => {
 
-    const items = db.prepare(`
+        const items = db.prepare(`
         SELECT *
         FROM purchase_items
         WHERE purchase_entry_id = ?
     `).all(purchase.id);
 
-    return {
-        purchaseNo: purchase.purchase_no,
+        return {
+            purchaseNo: purchase.purchase_no,
 
-        items: items.map((item) => ({
-            item: item.stock_item_id,
-            qty: item.qty,
-            unit: item.unit
-        }))
-    };
+            items: items.map((item) => ({
+                item: item.stock_item_id,
+                qty: item.qty,
+                unit: item.unit
+            }))
+        };
 
-});
+    });
 
     // Gate Pass
 
@@ -418,11 +418,11 @@ function saveDailyReport(report) {
 
         const dailyReportId = dailyReport.lastInsertRowid;
 
-       // Purchase Entries
+        // Purchase Entries
 
-report.purchases.forEach((purchase) => {
+        report.purchases.forEach((purchase) => {
 
-    const purchaseEntry = db.prepare(`
+            const purchaseEntry = db.prepare(`
         INSERT INTO purchase_entries
         (
             daily_report_id,
@@ -430,17 +430,17 @@ report.purchases.forEach((purchase) => {
         )
         VALUES (?, ?)
     `).run(
-        dailyReportId,
-        purchase.purchaseNo
-    );
+                dailyReportId,
+                purchase.purchaseNo
+            );
 
-    const purchaseEntryId = purchaseEntry.lastInsertRowid;
+            const purchaseEntryId = purchaseEntry.lastInsertRowid;
 
-    purchase.items.forEach((item) => {
+            purchase.items.forEach((item) => {
 
-        if (!item.item || !item.qty) return;
+                if (!item.item || !item.qty) return;
 
-        db.prepare(`
+                db.prepare(`
             INSERT INTO purchase_items
             (
                 purchase_entry_id,
@@ -450,21 +450,21 @@ report.purchases.forEach((purchase) => {
             )
             VALUES (?, ?, ?, ?)
         `).run(
-            purchaseEntryId,
-            Number(item.item),
-    Number(item.qty),
-            item.unit
-        );
+                    purchaseEntryId,
+                    Number(item.item),
+                    Number(item.qty),
+                    item.unit
+                );
 
-    });
+            });
 
-});
+        });
 
-// Gate Pass Entries
+        // Gate Pass Entries
 
-report.gatePasses.forEach((gatePass) => {
+        report.gatePasses.forEach((gatePass) => {
 
-    const gatePassEntry = db.prepare(`
+            const gatePassEntry = db.prepare(`
         INSERT INTO gatepass_entries
         (
             daily_report_id,
@@ -472,17 +472,17 @@ report.gatePasses.forEach((gatePass) => {
         )
         VALUES (?, ?)
     `).run(
-        dailyReportId,
-        gatePass.gatePassNo
-    );
+                dailyReportId,
+                gatePass.gatePassNo
+            );
 
-    const gatePassEntryId = gatePassEntry.lastInsertRowid;
+            const gatePassEntryId = gatePassEntry.lastInsertRowid;
 
-    gatePass.items.forEach((item) => {
+            gatePass.items.forEach((item) => {
 
-        if (!item.item || !item.qty) return;
+                if (!item.item || !item.qty) return;
 
-        db.prepare(`
+                db.prepare(`
             INSERT INTO gatepass_items
             (
                 gatepass_entry_id,
@@ -492,40 +492,40 @@ report.gatePasses.forEach((gatePass) => {
             )
             VALUES (?, ?, ?, ?)
         `).run(
-            gatePassEntryId,
-            Number(item.item),
-            Number(item.qty),
-            item.unit
-        );
+                    gatePassEntryId,
+                    Number(item.item),
+                    Number(item.qty),
+                    item.unit
+                );
 
-    });
+            });
 
-});
+        });
 
-// Manufacturing Entries
+        // Manufacturing Entries
 
-report.manufactured.forEach((manufacturing) => {
+        report.manufactured.forEach((manufacturing) => {
 
-    const manufacturingEntry = db.prepare(`
+            const manufacturingEntry = db.prepare(`
         INSERT INTO manufacturing_entries
         (
             daily_report_id
         )
         VALUES (?)
     `).run(
-        dailyReportId
-    );
+                dailyReportId
+            );
 
-    const manufacturingEntryId =
-        manufacturingEntry.lastInsertRowid;
+            const manufacturingEntryId =
+                manufacturingEntry.lastInsertRowid;
 
-    // Consumption
+            // Consumption
 
-    manufacturing.consumption.forEach((item) => {
+            manufacturing.consumption.forEach((item) => {
 
-        if (!item.item || !item.qty) return;
+                if (!item.item || !item.qty) return;
 
-        db.prepare(`
+                db.prepare(`
             INSERT INTO manufacturing_consumption
             (
                 manufacturing_entry_id,
@@ -535,21 +535,21 @@ report.manufactured.forEach((manufacturing) => {
             )
             VALUES (?, ?, ?, ?)
         `).run(
-            manufacturingEntryId,
-            Number(item.item),
-            Number(item.qty),
-            item.unit
-        );
+                    manufacturingEntryId,
+                    Number(item.item),
+                    Number(item.qty),
+                    item.unit
+                );
 
-    });
+            });
 
-    // Production
+            // Production
 
-    manufacturing.production.forEach((item) => {
+            manufacturing.production.forEach((item) => {
 
-        if (!item.item || !item.qty) return;
+                if (!item.item || !item.qty) return;
 
-        db.prepare(`
+                db.prepare(`
             INSERT INTO manufacturing_production
             (
                 manufacturing_entry_id,
@@ -559,15 +559,15 @@ report.manufactured.forEach((manufacturing) => {
             )
             VALUES (?, ?, ?, ?)
         `).run(
-            manufacturingEntryId,
-            Number(item.item),
-            Number(item.qty),
-            item.unit
-        );
+                    manufacturingEntryId,
+                    Number(item.item),
+                    Number(item.qty),
+                    item.unit
+                );
 
-    });
+            });
 
-});
+        });
 
     });
 

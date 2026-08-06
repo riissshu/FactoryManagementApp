@@ -8,7 +8,7 @@ function App() {
   const [factorySetupDone, setFactorySetupDone] = useState(false);
 
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
-const [dailyReportMode, setDailyReportMode] = useState("new");
+  const [dailyReportMode, setDailyReportMode] = useState("new");
 
   useEffect(() => {
     checkFactorySetup();
@@ -37,12 +37,10 @@ const [dailyReportMode, setDailyReportMode] = useState("new");
   }
 
   return factorySetupDone ? (
-  <Layout />
-) : (
-  <FactorySetup
-    onSetupComplete={() => setFactorySetupDone(true)}
-  />
-);
+    <Layout />
+  ) : (
+    <FactorySetup onSetupComplete={() => setFactorySetupDone(true)} />
+  );
 }
 
 export default App;

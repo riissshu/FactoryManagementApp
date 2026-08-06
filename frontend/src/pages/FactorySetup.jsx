@@ -8,8 +8,8 @@ export default function FactorySetup({ onSetupComplete }) {
 
   const fileInputRef = useRef(null);
   useEffect(() => {
-  loadSettings();
-}, []);
+    loadSettings();
+  }, []);
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
@@ -20,36 +20,34 @@ export default function FactorySetup({ onSetupComplete }) {
   };
 
   const loadSettings = async () => {
-  try {
-    const settings = await api.getSettings();
+    try {
+      const settings = await api.getSettings();
 
-    if (settings) {
-      setFactoryName(settings.factory_name);
+      if (settings) {
+        setFactoryName(settings.factory_name);
 
-      if (settings.factory_logo) {
-        setLogo(settings.factory_logo);
+        if (settings.factory_logo) {
+          setLogo(settings.factory_logo);
+        }
       }
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error(error);
-  }
-};
+  };
 
   const handleSave = async () => {
-  try {
-    await api.saveSettings(factoryName, logo);
+    try {
+      await api.saveSettings(factoryName, logo);
 
-    alert("Factory Setup Saved");
+      onSetupComplete();
 
-    onSetupComplete();
-
-    console.log("Factory Name :", factoryName);
-    console.log("Factory Logo :", logo);
-  } catch (error) {
-    console.error(error);
-    alert("Unable to save factory settings.");
-  }
-};
+      console.log("Factory Name :", factoryName);
+      console.log("Factory Logo :", logo);
+    } catch (error) {
+      console.error(error);
+      alert("Unable to Create New factory.");
+    }
+  };
 
   return (
     <div
@@ -66,7 +64,7 @@ export default function FactorySetup({ onSetupComplete }) {
         }}
       >
         <div className="card-header bg-primary text-white text-center">
-          <h4 className="mb-0">Welcome to Factory Stock Maintenance</h4>
+          <h4 className="mb-0">Welcome to Factory Book !</h4>
         </div>
 
         <div className="card-body">

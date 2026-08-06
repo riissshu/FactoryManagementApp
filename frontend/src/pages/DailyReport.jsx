@@ -8,12 +8,7 @@ const createRow = () => ({
   unit: "",
 });
 
-export default function DailyReport({
-    reportId,
-    mode,
-    onClose,
-    onSaved,
-}) {
+export default function DailyReport({ reportId, mode, onClose, onSaved }) {
   const today = new Date().toISOString().split("T")[0];
 
   const [date, setDate] = useState(today);
@@ -22,7 +17,6 @@ export default function DailyReport({
   useEffect(() => {
     setCurrentMode(mode);
   }, [mode, reportId]);
-
 
   const createPurchase = () => ({
     purchaseNo: "",
@@ -47,15 +41,10 @@ export default function DailyReport({
   ]);
 
   useEffect(() => {
-
-    if (
-        currentMode === "view" &&
-        reportId
-    ) {
-        loadReport(reportId);
+    if (currentMode === "view" && reportId) {
+      loadReport(reportId);
     }
-
-}, [reportId, currentMode]);
+  }, [reportId, currentMode]);
 
   useEffect(() => {
     loadStockItems();
@@ -70,50 +59,46 @@ export default function DailyReport({
     }
   };
 
-  
- const loadReport = async (id) => {
+  const loadReport = async (id) => {
     try {
+      const report = await api.getDailyReportById(id);
 
-        const report = await api.getDailyReportById(id);
+      if (!report) throw new Error("Daily report not found.");
+      setDate(report.date);
 
-        if (!report) throw new Error("Daily report not found.");
-        setDate(report.date);
+      setPurchases(report.purchases);
 
-        setPurchases(report.purchases);
+      setGatePasses(report.gatePasses);
 
-        setGatePasses(report.gatePasses);
-
-        setManufactured(report.manufactured);
-
+      setManufactured(report.manufactured);
     } catch (error) {
-        console.error(error);
+      console.error(error);
     }
-};
+  };
 
-const handleSave = async () => {
-  try {
-    const payload = {
-      report_date: date,
-      purchases,
-      gatePasses,
-      manufactured,
-    };
+  const handleSave = async () => {
+    try {
+      const payload = {
+        report_date: date,
+        purchases,
+        gatePasses,
+        manufactured,
+      };
 
-    if (!date) throw new Error("Please select a report date.");
-    if (currentMode === "edit" && reportId) {
-      await api.updateDailyReport(reportId, payload);
-    } else {
-      await api.saveDailyReport(payload);
+      if (!date) throw new Error("Please select a report date.");
+      if (currentMode === "edit" && reportId) {
+        await api.updateDailyReport(reportId, payload);
+      } else {
+        await api.saveDailyReport(payload);
+      }
+
+      alert("Daily Report Saved Successfully.");
+      onSaved?.();
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
     }
-
-    alert("Daily Report Saved Successfully.");
-    onSaved?.();
-
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-};
+  };
 
   const renderTable = (
     title,
@@ -274,8 +259,6 @@ const handleSave = async () => {
     </>
   );
 
-  
-
   const renderManufacturingTable = (documents, setDocuments) => {
     const updateRow = (docIndex, rowIndex, table, field, value) => {
       const temp = [...documents];
@@ -306,8 +289,6 @@ const handleSave = async () => {
         setDocuments(temp);
       }
     };
-
-
 
     return (
       <>
@@ -531,7 +512,11 @@ const handleSave = async () => {
   };
 
   const handleDelete = async () => {
-    if (!reportId || !window.confirm("Delete this Daily Report and all related entries?")) return;
+    if (
+      !reportId ||
+      !window.confirm("Delete this Daily Report and all related entries?")
+    )
+      return;
     try {
       await api.deleteDailyReport(reportId);
       alert("Daily Report deleted.");
@@ -551,47 +536,66 @@ const handleSave = async () => {
 
         <div className="card-body">
           <fieldset disabled={currentMode === "view"}>
-          <div className="row mb-3">
-            <div className="col-md-3">
-              <label className="form-label">Date</label>
-              <input
-                type="date"
-                className="form-control"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+            <div className="row mb-3">
+              <div className="col-md-3">
+                <label className="form-label">Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          {renderTable(
-            "Material Received",
-            purchases,
-            setPurchases,
-            "purchaseNo",
-          )}
+            {renderTable(
+              "Material Received",
+              purchases,
+              setPurchases,
+              "purchaseNo",
+            )}
 
-          {renderTable(
-            "Material Dispatched",
-            gatePasses,
-            setGatePasses,
-            "gatePassNo",
-          )}
+            {renderTable(
+              "Material Dispatched",
+              gatePasses,
+              setGatePasses,
+              "gatePassNo",
+            )}
 
-          {renderManufacturingTable(manufactured, setManufactured)}
-
+            {renderManufacturingTable(manufactured, setManufactured)}
           </fieldset>
-          {currentMode !== "view" && <button
-            className="btn btn-primary me-2"
-            onClick={handleSave}
-          >
-            Save
-          </button>}
-          {currentMode === "view" && <>
-            <button className="btn btn-primary me-2" onClick={() => setCurrentMode("edit")}>Edit</button>
-            <button className="btn btn-danger me-2" onClick={handleDelete}>Delete</button>
-          </>}
-          {currentMode === "edit" && <button className="btn btn-secondary me-2" onClick={() => { setCurrentMode("view"); loadReport(reportId); }}>Cancel</button>}
-          <button className="btn btn-secondary" onClick={onClose}>Close</button>
+          {currentMode !== "view" && (
+            <button className="btn btn-primary me-2" onClick={handleSave}>
+              Save
+            </button>
+          )}
+          {currentMode === "view" && (
+            <>
+              <button
+                className="btn btn-primary me-2"
+                onClick={() => setCurrentMode("edit")}
+              >
+                Edit
+              </button>
+              <button className="btn btn-danger me-2" onClick={handleDelete}>
+                Delete
+              </button>
+            </>
+          )}
+          {currentMode === "edit" && (
+            <button
+              className="btn btn-secondary me-2"
+              onClick={() => {
+                setCurrentMode("view");
+                loadReport(reportId);
+              }}
+            >
+              Cancel
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

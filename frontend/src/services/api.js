@@ -9,45 +9,45 @@ const api = {
   },
 
   getStockItems() {
-  return window.api.getStockItems();
-},
+    return window.api.getStockItems();
+  },
 
-saveStockItem(item) {
-  return window.api.saveStockItem(item);
-},
+  saveStockItem(item) {
+    return window.api.saveStockItem(item);
+  },
 
-updateStockItem(item) {
-  return window.api.updateStockItem(item);
-},
+  updateStockItem(item) {
+    return window.api.updateStockItem(item);
+  },
 
-inactivateStockItem(id) {
+  inactivateStockItem(id) {
     return window.api.inactivateStockItem(id);
-},
+  },
 
-getDailyReports() {
-  return window.api.getDailyReports();
-},
+  getDailyReports() {
+    return window.api.getDailyReports();
+  },
 
-saveDailyReport(report) {
-  return window.api.saveDailyReport(report);
-},
+  saveDailyReport(report) {
+    return window.api.saveDailyReport(report);
+  },
 
-getDailyReportById(id) {
+  getDailyReportById(id) {
     return window.api.getDailyReportById(id);
-},
+  },
 
-updateDailyReport(id, report) {
-  return window.api.updateDailyReport(id, report);
-},
+  updateDailyReport(id, report) {
+    return window.api.updateDailyReport(id, report);
+  },
 
-deleteDailyReport(id) {
-  return window.api.deleteDailyReport(id);
-},
+  deleteDailyReport(id) {
+    return window.api.deleteDailyReport(id);
+  },
 
-getStockReport() {
-  return window.api.getStockReport();
-},
-  
+  getStockReport() {
+    return window.api.getStockReport();
+  },
+
 };
 
 export default api;

@@ -34,22 +34,21 @@ export default function Navbar({
     <nav
       className="navbar navbar-light bg-white shadow-sm px-3"
       style={{
-  transition: "all 0.3s",
-  height: "65px",
-  position: "fixed",
-  top: 0,
-  right: 0,
-  left: collapsed ? "70px" : "240px",
-  zIndex: 1000,
-}}
-    >       <div className="container-fluid">
-
+        transition: "all 0.3s",
+        height: "65px",
+        position: "fixed",
+        top: 0,
+        right: 0,
+        left: collapsed ? "70px" : "240px",
+        zIndex: 1000,
+      }}
+    >
+      {" "}
+      <div className="container-fluid">
         <div className="d-flex align-items-center w-100">
-
           {/* Left Side */}
 
           <div className="d-flex align-items-center flex-grow-1">
-
             <button
               className="btn btn-outline-primary me-3"
               onClick={() => setCollapsed(!collapsed)}
@@ -57,17 +56,12 @@ export default function Navbar({
               <i className="bi bi-list fs-5"></i>
             </button>
 
-            <h4 className="mb-0 fw-bold text-primary">
-              {factoryName}
-            </h4>
-
+            <h4 className="mb-0 fw-bold text-primary">{factoryName}</h4>
           </div>
-
 
           {/* Right Side */}
 
           <div className="d-flex align-items-center ms-auto">
-
             {factoryLogo && (
               <img
                 src={factoryLogo}
@@ -83,21 +77,13 @@ export default function Navbar({
             )}
 
             <div className="text-end">
+              <div className="fw-bold">{formattedDate}</div>
 
-              <div className="fw-bold">
-                {formattedDate}
-              </div>
-
-              <small className="text-muted">
-                {formattedTime}
-              </small>
-
+              <small className="text-muted">{formattedTime}</small>
             </div>
-
           </div>
-
         </div>
-
-      </div>    </nav>
+      </div>{" "}
+    </nav>
   );
 }

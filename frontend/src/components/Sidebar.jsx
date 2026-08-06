@@ -2,11 +2,7 @@ import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-export default function Sidebar({
-  activeMenu,
-  setActiveMenu,
-  collapsed,
-}) {
+export default function Sidebar({ activeMenu, setActiveMenu, collapsed }) {
   const menuItems = [
     {
       title: "Dashboard",
@@ -73,22 +69,16 @@ export default function Sidebar({
         overflowY: "auto",
       }}
     >
-
       <div className="border-bottom text-center py-3">
-
         {!collapsed ? (
-          <h5 className="mb-0 fw-bold">
-            Factory Stock
-          </h5>
+          <h5 className="mb-0 fw-bold">Factory Stock</h5>
         ) : (
           <i className="bi bi-box-seam fs-4"></i>
         )}
-
       </div>
 
       <div className="pt-2">
-                {menuItems.map((item, index) => {
-
+        {menuItems.map((item, index) => {
           if (item.type === "heading") {
             return (
               !collapsed && (
@@ -109,32 +99,20 @@ export default function Sidebar({
               type="button"
               onClick={() => setActiveMenu(item.key)}
               className={`btn border-0 rounded-0 w-100 d-flex align-items-center ${
-                activeMenu === item.key
-                  ? "btn-primary"
-                  : "btn-dark"
+                activeMenu === item.key ? "btn-primary" : "btn-dark"
               }`}
               style={{
                 height: "48px",
                 justifyContent: collapsed ? "center" : "flex-start",
               }}
             >
-              <i
-                className={`bi ${item.icon}`}
-                style={{ fontSize: "18px" }}
-              ></i>
+              <i className={`bi ${item.icon}`} style={{ fontSize: "18px" }}></i>
 
-              {!collapsed && (
-                <span className="ms-3">
-                  {item.title}
-                </span>
-              )}
+              {!collapsed && <span className="ms-3">{item.title}</span>}
             </button>
           );
-
         })}
-
-              </div>
-
+      </div>
     </div>
   );
 }
