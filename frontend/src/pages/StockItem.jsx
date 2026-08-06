@@ -99,10 +99,10 @@ export default function StockItem() {
 
       if (item.id) {
         await api.updateStockItem(stockData);
-        alert("Stock Item Updated Successfully.");
+        
       } else {
         await api.saveStockItem(stockData);
-        alert("Stock Item Saved Successfully.");
+        
       }
 
       resetForm();

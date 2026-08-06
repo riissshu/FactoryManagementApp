@@ -91,8 +91,6 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
       } else {
         await api.saveDailyReport(payload);
       }
-
-      alert("Daily Report Saved Successfully.");
       onSaved?.();
     } catch (error) {
       console.error(error);
