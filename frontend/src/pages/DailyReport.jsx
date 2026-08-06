@@ -8,10 +8,20 @@ const createRow = () => ({
   unit: "",
 });
 
-export default function DailyReport() {
+export default function DailyReport({
+    reportId,
+    mode,
+    onClose,
+    onSaved,
+}) {
   const today = new Date().toISOString().split("T")[0];
 
   const [date, setDate] = useState(today);
+  const [currentMode, setCurrentMode] = useState(mode);
+
+  useEffect(() => {
+    setCurrentMode(mode);
+  }, [mode, reportId]);
 
 
   const createPurchase = () => ({
@@ -37,6 +47,17 @@ export default function DailyReport() {
   ]);
 
   useEffect(() => {
+
+    if (
+        currentMode === "view" &&
+        reportId
+    ) {
+        loadReport(reportId);
+    }
+
+}, [reportId, currentMode]);
+
+  useEffect(() => {
     loadStockItems();
   }, []);
 
@@ -50,16 +71,43 @@ export default function DailyReport() {
   };
 
   
+ const loadReport = async (id) => {
+    try {
+
+        const report = await api.getDailyReportById(id);
+
+        if (!report) throw new Error("Daily report not found.");
+        setDate(report.date);
+
+        setPurchases(report.purchases);
+
+        setGatePasses(report.gatePasses);
+
+        setManufactured(report.manufactured);
+
+    } catch (error) {
+        console.error(error);
+    }
+};
+
 const handleSave = async () => {
   try {
-    await api.saveDailyReport({
+    const payload = {
       report_date: date,
       purchases,
       gatePasses,
       manufactured,
-    });
+    };
+
+    if (!date) throw new Error("Please select a report date.");
+    if (currentMode === "edit" && reportId) {
+      await api.updateDailyReport(reportId, payload);
+    } else {
+      await api.saveDailyReport(payload);
+    }
 
     alert("Daily Report Saved Successfully.");
+    onSaved?.();
 
   } catch (error) {
     console.error(error);
@@ -482,6 +530,18 @@ const handleSave = async () => {
     );
   };
 
+  const handleDelete = async () => {
+    if (!reportId || !window.confirm("Delete this Daily Report and all related entries?")) return;
+    try {
+      await api.deleteDailyReport(reportId);
+      alert("Daily Report deleted.");
+      onSaved?.();
+    } catch (error) {
+      console.error(error);
+      alert("Unable to delete the Daily Report.");
+    }
+  };
+
   return (
     <div className="container-fluid mt-4">
       <div className="card shadow mb-4">
@@ -490,6 +550,7 @@ const handleSave = async () => {
         </div>
 
         <div className="card-body">
+          <fieldset disabled={currentMode === "view"}>
           <div className="row mb-3">
             <div className="col-md-3">
               <label className="form-label">Date</label>
@@ -518,12 +579,19 @@ const handleSave = async () => {
 
           {renderManufacturingTable(manufactured, setManufactured)}
 
-          <button
+          </fieldset>
+          {currentMode !== "view" && <button
             className="btn btn-primary me-2"
             onClick={handleSave}
           >
             Save
-          </button>
+          </button>}
+          {currentMode === "view" && <>
+            <button className="btn btn-primary me-2" onClick={() => setCurrentMode("edit")}>Edit</button>
+            <button className="btn btn-danger me-2" onClick={handleDelete}>Delete</button>
+          </>}
+          {currentMode === "edit" && <button className="btn btn-secondary me-2" onClick={() => { setCurrentMode("view"); loadReport(reportId); }}>Cancel</button>}
+          <button className="btn btn-secondary" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

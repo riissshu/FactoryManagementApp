@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 
 
-export default function DailyReportRegister() {
+export default function DailyReportRegister({ openDailyReport }) {
   const today = new Date().toISOString().split("T")[0];
 
   const [fromDate, setFromDate] = useState(today);
@@ -19,11 +19,14 @@ export default function DailyReportRegister() {
 const loadReports = async () => {
   try {
     const data = await api.getDailyReports();
+
     setReports(data);
   } catch (error) {
     console.error(error);
   }
 };
+
+
 
   const filteredReports = useMemo(() => {
     return reports.filter((report) => {
@@ -37,7 +40,13 @@ const loadReports = async () => {
 
   return matchSearch && matchDate;
 });
-  }, [fromDate, toDate, search]);
+  }, [reports, fromDate, toDate, search]);
+
+
+  const openReport = (id) => {
+    openDailyReport(id);
+};
+
 
   return (
     <div className="container-fluid mt-4">
@@ -88,16 +97,17 @@ const loadReports = async () => {
                   <th className="text-center">Purchase</th>
                   <th className="text-center">Gate Pass</th>
                   <th className="text-center">Manufacturing</th>
-                  <th width="12%" className="text-center">
-                    Action
-                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {filteredReports.length > 0 ? (
                   filteredReports.map((row, index) => (
-                    <tr key={index}>
+                    <tr
+  key={row.id}
+  style={{ cursor: "pointer" }}
+  onClick={() => openReport(row.id)}
+>
                       <td>{row.report_date}</td>
 
                       <td className="text-center">{row.purchase_count}</td>
@@ -106,21 +116,11 @@ const loadReports = async () => {
 
                       <td className="text-center">{row.manufacturing_count}</td>
 
-                      <td className="text-center">
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() =>
-                            alert(`Open Daily Report : ${row.id}`)
-                          }
-                        >
-                          Open
-                        </button>
-                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="text-center text-muted">
+                    <td colSpan="4" className="text-center text-muted">
                       No reports found.
                     </td>
                   </tr>

@@ -7,6 +7,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [factorySetupDone, setFactorySetupDone] = useState(false);
 
+  const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
+const [dailyReportMode, setDailyReportMode] = useState("new");
+
   useEffect(() => {
     checkFactorySetup();
   }, []);

@@ -304,36 +304,34 @@ function getDailyReports() {
 }
 
 function getDailyReportById(id) {
-
-    const report = db.prepare(`
-        SELECT *
-        FROM daily_reports
-        WHERE id = ?
-    `).get(id);
-
+    const report = db.prepare("SELECT id, report_date FROM daily_reports WHERE id = ?").get(id);
     if (!report) return null;
 
-    // Purchase
+    const purchases = db.prepare(`
+    SELECT *
+    FROM purchase_entries
+    WHERE daily_report_id = ?
+`).all(id);
 
-    report.purchases = db.prepare(`
+report.purchases = purchases.map((purchase) => {
+
+    const items = db.prepare(`
         SELECT *
-        FROM purchase_entries
-        WHERE daily_report_id = ?
-    `).all(id);
+        FROM purchase_items
+        WHERE purchase_entry_id = ?
+    `).all(purchase.id);
 
-    report.purchases.forEach((purchase) => {
+    return {
+        purchaseNo: purchase.purchase_no,
 
-        purchase.items = db.prepare(`
-            SELECT
-                pi.*,
-                si.item_name
-            FROM purchase_items pi
-            LEFT JOIN stock_items si
-                ON si.id = pi.stock_item_id
-            WHERE purchase_entry_id = ?
-        `).all(purchase.id);
+        items: items.map((item) => ({
+            item: item.stock_item_id,
+            qty: item.qty,
+            unit: item.unit
+        }))
+    };
 
-    });
+});
 
     // Gate Pass
 
@@ -389,7 +387,20 @@ function getDailyReportById(id) {
 
     });
 
-    return report;
+    const mapItem = (item) => ({ item: String(item.stock_item_id), qty: String(item.qty), unit: item.unit });
+    return {
+        id: report.id,
+        date: report.report_date,
+        purchases: report.purchases,
+        gatePasses: report.gatePasses.map((entry) => ({
+            gatePassNo: entry.gatepass_no,
+            items: entry.items.map(mapItem),
+        })),
+        manufactured: report.manufactured.map((entry) => ({
+            consumption: entry.consumption.map(mapItem),
+            production: entry.production.map(mapItem),
+        })),
+    };
 }
 
 
@@ -565,6 +576,45 @@ report.manufactured.forEach((manufacturing) => {
     return true;
 }
 
+function deleteDailyReport(id) {
+    const remove = db.transaction(() => {
+        const purchaseIds = db.prepare("SELECT id FROM purchase_entries WHERE daily_report_id = ?").all(id).map((row) => row.id);
+        const gatePassIds = db.prepare("SELECT id FROM gatepass_entries WHERE daily_report_id = ?").all(id).map((row) => row.id);
+        const manufacturingIds = db.prepare("SELECT id FROM manufacturing_entries WHERE daily_report_id = ?").all(id).map((row) => row.id);
+        const deleteChildren = (table, column, ids) => ids.forEach((entryId) => db.prepare(`DELETE FROM ${table} WHERE ${column} = ?`).run(entryId));
+        deleteChildren("purchase_items", "purchase_entry_id", purchaseIds);
+        deleteChildren("gatepass_items", "gatepass_entry_id", gatePassIds);
+        deleteChildren("manufacturing_consumption", "manufacturing_entry_id", manufacturingIds);
+        deleteChildren("manufacturing_production", "manufacturing_entry_id", manufacturingIds);
+        db.prepare("DELETE FROM purchase_entries WHERE daily_report_id = ?").run(id);
+        db.prepare("DELETE FROM gatepass_entries WHERE daily_report_id = ?").run(id);
+        db.prepare("DELETE FROM manufacturing_entries WHERE daily_report_id = ?").run(id);
+        db.prepare("DELETE FROM daily_reports WHERE id = ?").run(id);
+    });
+    remove();
+    return true;
+}
+
+function updateDailyReport(id, report) {
+    const replace = db.transaction(() => {
+        deleteDailyReport(id);
+        saveDailyReport(report);
+    });
+    replace();
+    return true;
+}
+
+function getStockReport() {
+    return db.prepare(`
+        SELECT si.id, si.item_name, si.stock_group, si.unit, si.opening_qty,
+          COALESCE((SELECT SUM(qty) FROM purchase_items WHERE stock_item_id = si.id), 0) AS purchased_qty,
+          COALESCE((SELECT SUM(qty) FROM gatepass_items WHERE stock_item_id = si.id), 0) AS dispatched_qty,
+          COALESCE((SELECT SUM(qty) FROM manufacturing_consumption WHERE stock_item_id = si.id), 0) AS consumed_qty,
+          COALESCE((SELECT SUM(qty) FROM manufacturing_production WHERE stock_item_id = si.id), 0) AS produced_qty
+        FROM stock_items si WHERE si.is_active = 1 ORDER BY si.item_name
+    `).all().map((row) => ({ ...row, balance_qty: Number(row.opening_qty) + Number(row.purchased_qty) + Number(row.produced_qty) - Number(row.dispatched_qty) - Number(row.consumed_qty) }));
+}
+
 module.exports = {
     getSettings,
     saveSettings,
@@ -577,4 +627,7 @@ module.exports = {
     getDailyReports,
     saveDailyReport,
     getDailyReportById,
+    updateDailyReport,
+    deleteDailyReport,
+    getStockReport,
 };

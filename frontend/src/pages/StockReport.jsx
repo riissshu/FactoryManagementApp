@@ -1,195 +1,40 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
-
-const sampleStock = [
-  {
-  itemName: "Cement",
-  group: "Raw Material",
-  unit: "Bag",
-  altUnit: "Kg",
-  altQty: 6000,
-  closing: 120,
-},
-  {
-  itemName: "Sand",
-  group: "Raw Material",
-  unit: "Ton",
-  altUnit: "Kg",
-  altQty: 42000,
-  closing: 42,
-},
-  {
-    itemName: "Steel Rod",
-    group: "Raw Material",
-    unit: "Kg",
-    closing: 1325,
-  },
-  {
-    itemName: "Plastic Bag",
-    group: "Packaging Material",
-    unit: "Nos",
-    closing: 4650,
-  },
-  {
-    itemName: "Wrapper Roll",
-    group: "Packaging Material",
-    unit: "Roll",
-    closing: 35,
-  },
- {
-  itemName: "Concrete Block",
-  group: "Finished Goods",
-  unit: "Nos",
-  altUnit: "",
-  altQty: "",
-  closing: 2200,
-},
-  {
-    itemName: "Paver Block",
-    group: "Finished Goods",
-    unit: "Nos",
-    closing: 1500,
-  },
-];
+import api from "../services/api";
 
 export default function StockReport() {
-  const today = new Date().toISOString().split("T")[0];
-
-  const [asOnDate, setAsOnDate] = useState(today);
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
 
-  const filteredData = useMemo(() => {
-    return sampleStock.filter((item) =>
-      item.itemName.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [search]);
+  useEffect(() => {
+    api.getStockReport().then(setItems).catch((error) => {
+      console.error(error);
+      alert("Unable to load the stock report.");
+    });
+  }, []);
 
-  const renderStockTable = (title, group) => {
-    const data = filteredData.filter(
-      (item) => item.group === group
-    );
+  const rows = useMemo(() => items.filter((item) => item.item_name.toLowerCase().includes(search.toLowerCase())), [items, search]);
+  const groups = [...new Set(rows.map((item) => item.stock_group))];
 
-    return (
-      <div className="card shadow-sm mb-4">
-
-        <div className="card-header bg-secondary text-white">
-          <strong>{title}</strong>
+  return <div className="container-fluid mt-4">
+    <div className="card shadow">
+      <div className="card-header bg-primary text-white"><h4 className="mb-0">Stock Report</h4></div>
+      <div className="card-body">
+        <div className="col-md-5 mb-4">
+          <label className="form-label">Search Item</label>
+          <input className="form-control" placeholder="Search item..." value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
-
-        <div className="table-responsive">
-
-          <table className="table table-bordered table-hover mb-0">
-
-            <thead className="table-light">
-              <tr>
-                <th width="5%">#</th>
-                <th>Item Name</th>
-                <th width="15%">Unit</th>
-                <th width="15%" className="text-end">
-  Stock Qty
-</th>
-
-<th width="20%" className="text-end">
-  Alt. Qty
-</th>
-              </tr>
-            </thead>
-
-            <tbody>
-
-              {data.length > 0 ? (
-                data.map((row, index) => (
-                  <tr key={index}>
-                    <td>{index + 1}</td>
-                    <td>{row.itemName}</td>
-                    <td>{row.unit}</td>
-                    <td className="text-end fw-bold">
-  {row.closing}
-</td>
-
-<td className="text-end">
-  {row.altUnit
-    ? `${row.altQty} ${row.altUnit}`
-    : "-"}
-</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="text-center text-muted"
-                  >
-                    No records found.
-                  </td>
-                </tr>
-              )}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
+        {groups.map((group) => <div className="card shadow-sm mb-4" key={group}>
+          <div className="card-header bg-secondary text-white"><strong>{group}</strong></div>
+          <div className="table-responsive"><table className="table table-bordered mb-0">
+            <thead className="table-light"><tr><th>Item</th><th>Unit</th><th className="text-end">Opening</th><th className="text-end">Received</th><th className="text-end">Produced</th><th className="text-end">Dispatched</th><th className="text-end">Consumed</th><th className="text-end">Balance</th></tr></thead>
+            <tbody>{rows.filter((item) => item.stock_group === group).map((item) => <tr key={item.id}>
+              <td>{item.item_name}</td><td>{item.unit}</td><td className="text-end">{item.opening_qty}</td><td className="text-end">{item.purchased_qty}</td><td className="text-end">{item.produced_qty}</td><td className="text-end">{item.dispatched_qty}</td><td className="text-end">{item.consumed_qty}</td><td className="text-end fw-bold">{item.balance_qty}</td>
+            </tr>)}</tbody>
+          </table></div>
+        </div>)}
+        {!groups.length && <p className="text-muted text-center">No stock items found.</p>}
       </div>
-    );
-  };
-
-    return (
-    <div className="container-fluid mt-4">
-
-      <div className="card shadow">
-
-        <div className="card-header bg-primary text-white">
-          <h4 className="mb-0">Stock Report</h4>
-        </div>
-
-        <div className="card-body">
-
-          <div className="row mb-4">
-
-            <div className="col-md-3">
-              <label className="form-label">As On Date</label>
-              <input
-                type="date"
-                className="form-control"
-                value={asOnDate}
-                onChange={(e) => setAsOnDate(e.target.value)}
-              />
-            </div>
-
-            <div className="col-md-5">
-              <label className="form-label">Search Item</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Search Item..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-          </div>
-
-          {renderStockTable(
-            "Raw Material",
-            "Raw Material"
-          )}
-
-          {renderStockTable(
-            "Packaging Material",
-            "Packaging Material"
-          )}
-
-          {renderStockTable(
-            "Finished Goods",
-            "Finished Goods"
-          )}
-
-        </div>
-
-      </div>
-
-          </div>
-  );
+    </div>
+  </div>;
 }

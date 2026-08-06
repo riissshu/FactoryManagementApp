@@ -27,4 +27,16 @@ getDailyReports: () =>
 saveDailyReport: (report) =>
   ipcRenderer.invoke("dailyReport:save", report),
 
+getDailyReportById: (id) =>
+  ipcRenderer.invoke("dailyReport:getById", id),
+
+updateDailyReport: (id, report) =>
+  ipcRenderer.invoke("dailyReport:update", id, report),
+
+deleteDailyReport: (id) =>
+  ipcRenderer.invoke("dailyReport:delete", id),
+
+getStockReport: () =>
+  ipcRenderer.invoke("stock:report"),
+
 });

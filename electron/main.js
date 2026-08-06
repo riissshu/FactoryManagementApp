@@ -28,7 +28,7 @@ function createWindow() {
   } else {
     // Production Build
     mainWindow.loadFile(
-      path.join(__dirname, "../Frontend/dist/index.html")
+      path.join(__dirname, "../frontend/dist/index.html")
     );
   }
 }
@@ -82,6 +82,18 @@ ipcMain.handle("dailyReport:save", (event, report) => {
 
 ipcMain.handle("dailyReport:getById", (event, id) => {
     return database.getDailyReportById(id);
+});
+
+ipcMain.handle("dailyReport:update", (event, id, report) => {
+  return database.updateDailyReport(id, report);
+});
+
+ipcMain.handle("dailyReport:delete", (event, id) => {
+  return database.deleteDailyReport(id);
+});
+
+ipcMain.handle("stock:report", () => {
+  return database.getStockReport();
 });
 
 app.on("window-all-closed", () => {

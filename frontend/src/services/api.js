@@ -35,6 +35,18 @@ saveDailyReport(report) {
 getDailyReportById(id) {
     return window.api.getDailyReportById(id);
 },
+
+updateDailyReport(id, report) {
+  return window.api.updateDailyReport(id, report);
+},
+
+deleteDailyReport(id) {
+  return window.api.deleteDailyReport(id);
+},
+
+getStockReport() {
+  return window.api.getStockReport();
+},
   
 };
 

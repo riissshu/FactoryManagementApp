@@ -13,6 +13,9 @@ export default function Layout() {
 
   const [activeMenu, setActiveMenu] = useState("dashboard");
 
+  const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
+const [dailyReportMode, setDailyReportMode] = useState("new");
+
   // Temporary values
   // Later these will come from SQLite
   const factoryName = "ABC Bricks Industries";
@@ -21,29 +24,48 @@ export default function Layout() {
   const renderPage = () => {
     switch (activeMenu) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard navigate={selectMenu} />;
 
       case "stockitem":
         return <StockItem />;
 
       case "dailyreport":
-        return <DailyReport />;
+        return (<DailyReport
+    reportId={selectedDailyReportId}
+    mode={dailyReportMode}
+    onClose={() => setActiveMenu("dailyreportregister")}
+    onSaved={() => setActiveMenu("dailyreportregister")}
+/>);
 
       case "stockreport":
         return <StockReport />;
 
       case "dailyreportregister":
-        return <DailyReportRegister />;
+        return <DailyReportRegister
+  openDailyReport={(id) => {
+      setSelectedDailyReportId(id);
+      setDailyReportMode("view");
+      setActiveMenu("dailyreport");
+  }}
+/>;
 
       default:
         return <Dashboard />;
     }
   };
 
+  const selectMenu = (key) => {
+    if (key === "dailyreport") {
+      setSelectedDailyReportId(null);
+      setDailyReportMode("new");
+    }
+    setActiveMenu(key);
+  };
+
   return (
     <>       <Sidebar
         activeMenu={activeMenu}
-        setActiveMenu={setActiveMenu}
+        setActiveMenu={selectMenu}
         collapsed={collapsed}
       />
 
