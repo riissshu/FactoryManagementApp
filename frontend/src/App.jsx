@@ -31,7 +31,7 @@ function App() {
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-100">
-        <h4>Loading...</h4>
+        <h4>...</h4>
       </div>
     );
   }

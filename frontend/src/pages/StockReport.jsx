@@ -27,10 +27,9 @@ export default function StockReport() {
 
   return (
     <div className="container-fluid mt-4">
-      <div className="card shadow">
-        <div className="card-header bg-primary text-white">
+
           <h4 className="mb-0">Stock Summary</h4>
-        </div>
+
         <div className="card-body">
           <div className="col-md-5 mb-4">
             <label className="form-label">Search Item</label>
@@ -86,7 +85,7 @@ export default function StockReport() {
             <p className="text-muted text-center">No stock items found.</p>
           )}
         </div>
-      </div>
+      
     </div>
   );
 }

@@ -141,7 +141,7 @@ export default function StockItem() {
 
   return (
     <div className="container mt-4">
-      <div className="card shadow">
+     
         <div className="card-header bg-primary text-white">
           <h4 className="mb-0">Stock Item Master</h4>
         </div>
@@ -233,9 +233,9 @@ export default function StockItem() {
             </button>
           </div>
         </div>
-      </div>
+      
 
-      <div className="card shadow mt-4">
+      
         <div className="card-header">Existing Items</div>
 
         <div className="table-responsive">
@@ -273,7 +273,7 @@ export default function StockItem() {
             </tbody>
           </table>
         </div>
-      </div>
+      
     </div>
   );
 }

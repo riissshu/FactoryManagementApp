@@ -40,11 +40,11 @@ export default function DailyReportRegister({ openDailyReport }) {
   };
 
   return (
-    <div className="container-fluid mt-4">
-      <div className="card shadow">
-        <div className="card-header bg-primary text-white">
+    <div className="container-fluid">
+
+      
           <h4 className="mb-0">Daily Report Register</h4>
-        </div>
+      
 
         <div className="card-body">
           <div className="row mb-4">
@@ -119,7 +119,7 @@ export default function DailyReportRegister({ openDailyReport }) {
             </table>
           </div>
         </div>
-      </div>
+      
     </div>
   );
 }

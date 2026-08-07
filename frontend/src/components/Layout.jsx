@@ -34,7 +34,7 @@ export default function Layout() {
           <DailyReport
             reportId={selectedDailyReportId}
             mode={dailyReportMode}
-            onClose={() => setActiveMenu("dailyreportregister")}
+            onClose={() => setActiveMenu("dashboard")}
             onSaved={() => setActiveMenu("dailyreportregister")}
           />
         );

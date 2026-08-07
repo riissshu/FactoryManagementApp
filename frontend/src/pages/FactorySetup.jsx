@@ -58,10 +58,8 @@ export default function FactorySetup({ onSetupComplete }) {
       }}
     >
       <div
-        className="card shadow"
-        style={{
-          width: "500px",
-        }}
+        className="card"
+      
       >
         <div className="card-header bg-primary text-white text-center">
           <h4 className="mb-0">Welcome to Factory Book !</h4>

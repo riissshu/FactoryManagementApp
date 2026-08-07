@@ -14,11 +14,10 @@ export default function Dashboard({ navigate }) {
   }, []);
   const lowStock = stock.filter((item) => item.balance_qty < 0).length;
   return (
-    <div className="container-fluid mt-4">
-      <div className="card shadow">
-        <div className="card-header bg-primary text-white">
+    <div className="container-fluid">
+   
           <h4 className="mb-0">Dashboard</h4>
-        </div>
+   
         <div className="card-body">
           <div className="row mb-4">
             <div className="col-md-4 mb-2">
@@ -108,7 +107,7 @@ export default function Dashboard({ navigate }) {
             </table>
           </div>
         </div>
-      </div>
+      
     </div>
   );
 }

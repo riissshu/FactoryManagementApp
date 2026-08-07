@@ -241,7 +241,7 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
       ))}
 
       <button
-        className="btn btn-primary"
+        className="btn btn-dark"
         onClick={() =>
           setDocuments([
             ...documents,
@@ -526,13 +526,13 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
   };
 
   return (
-    <div className="container-fluid mt-4">
-      <div className="card shadow mb-4">
-        <div className="card-header bg-primary text-white">
-          <h4 className="mb-0">Daily Report</h4>
-        </div>
+    <div className="container-fluid">
 
-        <div className="card-body">
+ 
+          <h2 className="pt-3 pb-3">Daily Report</h2>
+ 
+
+      
           <fieldset disabled={currentMode === "view"}>
             <div className="row mb-3">
               <div className="col-md-3">
@@ -570,7 +570,7 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
           {currentMode === "view" && (
             <>
               <button
-                className="btn btn-primary me-2"
+                className="btn btn-info me-2"
                 onClick={() => setCurrentMode("edit")}
               >
                 Edit
@@ -594,8 +594,8 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
           <button className="btn btn-secondary" onClick={onClose}>
             Close
           </button>
-        </div>
-      </div>
+        
+      
     </div>
   );
 }
