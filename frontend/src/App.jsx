@@ -18,7 +18,7 @@ function App() {
     try {
       const settings = await api.getSettings();
 
-      if (settings) {
+      if (settings?.master_password_hash) {
         setFactorySetupDone(true);
       }
     } catch (error) {

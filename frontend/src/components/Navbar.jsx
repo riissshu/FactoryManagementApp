@@ -1,89 +1,176 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
+
 
 export default function Navbar({
   factoryName = "Factory Stock Maintenance",
   factoryLogo = null,
   collapsed,
-  setCollapsed,
+  setActiveMenu,
 }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
+const [openProfile,setOpenProfile] = useState(false);
 
-  const formattedDate = currentTime.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 
-  const formattedTime = currentTime.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
 
-  return (
-    <nav
-      className="navbar navbar-light bg-white shadow-sm px-3"
-      style={{
-        transition: "all 0.3s",
-        height: "65px",
-        position: "fixed",
-        top: 0,
-        right: 0,
-        left: collapsed ? "70px" : "240px",
-        zIndex: 1000,
-      }}
-    >
-      {" "}
-      <div className="container-fluid">
-        <div className="d-flex align-items-center w-100">
-          {/* Left Side */}
+return (
 
-          <div className="d-flex align-items-center flex-grow-1">
-            <button
-              className="btn btn-outline-primary me-3"
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              <i className="bi bi-list fs-5"></i>
-            </button>
+<nav
+className="navbar navbar-light bg-white shadow-sm px-3"
+style={{
+height:"65px",
+position:"fixed",
+top:0,
+right:0,
+left:collapsed ? "70px":"240px",
+zIndex:1000,
+transition:"all .3s"
+}}
+>
 
-            <h4 className="mb-0 fw-bold text-primary">{factoryName}</h4>
-          </div>
 
-          {/* Right Side */}
+<div className="container-fluid">
 
-          <div className="d-flex align-items-center ms-auto">
-            {factoryLogo && (
-              <img
-                src={factoryLogo}
-                alt="Factory Logo"
-                className="rounded me-3 border"
-                style={{
-                  width: "45px",
-                  height: "45px",
-                  objectFit: "contain",
-                  backgroundColor: "#fff",
-                }}
-              />
-            )}
 
-            <div className="text-end">
-              <div className="fw-bold">{formattedDate}</div>
+<div className="d-flex align-items-center w-100">
 
-              <small className="text-muted">{formattedTime}</small>
-            </div>
-          </div>
-        </div>
-      </div>{" "}
-    </nav>
-  );
+
+<div className="flex-grow-1">
+
+<h4 className="mb-0 fw-bold text-primary">
+
+{factoryName}
+
+</h4>
+
+</div>
+
+
+
+
+<div className="position-relative">
+
+
+<button
+
+className="btn border-0 d-flex align-items-center"
+
+onClick={()=>setOpenProfile(!openProfile)}
+
+>
+
+
+{
+
+factoryLogo ?
+
+<img
+
+src={factoryLogo}
+
+alt="Factory Logo"
+
+className="rounded-circle border"
+
+style={{
+width:"42px",
+height:"42px",
+objectFit:"contain"
+}}
+
+/>
+
+:
+
+<i className="bi bi-building fs-3"></i>
+
+}
+
+
+<i className="bi bi-chevron-down ms-2"></i>
+
+
+</button>
+
+
+
+
+
+{
+
+openProfile &&
+
+<div
+
+className="dropdown-menu show shadow"
+
+style={{
+right:0,
+left:"auto",
+minWidth:"220px"
+}}
+
+>
+
+
+<div className="px-3 py-2">
+
+<strong>
+{factoryName}
+</strong>
+
+</div>
+
+
+<div className="dropdown-divider"></div>
+
+
+
+<button
+
+className="dropdown-item"
+
+onClick={()=>{
+
+setActiveMenu("factoryprofile");
+
+setOpenProfile(false);
+
+}}
+
+>
+
+<i className="bi bi-building me-2"></i>
+
+Factory Profile
+
+</button>
+
+
+
+
+
+
+
+
+</div>
+
+}
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</nav>
+
+);
+
 }

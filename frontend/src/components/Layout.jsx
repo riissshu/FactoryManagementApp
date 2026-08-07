@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
@@ -7,6 +7,11 @@ import StockItem from "../pages/StockItem";
 import DailyReport from "../pages/DailyReport";
 import StockReport from "../pages/StockReport";
 import DailyReportRegister from "../pages/DailyReportRegister";
+import MultiAlterStock from "../pages/MultiAlterStock";
+import FactoryProfile from "../pages/FactoryProfile";
+import BackupRestore from "../pages/BackupRestore";
+import MasterLock from "./MasterLock";
+import api from "../services/api";
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(true);
@@ -16,18 +21,23 @@ export default function Layout() {
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
 
-  // Temporary values
-  // Later these will come from SQLite
-  const factoryName = "ABC Bricks Industries";
-  const factoryLogo = null;
+  const [settings, setSettings] = useState({ factory_name: "Factory Book", factory_logo: null });
+  useEffect(() => { api.getSettings().then((value) => value && setSettings(value)); }, []);
+
+const reloadSettings = async () => {
+  const value = await api.getSettings();
+  if(value){
+    setSettings(value);
+  }
+};
 
   const renderPage = () => {
     switch (activeMenu) {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
-      case "stockitem":
-        return <StockItem />;
+      case "stockitem": return <MasterLock><StockItem /></MasterLock>;
+      case "multialterstock": return <MasterLock><MultiAlterStock /></MasterLock>;
 
       case "dailyreport":
         return (
@@ -41,6 +51,12 @@ export default function Layout() {
 
       case "stockreport":
         return <StockReport />;
+
+        case "factoryprofile":
+  return <FactoryProfile   onProfileUpdated={reloadSettings}/>;
+
+        case "backuprestore":
+  return <BackupRestore />;
 
       case "dailyreportregister":
         return (
@@ -70,10 +86,11 @@ export default function Layout() {
     <>
       {" "}
       <Sidebar
-        activeMenu={activeMenu}
-        setActiveMenu={selectMenu}
-        collapsed={collapsed}
-      />
+    activeMenu={activeMenu}
+    setActiveMenu={selectMenu}
+    collapsed={collapsed}
+    setCollapsed={setCollapsed}
+/>
       <div
         style={{
           marginLeft: collapsed ? "70px" : "240px",
@@ -83,10 +100,10 @@ export default function Layout() {
         }}
       >
         <Navbar
-          factoryName={factoryName}
-          factoryLogo={factoryLogo}
+          factoryName={settings.factory_name}
+          factoryLogo={settings.factory_logo}
           collapsed={collapsed}
-          setCollapsed={setCollapsed}
+          setActiveMenu={setActiveMenu}
         />
 
         <main

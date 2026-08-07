@@ -4,11 +4,22 @@ contextBridge.exposeInMainWorld("api", {
 
   getSettings: () => ipcRenderer.invoke("settings:get"),
 
-  saveSettings: (factoryName, factoryLogo) =>
+  saveSettings: (factoryName, factoryLogo, masterPassword) =>
     ipcRenderer.invoke("settings:save", {
       factoryName,
       factoryLogo,
+      masterPassword,
     }),
+
+    updateFactoryProfile: (data) =>
+    ipcRenderer.invoke(
+        "settings:updateProfile",
+        data
+    ),
+    
+  verifyMasterPassword: (password) => ipcRenderer.invoke("settings:verifyPassword", password),
+
+  
 
   getStockItems: () => ipcRenderer.invoke("stock:get"),
 
@@ -38,5 +49,11 @@ contextBridge.exposeInMainWorld("api", {
 
   getStockReport: () =>
     ipcRenderer.invoke("stock:report"),
+  bulkUpdateStockItems: (items) => ipcRenderer.invoke("stock:bulkUpdate", items),
+  createBackup: () => ipcRenderer.invoke("backup:create"),
+  restoreBackup: () => ipcRenderer.invoke("backup:restore"),
+  restoreFirstInstallBackup: () =>
+    ipcRenderer.invoke("backup:firstInstallRestore"),
+  exportPdf: (data) => ipcRenderer.invoke("report:exportPdf", data),
 
 });

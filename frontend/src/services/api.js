@@ -4,9 +4,13 @@ const api = {
     return window.api.getSettings();
   },
 
-  saveSettings(factoryName, factoryLogo) {
-    return window.api.saveSettings(factoryName, factoryLogo);
+  saveSettings(factoryName, factoryLogo, masterPassword) {
+    return window.api.saveSettings(factoryName, factoryLogo, masterPassword);
   },
+
+
+
+  verifyMasterPassword(password) { return window.api.verifyMasterPassword(password); },
 
   getStockItems() {
     return window.api.getStockItems();
@@ -47,6 +51,13 @@ const api = {
   getStockReport() {
     return window.api.getStockReport();
   },
+  bulkUpdateStockItems(items) { return window.api.bulkUpdateStockItems(items); },
+  createBackup() { return window.api.createBackup(); },
+  restoreBackup() { return window.api.restoreBackup(); },
+  restoreFirstInstallBackup() {
+    return window.api.restoreFirstInstallBackup();
+},
+  exportPdf(data) { return window.api.exportPdf(data); },
 
 };
 

@@ -1,7 +1,9 @@
-console.log("database.js loaded");
+
 
 const Database = require("better-sqlite3");
 const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
 
 const dbPath = path.join(__dirname, "..", "factory_stock.db");
 
@@ -22,6 +24,8 @@ CREATE TABLE IF NOT EXISTS settings (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 `);
+// Lightweight migrations for installations created before these fields existed.
+try { db.exec("ALTER TABLE settings ADD COLUMN master_password_hash TEXT"); } catch (_) {}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS stock_items (
@@ -179,7 +183,18 @@ function getSettings() {
     return db.prepare("SELECT * FROM settings LIMIT 1").get();
 }
 
-function saveSettings(factoryName, factoryLogo) {
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    return `${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`;
+}
+function verifyMasterPassword(password) {
+    const settings = getSettings();
+    if (!settings?.master_password_hash) return false;
+    const [salt, key] = settings.master_password_hash.split(":");
+    const candidate = crypto.scryptSync(password, salt, 64).toString("hex");
+    return crypto.timingSafeEqual(Buffer.from(key, "hex"), Buffer.from(candidate, "hex"));
+}
+function saveSettings(factoryName, factoryLogo, masterPassword) {
 
     const existing = getSettings();
 
@@ -187,20 +202,73 @@ function saveSettings(factoryName, factoryLogo) {
 
         db.prepare(`
             UPDATE settings
-            SET factory_name = ?, factory_logo = ?
+            SET factory_name = ?, factory_logo = ?, master_password_hash = COALESCE(?, master_password_hash)
             WHERE id = ?
-        `).run(factoryName, factoryLogo, existing.id);
+        `).run(factoryName, factoryLogo, masterPassword ? hashPassword(masterPassword) : null, existing.id);
 
     } else {
 
         db.prepare(`
             INSERT INTO settings
-            (factory_name, factory_logo)
-            VALUES (?, ?)
-        `).run(factoryName, factoryLogo);
+            (factory_name, factory_logo, master_password_hash)
+            VALUES (?, ?, ?)
+        `).run(factoryName, factoryLogo, hashPassword(masterPassword));
 
     }
 
+    return true;
+}
+
+function updateFactoryProfile(factoryName, factoryLogo, password) {
+
+    const existing = getSettings();
+
+    if (!existing) {
+        throw new Error("Factory settings not found.");
+    }
+
+
+    db.prepare(`
+        UPDATE settings
+        SET
+            factory_name = ?,
+            factory_logo = ?,
+            master_password_hash =
+                CASE
+                    WHEN ? IS NOT NULL
+                    THEN ?
+                    ELSE master_password_hash
+                END
+        WHERE id = ?
+    `).run(
+        factoryName,
+        factoryLogo,
+        password,
+        password ? hashPassword(password) : null,
+        existing.id
+    );
+
+
+    return true;
+}
+
+function bulkUpdateStockItems(items) {
+    const update = db.prepare("UPDATE stock_items SET item_name = ?, stock_group = ?, unit = ?, alternate_unit = ?, conversion = ?, opening_qty = ? WHERE id = ?");
+    const transaction = db.transaction(() => items.forEach((item) => update.run(item.item_name, item.stock_group, item.unit, item.alternate_unit, Number(item.conversion) || 0, Number(item.opening_qty) || 0, item.id)));
+    transaction();
+    return true;
+}
+
+function backupTo(destination) {
+    db.pragma("wal_checkpoint(TRUNCATE)");
+    fs.copyFileSync(dbPath, destination);
+    return true;
+}
+function restoreFrom(source) {
+    if (!fs.existsSync(source)) throw new Error("Backup file was not found.");
+    db.close();
+    fs.copyFileSync(source, dbPath);
+    // Restoring requires a restart to safely reopen the SQLite connection.
     return true;
 }
 
@@ -618,6 +686,7 @@ function getStockReport() {
 module.exports = {
     getSettings,
     saveSettings,
+    verifyMasterPassword,
 
     getStockItems,
     saveStockItem,
@@ -630,4 +699,8 @@ module.exports = {
     updateDailyReport,
     deleteDailyReport,
     getStockReport,
+    bulkUpdateStockItems,
+    backupTo,
+    restoreFrom,
+    updateFactoryProfile,
 };
