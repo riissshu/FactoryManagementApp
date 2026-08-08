@@ -1,3 +1,37 @@
 import { useState } from "react";
 import api from "../services/api";
-export default function MasterLock({ children }) { const [unlocked, setUnlocked] = useState(false); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const unlock = async () => { const valid = await api.verifyMasterPassword(password); if (valid) { setUnlocked(true); setPassword(""); } else setError("That password is not correct."); }; if (unlocked) return children; return <div className="lock-card"><i className="bi bi-shield-lock"></i><h2>Master access</h2><p>Enter the factory master password to change stock items.</p><input type="password" className="form-control" placeholder="Master password" value={password} onChange={(event) => { setPassword(event.target.value); setError(""); }} onKeyDown={(event) => event.key === "Enter" && unlock()} />{error && <small className="text-danger">{error}</small>}<button className="btn btn-primary" onClick={unlock}>Unlock master</button></div>; }
+export default function MasterLock({ children }) {
+  const [unlocked, setUnlocked] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const unlock = async () => {
+    const valid = await api.verifyMasterPassword(password);
+    if (valid) {
+      setUnlocked(true);
+      setPassword("");
+    } else setError("That password is not correct.");
+  };
+  if (unlocked) return children;
+  return (
+    <div className="lock-card">
+      <i className="bi bi-shield-lock"></i>
+      <h2>Master access</h2>
+      <p>Enter the factory master password to change stock items.</p>
+      <input
+        type="password"
+        className="form-control"
+        placeholder="Master password"
+        value={password}
+        onChange={(event) => {
+          setPassword(event.target.value);
+          setError("");
+        }}
+        onKeyDown={(event) => event.key === "Enter" && unlock()}
+      />
+      {error && <small className="text-danger">{error}</small>}
+      <button className="btn btn-primary" onClick={unlock}>
+        Unlock master
+      </button>
+    </div>
+  );
+}

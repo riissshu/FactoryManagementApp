@@ -142,9 +142,9 @@ export default function StockItem() {
   return (
     <div className="container mt-4">
      
-        <div className="card-header bg-primary text-white">
-          <h4 className="mb-0">Stock Item Master</h4>
-        </div>
+   
+          <h2 className="mb-0">Stock Item Master</h2>
+
 
         <div className="card-body">
           <div className="row">

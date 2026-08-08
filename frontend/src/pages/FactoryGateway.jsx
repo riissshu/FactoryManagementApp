@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 
-export default function FactorySetup({ onSetupComplete }) {
+export default function FactoryGateway({ onSetupComplete }) {
   const [factoryName, setFactoryName] = useState("");
   const [logo, setLogo] = useState(null);
   const [masterPassword, setMasterPassword] = useState("");

@@ -15,12 +15,11 @@ const units = [
   "Ctn",
   "Ltr",
 ];
-export default function MultiAlterStock() {
+export default function MultiCreateStock() {
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    api.getStockItems().then(setItems).catch(console.error);
-  }, []);
+
+  
   const update = (index, field, value) =>
     setItems(
       items.map((item, row) =>

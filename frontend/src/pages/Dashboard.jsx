@@ -34,7 +34,7 @@ export default function Dashboard({ navigate }) {
             </div>
             <div className="col-md-4 mb-2">
               <div className="border rounded p-3">
-                <div className="text-muted">Negative Stock Items</div>
+                <div className="text-muted">Low Balance Alert !</div>
                 <div className="fs-3 fw-bold text-danger">{lowStock}</div>
               </div>
             </div>

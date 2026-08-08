@@ -28,6 +28,12 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
       title: "Transactions",
       type: "heading",
     },
+    { title: "Multi Create Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
+
+    {
+      title: "Transactions",
+      type: "heading",
+    },
 
     {
       title: "Daily Report",
@@ -88,7 +94,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     className="d-flex align-items-center justify-content-between p-3 border-bottom border-light border-opacity-10"
 >
     {!collapsed && (
-        <h5 className="mb-0 fw-bold">Factory Book</h5>
+        <h5 className="mb-0 fw-bold"></h5>
     )}
 
     <button

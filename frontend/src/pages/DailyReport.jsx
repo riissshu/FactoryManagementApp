@@ -59,24 +59,22 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
     onSaved?.();
   };
 
- 
+  const exportPdf = async () => {
+    const settings = await api.getSettings();
 
-const exportPdf = async () => {
-  const settings = await api.getSettings();
+    await exportDailyReportPdf({
+      company: settings?.factory_name,
+      reportDate: date,
 
-  await exportDailyReportPdf({
-    company: settings?.factory_name,
-    reportDate: date,
+      purchases: data.purchases,
+      gatePasses: data.gatePasses,
+      manufactured: data.manufactured,
 
-    purchases: data.purchases,
-    gatePasses: data.gatePasses,
-    manufactured: data.manufactured,
+      stockItems,
 
-    stockItems,
-
-    filename: `${settings?.factory_name || "factory"}-daily-report-${date}.pdf`,
-  });
-};
+      filename: `${settings?.factory_name || "factory"}-daily-report-${date}.pdf`,
+    });
+  };
 
   const disabled = currentMode === "view";
   return (
