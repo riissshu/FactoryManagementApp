@@ -28,12 +28,12 @@ export default function StockReport() {
   const groups = [...new Set(rows.map((item) => item.stock_group))];
   const exportPdf = async () => {
     const settings = await api.getSettings();
-    const result = await exportTablePdf({ title: "Stock summary", company: settings?.factory_name, subtitle: new Date().toLocaleDateString("en-IN"), filename: `${settings?.factory_name || "factory"}-stock-summary.pdf`, headers: ["Item", "Group", "Unit", "Opening", "Received", "Produced", "Dispatched", "Consumed", "Balance"], rows: rows.map((item) => [item.item_name, item.stock_group, item.unit, item.opening_qty, item.purchased_qty, item.produced_qty, item.dispatched_qty, item.consumed_qty, item.balance_qty]) });
+    const result = await exportTablePdf({ title: "Stock Report", company: settings?.factory_name, subtitle: new Date().toLocaleDateString("en-IN"), filename: `${settings?.factory_name || "factory"}-stock-summary.pdf`, headers: ["Item", "Group", "Unit", "Opening", "Received", "Produced", "Dispatched", "Consumed", "Balance"], rows: rows.map((item) => [item.item_name, item.stock_group, item.unit, item.opening_qty, item.purchased_qty, item.produced_qty, item.dispatched_qty, item.consumed_qty, item.balance_qty]) });
     if (!result?.canceled) alert("PDF exported.");
   };
 
   return (
-    <div className="page-shell"><PageHeader eyebrow="Reports" title="Stock summary" actions={<button className="btn btn-outline-primary" onClick={exportPdf}><i className="bi bi-file-earmark-pdf me-2" />Export PDF</button>} />
+    <div className="page-shell"><PageHeader eyebrow="Reports" title="Stock Report" actions={<button className="btn btn-outline-primary" onClick={exportPdf}><i className="bi bi-file-earmark-pdf me-2" />Export PDF</button>} />
         <div className="content-card">
           <div className="col-md-5 mb-4">
             <label className="form-label">Search Item</label>

@@ -39,7 +39,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
 
     {
-      title: "Daily Report",
+      title: "Create Daily Report",
       icon: "bi-journal-text",
       key: "dailyreport",
       type: "menu",
@@ -51,7 +51,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
 
     {
-      title: "Stock Report",
+      title: "Stock Report Register",
       icon: "bi-bar-chart",
       key: "stockreport",
       type: "menu",
