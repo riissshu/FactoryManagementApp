@@ -8,10 +8,13 @@ import DailyReport from "../pages/DailyReport";
 import StockReport from "../pages/StockReport";
 import DailyReportRegister from "../pages/DailyReportRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
+import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
+import StockGroupsUnits from "../pages/StockUnitAndGroups";
 import MasterLock from "./MasterLock";
 import api from "../services/api";
+
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(true);
@@ -21,23 +24,52 @@ export default function Layout() {
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
 
-  const [settings, setSettings] = useState({ factory_name: "Factory Book", factory_logo: null });
-  useEffect(() => { api.getSettings().then((value) => value && setSettings(value)); }, []);
+  const [settings, setSettings] = useState({
+    factory_name: "Factory Book",
+    factory_logo: null,
+  });
+  useEffect(() => {
+    api.getSettings().then((value) => value && setSettings(value));
+  }, []);
 
-const reloadSettings = async () => {
-  const value = await api.getSettings();
-  if(value){
-    setSettings(value);
-  }
-};
+  const reloadSettings = async () => {
+    const value = await api.getSettings();
+    if (value) {
+      setSettings(value);
+    }
+  };
 
   const renderPage = () => {
     switch (activeMenu) {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
-      case "stockitem": return <MasterLock><StockItem /></MasterLock>;
-      case "multialterstock": return <MasterLock><MultiAlterStock /></MasterLock>;
+      case "stockitem":
+        return (
+          <MasterLock>
+            <StockItem />
+          </MasterLock>
+        );
+      case "multialterstock":
+        return (
+          <MasterLock>
+            <MultiAlterStock />
+          </MasterLock>
+        );
+
+        case "multicreatestock":
+  return (
+    <MasterLock>
+      <MultiCreateStock />
+    </MasterLock>
+  );
+
+  case "stockgroupsunits":
+  return (
+    <MasterLock>
+      <StockGroupsUnits />
+    </MasterLock>
+  );
 
       case "dailyreport":
         return (
@@ -52,11 +84,11 @@ const reloadSettings = async () => {
       case "stockreport":
         return <StockReport />;
 
-        case "factoryprofile":
-  return <FactoryProfile   onProfileUpdated={reloadSettings}/>;
+      case "factoryprofile":
+        return <FactoryProfile onProfileUpdated={reloadSettings} />;
 
-        case "backuprestore":
-  return <BackupRestore />;
+      case "backuprestore":
+        return <BackupRestore />;
 
       case "dailyreportregister":
         return (
@@ -86,11 +118,11 @@ const reloadSettings = async () => {
     <>
       {" "}
       <Sidebar
-    activeMenu={activeMenu}
-    setActiveMenu={selectMenu}
-    collapsed={collapsed}
-    setCollapsed={setCollapsed}
-/>
+        activeMenu={activeMenu}
+        setActiveMenu={selectMenu}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
       <div
         style={{
           marginLeft: collapsed ? "70px" : "240px",

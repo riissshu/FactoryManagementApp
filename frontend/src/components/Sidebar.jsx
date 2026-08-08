@@ -24,7 +24,14 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
     { title: "Multi Alter Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
 
-    { title: "Multi Create Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
+    { title: "Multi Create Stock", icon: "bi-pencil-square", key: "multicreatestock", type: "menu" },
+
+    {
+  title: "Stock Groups & Units",
+  icon: "bi-diagram-3",
+  key: "stockgroupsunits",
+  type: "menu",
+},
 
     {
       title: "Transactions",
