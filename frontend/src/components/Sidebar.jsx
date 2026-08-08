@@ -24,10 +24,6 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
     { title: "Multi Alter Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
 
-    {
-      title: "Transactions",
-      type: "heading",
-    },
     { title: "Multi Create Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
 
     {

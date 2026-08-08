@@ -1,26 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import PageHeader from "../components/PageHeader";
-const groups = ["Raw Material", "Finished Goods", "Packaging Material"];
-const units = [
-  "Kg",
-  "Tin",
-  "Nos",
-  "Pcs",
-  "Bag",
-  "Box",
-  "Roll",
-  "Bundle",
-  "Drum",
-  "Ctn",
-  "Ltr",
-];
+
 export default function MultiAlterStock() {
   const [items, setItems] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [units, setUnits] = useState([]);
   const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     api.getStockItems().then(setItems).catch(console.error);
+    api.getStockGroups().then(setGroups).catch(console.error);
+    api.getStockUnits().then(setUnits).catch(console.error);
   }, []);
+
   const update = (index, field, value) =>
     setItems(
       items.map((item, row) =>
@@ -38,6 +31,7 @@ export default function MultiAlterStock() {
           : item,
       ),
     );
+
   const save = async () => {
     setSaving(true);
     try {
@@ -49,6 +43,7 @@ export default function MultiAlterStock() {
       setSaving(false);
     }
   };
+
   return (
     <div className="page-shell">
       <PageHeader
@@ -83,21 +78,19 @@ export default function MultiAlterStock() {
                     <input
                       className="form-control"
                       value={item.item_name}
-                      onChange={(event) =>
-                        update(index, "item_name", event.target.value)
-                      }
+                      onChange={(event) => update(index, "item_name", event.target.value)}
                     />
                   </td>
                   <td>
                     <select
                       className="form-select"
                       value={item.stock_group}
-                      onChange={(event) =>
-                        update(index, "stock_group", event.target.value)
-                      }
+                      onChange={(event) => update(index, "stock_group", event.target.value)}
                     >
-                      {groups.map((group) => (
-                        <option key={group}>{group}</option>
+                      {groups.map((g) => (
+                        <option key={g.id} value={g.name}>
+                          {g.name}
+                        </option>
                       ))}
                     </select>
                   </td>
@@ -105,12 +98,12 @@ export default function MultiAlterStock() {
                     <select
                       className="form-select"
                       value={item.unit}
-                      onChange={(event) =>
-                        update(index, "unit", event.target.value)
-                      }
+                      onChange={(event) => update(index, "unit", event.target.value)}
                     >
-                      {units.map((unit) => (
-                        <option key={unit}>{unit}</option>
+                      {units.map((u) => (
+                        <option key={u.id} value={u.name}>
+                          {u.name}
+                        </option>
                       ))}
                     </select>
                   </td>
@@ -120,9 +113,7 @@ export default function MultiAlterStock() {
                       className="form-control"
                       disabled={item.unit === "Kg"}
                       value={item.conversion || ""}
-                      onChange={(event) =>
-                        update(index, "conversion", event.target.value)
-                      }
+                      onChange={(event) => update(index, "conversion", event.target.value)}
                     />
                   </td>
                   <td>
@@ -130,9 +121,7 @@ export default function MultiAlterStock() {
                       type="number"
                       className="form-control"
                       value={item.opening_qty}
-                      onChange={(event) =>
-                        update(index, "opening_qty", event.target.value)
-                      }
+                      onChange={(event) => update(index, "opening_qty", event.target.value)}
                     />
                   </td>
                 </tr>
