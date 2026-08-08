@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import FactorySetup from "./pages/FactorySetup";
+import FactorySetup from "./pages/FactoryGateway";
 import Layout from "./components/Layout";
 import api from "./services/api";
 

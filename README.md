@@ -1,1 +1,1 @@
-# An Factory Stock Management App !!
+# A Factory Stock Management App !!
