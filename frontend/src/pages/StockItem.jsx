@@ -42,8 +42,8 @@ export default function StockItem() {
       setItem({
         ...item,
         unit: value,
-        altUnit: value === "Kg" ? "" : "Kg",
-        conversion: value === "Kg" ? "" : item.conversion,
+        altUnit: value === "Kgs" ? "" : "Kgs",
+        conversion: value === "Kgs" ? "" : item.conversion,
       });
     } else {
       setItem({
@@ -158,7 +158,8 @@ export default function StockItem() {
 
       <div className="card-body">
         <div className="row">
-          <div className="col-md-6 mb-3">
+          <div className="col-md-6">
+          <div className="">
             <label className="form-label">Item Name</label>
             <input
               className="form-control"
@@ -168,7 +169,7 @@ export default function StockItem() {
             />
           </div>
 
-          <div className="col-md-6 mb-3">
+          <div className="">
             <label className="form-label">Stock Group</label>
             <select
               className="form-select"
@@ -183,8 +184,8 @@ export default function StockItem() {
               ))}
             </select>
           </div>
-
-          <div className="col-md-4 mb-3">
+         
+          <div className="">
             <label className="form-label">Primary Unit</label>
             <select
               className="form-select"
@@ -199,16 +200,20 @@ export default function StockItem() {
               ))}
             </select>
           </div>
-
-          <div className="col-md-4 mb-3">
+          
+          <div className="row">
+          <div className="col-md-6">
             <label className="form-label">Alternate Unit</label>
             <input className="form-control" value={item.altUnit} readOnly />
           </div>
 
-          {item.altUnit === "Kg" && (
-            <div className="col-md-4 mb-3">
-              <label className="form-label">1 {item.unit} =</label>
+
+          {item.altUnit === "Kgs" && (
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Conversion</label>
               <div className="input-group">
+                <span className="input-group-text fw-bold">1 {item.unit}</span>
+                <span className="input-group-text">=</span>
                 <input
                   type="number"
                   className="form-control"
@@ -216,12 +221,16 @@ export default function StockItem() {
                   value={item.conversion}
                   onChange={handleChange}
                 />
-                <span className="input-group-text">Kg</span>
+                <span className="input-group-text fw-bold">Kgs</span>
               </div>
             </div>
           )}
 
-          <div className="col-md-4 mb-3">
+          </div>
+          </div>
+
+          <div className="col-md-6">
+          <div className="">
             <label className="form-label">Opening Stock Qty</label>
             <input
               type="number"
@@ -232,7 +241,7 @@ export default function StockItem() {
             />
           </div>
 
-          <div className="col-md-4 mb-3">
+          <div className="">
             <label className="form-label">
               Low stock alert qty <span className="text-muted">(optional)</span>
             </label>
@@ -260,6 +269,8 @@ export default function StockItem() {
               Dashboard flags this item when balance drops below this quantity.
             </div>
           </div>
+          </div>
+          
         </div>
 
         <div className="mt-3">
@@ -301,7 +312,7 @@ export default function StockItem() {
                 <td>{row.unit}</td>
                 <td>{row.alternate_unit || "-"}</td>
                 <td>
-                  {row.alternate_unit ? `1 ${row.unit} = ${row.conversion} Kg` : "-"}
+                  {row.alternate_unit ? `1 ${row.unit} = ${row.conversion} Kgs` : "-"}
                 </td>
                 <td>{row.opening_qty}</td>
                 <td>{row.low_qty_alert || "-"}</td>

@@ -107,14 +107,14 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
           </label>
         </div>
         <TransactionTable
-          title="Material received"
+          title="Purchases"
           documents={data.purchases}
           setDocuments={(purchases) => setData({ ...data, purchases })}
           field="purchaseNo"
           stockItems={stockItems}
         />
         <TransactionTable
-          title="Material dispatched"
+          title="Gate Passes"
           documents={data.gatePasses}
           setDocuments={(gatePasses) => setData({ ...data, gatePasses })}
           field="gatePassNo"
