@@ -3,7 +3,6 @@ import ManufacturingSection from "../components/ManufacturingSection";
 import PageHeader from "../components/PageHeader";
 import TransactionTable from "../components/TransactionTable";
 import api from "../services/api";
-import { exportTablePdf } from "../utils/reportExport";
 import { exportDailyReportPdf } from "../utils/exportDailyReportPdf";
 
 const row = () => ({ item: "", qty: "", unit: "" });
@@ -84,10 +83,10 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
         title="Daily report"
         actions={
           <>
-            <button className="btn btn-outline-primary" onClick={exportPdf}>
+            {/* <button className="btn btn-outline-primary" onClick={exportPdf}>
               <i className="bi bi-file-earmark-pdf me-2" />
               Export PDF
-            </button>
+            </button> */}
             <button className="btn btn-outline-secondary" onClick={onClose}>
               Close
             </button>

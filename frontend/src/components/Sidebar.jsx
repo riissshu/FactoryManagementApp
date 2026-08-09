@@ -16,15 +16,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
       type: "heading",
     },
 
-    {
-      title: "Stock Item",
-      icon: "bi-box-seam",
-      key: "stockitem",
-      type: "menu",
-    },
-    { title: "Multi Alter Stock", icon: "bi-pencil-square", key: "multialterstock", type: "menu" },
-
-    { title: "Multi Create Stock", icon: "bi-pencil-square", key: "multicreatestock", type: "menu" },
+    { title: "Stock Item", icon: "bi-box-seam", key: "stockitemlist", type: "menu" },
 
     {
   title: "Stock Groups & Units",

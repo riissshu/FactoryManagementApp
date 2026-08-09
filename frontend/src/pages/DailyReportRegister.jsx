@@ -3,10 +3,8 @@ import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 export default function DailyReportRegister({ openDailyReport }) {
-  const today = new Date().toISOString().split("T")[0];
-
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
   const [reports, setReports] = useState([]);
 
@@ -29,7 +27,8 @@ export default function DailyReportRegister({ openDailyReport }) {
       const matchSearch = report.report_date.includes(search);
 
       const matchDate =
-        report.report_date >= fromDate && report.report_date <= toDate;
+        (!fromDate || report.report_date >= fromDate) &&
+        (!toDate || report.report_date <= toDate);
 
       return matchSearch && matchDate;
     });

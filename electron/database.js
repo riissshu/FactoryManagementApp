@@ -684,12 +684,13 @@ function createDatabase(dbPath) {
     return db
       .prepare(
         `
-            SELECT si.id, si.item_name, si.stock_group, si.unit, si.opening_qty, si.low_qty_alert,
+            SELECT si.id, si.item_name, si.stock_group, si.unit, si.alternate_unit, si.conversion,
+              si.opening_qty, si.low_qty_alert,
               COALESCE((SELECT SUM(qty) FROM purchase_items WHERE stock_item_id = si.id), 0) AS purchased_qty,
               COALESCE((SELECT SUM(qty) FROM gatepass_items WHERE stock_item_id = si.id), 0) AS dispatched_qty,
               COALESCE((SELECT SUM(qty) FROM manufacturing_consumption WHERE stock_item_id = si.id), 0) AS consumed_qty,
               COALESCE((SELECT SUM(qty) FROM manufacturing_production WHERE stock_item_id = si.id), 0) AS produced_qty
-            FROM stock_items si WHERE si.is_active = 1 ORDER BY si.item_name
+            FROM stock_items si WHERE si.is_active = 1 ORDER BY si.stock_group, si.item_name
         `,
       )
       .all()

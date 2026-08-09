@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-
 import Dashboard from "../pages/Dashboard";
 import StockItem from "../pages/StockItem";
+import StockItemList from "../pages/StockItemList";
 import DailyReport from "../pages/DailyReport";
 import StockReport from "../pages/StockReport";
+import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
 import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
 import StockGroupsUnits from "../pages/StockUnitAndGroups";
-import MasterLock from "./MasterLock";
 import api from "../services/api";
 
 
@@ -46,29 +46,38 @@ export default function Layout() {
 
       case "stockitem":
         return (
-          <MasterLock>
-            <StockItem />
-          </MasterLock>
+          <StockItem
+            onSaved={() => setActiveMenu("stockitemlist")}
+            onMultiCreate={() => setActiveMenu("multicreatestock")}
+          />
+        );
+
+      case "stockitemlist":
+        return (
+          <StockItemList
+            onAddNew={() => setActiveMenu("stockitem")}
+            onMultiAlter={() => setActiveMenu("multialterstock")}
+          />
         );
       case "multialterstock":
         return (
-          <MasterLock>
+        
             <MultiAlterStock />
-          </MasterLock>
+         
         );
 
         case "multicreatestock":
   return (
-    <MasterLock>
+   
       <MultiCreateStock />
-    </MasterLock>
+   
   );
 
   case "stockgroupsunits":
   return (
-    <MasterLock>
+   
       <StockGroupsUnits />
-    </MasterLock>
+    
   );
 
       case "dailyreport":
@@ -82,7 +91,14 @@ export default function Layout() {
         );
 
       case "stockreport":
-        return <StockReport />;
+        return (
+          <StockReport onViewSummary={() => setActiveMenu("stocksummary")} />
+        );
+
+      case "stocksummary":
+        return (
+          <StockSummary onBack={() => setActiveMenu("stockreport")} />
+        );
 
       case "factoryprofile":
         return <FactoryProfile onProfileUpdated={reloadSettings} />;
