@@ -118,6 +118,7 @@ ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockIte
 ipcMain.handle("dailyReport:get", () => database.getDailyReports());
 ipcMain.handle("dailyReport:save", (event, report) => database.saveDailyReport(report));
 ipcMain.handle("dailyReport:getById", (event, id) => database.getDailyReportById(id));
+ipcMain.handle("dailyReport:getByDate", (event, date) => database.getDailyReportByDate(date));
 ipcMain.handle("dailyReport:update", (event, id, report) =>
   database.updateDailyReport(id, report),
 );

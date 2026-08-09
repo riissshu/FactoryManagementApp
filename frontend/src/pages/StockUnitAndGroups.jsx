@@ -124,10 +124,12 @@ function LookupPanel({ title, load, add, rename, deactivate }) {
   );
 }
 
-export default function StockGroupsUnits() {
+export default function StockGroupsUnits({onClose}) {
   return (
     <div className="page-shell">
      
+      <button className="btn btn-secondary" onClick={onClose}>Close</button>
+
       <div className="content-card">
         <LookupPanel
           title="Stock Groups"

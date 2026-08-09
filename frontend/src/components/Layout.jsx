@@ -53,8 +53,8 @@ export default function Layout() {
       case "stockitem":
         return (
           <StockItem
+            onClose={() => setActiveMenu("stockitemlist")}
             
-            onMultiCreate={() => setActiveMenu("multicreatestock")}
           />
         );
 
@@ -63,6 +63,8 @@ export default function Layout() {
           <StockItemList
             onAddNew={() => setActiveMenu("stockitem")}
             onMultiAlter={() => setActiveMenu("multialterstock")}
+            onMultiCreate={() => setActiveMenu("multicreatestock")}
+            onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
           />
         );
       case "multialterstock":
@@ -82,7 +84,7 @@ export default function Layout() {
   case "stockgroupsunits":
   return (
    
-      <StockGroupsUnits />
+      <StockGroupsUnits onClose={() => setActiveMenu("stockitemlist")}/>
     
   );
 
@@ -103,7 +105,7 @@ export default function Layout() {
 
       case "stocksummary":
         return (
-          <StockSummary onBack={() => setActiveMenu("stockreport")} />
+          <StockSummary onBack={() => setActiveMenu("dashboard")} />
         );
 
       case "factoryprofile":

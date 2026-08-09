@@ -73,6 +73,9 @@ const api = {
   getDailyReportById(id) {
     return window.api.getDailyReportById(id);
   },
+  getDailyReportByDate(date) {
+    return window.api.getDailyReportByDate(date);
+  },
   updateDailyReport(id, report) {
     return window.api.updateDailyReport(id, report);
   },

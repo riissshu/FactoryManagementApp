@@ -18,12 +18,6 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
 
     { title: "Stock Item", icon: "bi-box-seam", key: "stockitemlist", type: "menu" },
 
-    {
-  title: "Stock Groups & Units",
-  icon: "bi-diagram-3",
-  key: "stockgroupsunits",
-  type: "menu",
-},
 
     {
       title: "Transactions",

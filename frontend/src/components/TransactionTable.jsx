@@ -6,6 +6,7 @@ export default function TransactionTable({
   setDocuments,
   field,
   stockItems,
+  error,
 }) {
   const update = (documentIndex, rowIndex, key, value) =>
     setDocuments(
@@ -43,6 +44,7 @@ export default function TransactionTable({
       <div className="section-title">
         <h2>{title}</h2>
         <button
+          type="button"
           className="btn btn-outline-secondary btn-sm"
           onClick={() =>
             setDocuments([...documents, { [field]: "", items: [blankRow()] }])
@@ -51,6 +53,7 @@ export default function TransactionTable({
           + Add entry
         </button>
       </div>
+      {error && <div className="alert alert-danger py-2">{error}</div>}
       {documents.map((document, documentIndex) => (
         <div className="entry-card" key={documentIndex}>
           <div className="entry-meta">
@@ -65,6 +68,7 @@ export default function TransactionTable({
               />
             </label>
             <button
+              type="button"
               className="btn btn-link text-danger"
               onClick={() =>
                 setDocuments(
@@ -127,6 +131,7 @@ export default function TransactionTable({
                   <td>{row.unit || "-"}</td>
                   <td>
                     <button
+                      type="button"
                       className="icon-button"
                       title="Add row"
                       onClick={() =>
@@ -139,6 +144,7 @@ export default function TransactionTable({
                       +
                     </button>
                     <button
+                      type="button"
                       className="icon-button danger"
                       title="Remove row"
                       onClick={() =>

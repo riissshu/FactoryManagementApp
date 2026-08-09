@@ -80,7 +80,6 @@ export default function MultiAlterStock({ onClose }) {
       setSaving(false);
     }
 
-      onClose();
   };
 
   return (
@@ -327,6 +326,9 @@ export default function MultiAlterStock({ onClose }) {
           {saving ? "Saving..." : "Save"}
         </button>
       </form>
+
+                <button className="btn btn-secondary" onClick={onClose}>Close</button>
+
     </div>
   );
 }

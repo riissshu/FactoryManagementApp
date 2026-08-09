@@ -5,6 +5,7 @@ export default function ManufacturingSection({
   entries,
   setEntries,
   stockItems,
+  error,
 }) {
   const mutate = (entryIndex, side, rowIndex, field, value) =>
     setEntries(
@@ -66,6 +67,7 @@ export default function ManufacturingSection({
       <div className="section-title">
         <h2>Manufacturing</h2>
         <button
+          type="button"
           className="btn btn-outline-success btn-sm"
           onClick={() =>
             setEntries([
@@ -77,6 +79,7 @@ export default function ManufacturingSection({
           + Add batch
         </button>
       </div>
+      {error && <div className="alert alert-danger py-2">{error}</div>}
       {entries.map((entry, entryIndex) => {
         const consumption = sum(entry.consumption);
         const production = sum(entry.production);
@@ -92,6 +95,7 @@ export default function ManufacturingSection({
               </span>
               {difference > 0 && (
                 <button
+                  type="button"
                   className="btn btn-warning btn-sm"
                   onClick={() => addLoss(entryIndex)}
                 >
@@ -99,6 +103,7 @@ export default function ManufacturingSection({
                 </button>
               )}
               <button
+                type="button"
                 className="btn btn-link text-danger"
                 onClick={() =>
                   setEntries(entries.filter((_, index) => index !== entryIndex))
@@ -179,6 +184,7 @@ export default function ManufacturingSection({
                           <td>{row.unit || "-"}</td>
                           <td>
                             <button
+                              type="button"
                               className="icon-button"
                               onClick={() => add(entryIndex, side)}
                             >

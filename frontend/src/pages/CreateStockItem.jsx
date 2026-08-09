@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 
-export default function StockItem({ onMultiCreate } = {}) {
+export default function StockItem({onClose}) {
   
   const emptyItem = {
     id: null,
@@ -175,15 +175,6 @@ export default function StockItem({ onMultiCreate } = {}) {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2 className="mb-0">Stock Item Master</h2>
 
-        {onMultiCreate && (
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={onMultiCreate}
-          >
-            Multi Create Stock
-          </button>
-        )}
       </div>
 
       <form
@@ -406,6 +397,9 @@ export default function StockItem({ onMultiCreate } = {}) {
           </div>
         </div>
       </form>
+
+                  <button className="btn btn-secondary" onClick={onClose}>Close</button>
+
     </div>
   );
 }

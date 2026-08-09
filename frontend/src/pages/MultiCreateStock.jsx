@@ -181,7 +181,14 @@ export default function MultiCreateStock({ onClose }) {
 
   return (
     <div className="page-shell">
-      <h2 className="pt-2 pb-2 fw-bold">Create Multiple Stock Items</h2>
+      
+     
+      <h2 className="pt-2 fw-bold">Create Multiple Stock Items</h2>
+
+      <div className="d-flex justify-content-end me-5 mb-2">
+      <button onClick={onClose} className="btn btn-secondary">Close</button>
+      </div>
+     
 
       <form
         noValidate
@@ -192,6 +199,8 @@ export default function MultiCreateStock({ onClose }) {
           <p className="text-muted">
             Create multiple stock items at once. Leave unused rows blank.
           </p>
+
+          
 
           <div className="table-responsive">
             <table className="table app-table align-middle">
@@ -396,8 +405,7 @@ export default function MultiCreateStock({ onClose }) {
         </button>
       </form>
 
-
-      <button onClick={onClose} >Close</button>
+     
     </div>
   );
 }

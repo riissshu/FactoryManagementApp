@@ -72,7 +72,7 @@ export default function Dashboard({ navigate }) {
           <div className="col-md-3 mb-2">
             <button
               className="btn btn-outline-warning w-100"
-              onClick={() => navigate("stockreport")}
+              onClick={() => navigate("stocksummary")}
             >
               Stock Summary
             </button>

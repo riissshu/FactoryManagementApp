@@ -83,6 +83,24 @@ function createDatabase(dbPath) {
     );
     `);
 
+  // One report per calendar date, enforced at the DB layer so concurrent
+  // requests can't both slip past the application-level check below.
+  // Created as a unique index (not a table constraint) so it can be added
+  // to databases that already have the daily_reports table. If existing
+  // data already has duplicate report_date rows, this will throw at
+  // startup -- see note below.
+  try {
+    db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date)",
+    );
+  } catch (err) {
+    console.error(
+      "Could not enforce one-report-per-date: duplicate report_date rows already exist. " +
+        "Resolve duplicates in daily_reports before this constraint can be applied.",
+      err.message,
+    );
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS purchase_entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -476,6 +494,15 @@ function createDatabase(dbPath) {
       .all();
   }
 
+  // Used by the frontend to check-before-submit (e.g. disable/redirect
+  // instead of waiting for a save to fail) and by saveDailyReport's guard
+  // below.
+  function getDailyReportByDate(date) {
+    return db
+      .prepare("SELECT id, report_date FROM daily_reports WHERE report_date = ?")
+      .get(date);
+  }
+
   function getDailyReportById(id) {
     const report = db
       .prepare("SELECT id, report_date FROM daily_reports WHERE id = ?")
@@ -567,7 +594,19 @@ function createDatabase(dbPath) {
     };
   }
 
+  // Inserts a new daily report. Throws if a report already exists for
+  // report.report_date -- one report per calendar date, no exceptions.
+  // The UNIQUE index on daily_reports(report_date) is the real backstop
+  // against races; this check exists to give the caller a clean,
+  // human-readable error instead of a raw SQLITE_CONSTRAINT failure.
   function saveDailyReport(report) {
+    const existing = getDailyReportByDate(report.report_date);
+    if (existing) {
+      throw new Error(
+        `A daily report for ${report.report_date} already exists.`,
+      );
+    }
+
     const transaction = db.transaction(() => {
       const dailyReport = db
         .prepare("INSERT INTO daily_reports (report_date) VALUES (?)")
@@ -671,8 +710,19 @@ function createDatabase(dbPath) {
     return true;
   }
 
+  // Replaces an existing daily report's contents (and possibly its date)
+  // in a single transaction. If report.report_date has been changed to a
+  // date that belongs to a *different* existing report, this rolls back
+  // and throws instead of silently creating a duplicate.
   function updateDailyReport(id, report) {
     const replace = db.transaction(() => {
+      const collision = getDailyReportByDate(report.report_date);
+      if (collision && collision.id !== id) {
+        throw new Error(
+          `A daily report for ${report.report_date} already exists.`,
+        );
+      }
+
       deleteDailyReport(id);
       saveDailyReport(report);
     });
@@ -729,6 +779,7 @@ function createDatabase(dbPath) {
     getDailyReports,
     saveDailyReport,
     getDailyReportById,
+    getDailyReportByDate,
     updateDailyReport,
     deleteDailyReport,
     getStockReport,
