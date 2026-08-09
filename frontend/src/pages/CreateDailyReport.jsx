@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import ManufacturingSection from "../components/ManufacturingSection";
-import PageHeader from "../components/PageHeader";
 import TransactionTable from "../components/TransactionTable";
 import api from "../services/api";
 import { exportDailyReportPdf } from "../utils/exportDailyReportPdf";
@@ -11,7 +10,7 @@ const fresh = () => ({
   gatePasses: [{ gatePassNo: "", items: [row()] }],
   manufactured: [{ consumption: [row()], production: [row()] }],
 });
-export default function DailyReport({ reportId, mode, onClose, onSaved }) {
+export default function DailyReport({ reportId, mode, onClose, }) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [currentMode, setCurrentMode] = useState(mode);
   const [stockItems, setStockItems] = useState([]);
@@ -55,7 +54,7 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
     await (currentMode === "edit"
       ? api.updateDailyReport(reportId, { report_date: date, ...data })
       : api.saveDailyReport({ report_date: date, ...data }));
-    onSaved?.();
+      onClose ();
   };
 
   const exportPdf = async () => {
@@ -78,21 +77,7 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
   const disabled = currentMode === "view";
   return (
     <div className="page-shell">
-      <PageHeader
-        eyebrow="Transactions"
-        title="Daily report"
-        actions={
-          <>
-            {/* <button className="btn btn-outline-primary" onClick={exportPdf}>
-              <i className="bi bi-file-earmark-pdf me-2" />
-              Export PDF
-            </button> */}
-            <button className="btn btn-outline-secondary" onClick={onClose}>
-              Close
-            </button>
-          </>
-        }
-      />
+     
       <fieldset disabled={disabled}>
         <div className="date-card">
           <label>
@@ -145,7 +130,7 @@ export default function DailyReport({ reportId, mode, onClose, onSaved }) {
             onClick={async () => {
               if (confirm("Delete this daily report?")) {
                 await api.deleteDailyReport(reportId);
-                onSaved?.();
+                
               }
             }}
           >

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import PageHeader from "../components/PageHeader";
+
 
 export default function MultiAlterStock() {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [units, setUnits] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [validated, setValidated] = useState(false);
 
   useEffect(() => {
     api.getStockItems().then(setItems).catch(console.error);
@@ -14,48 +15,71 @@ export default function MultiAlterStock() {
     api.getStockUnits().then(setUnits).catch(console.error);
   }, []);
 
-  const update = (index, field, value) =>
-    setItems(
-      items.map((item, row) =>
-        row === index
-          ? {
-              ...item,
-              [field]: value,
-              ...(field === "unit"
-                ? {
-                    alternate_unit: value === "Kg" ? "" : "Kg",
-                    conversion: value === "Kg" ? 0 : item.conversion,
-                  }
-                : {}),
-            }
-          : item,
-      ),
-    );
+ const update = (index, field, value) => {
+  setItems((currentItems) =>
+    currentItems.map((item, rowIndex) => {
+      if (rowIndex !== index) {
+        return item;
+      }
 
-  const save = async () => {
+      if (field === "unit") {
+        return {
+          ...item,
+          unit: value,
+          alternate_unit: value === "Kgs" ? "" : "Kgs",
+          conversion: value === "Kgs" ? 0 : item.conversion,
+        };
+      }
+
+      return {
+        ...item,
+        [field]: value,
+      };
+    }),
+  );
+};
+
+  const save = async (event) => {
+  event.preventDefault();
+
+  if (saving) return;
+
+  const form = event.currentTarget;
+
+  if (!form.checkValidity()) {
+    event.stopPropagation();
+    setValidated(true);
+    return;
+  }
+
+  try {
     setSaving(true);
-    try {
-      await api.bulkUpdateStockItems(items);
-      alert("Stock items updated.");
-    } catch {
-      alert("Unable to update stock items.");
-    } finally {
-      setSaving(false);
-    }
-  };
+
+    await api.bulkUpdateStockItems(items);
+
+    alert("Stock items updated.");
+    setValidated(false);
+  } catch (error) {
+    console.error("Unable to update stock items:", error);
+    alert(error?.message || "Unable to update stock items.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <div className="page-shell">
-      <PageHeader
-        eyebrow="Masters"
-        title="Multi alter stock items"
-        actions={
-          <button className="btn btn-primary" disabled={saving} onClick={save}>
-            {saving ? "Saving..." : "Save all changes"}
-          </button>
-        }
-      />
-      <div className="content-card">
+    
+    
+      <form
+       id="multi-alter-stock-form"
+  noValidate
+  className={`needs-validation ${
+    validated ? "was-validated" : ""
+  }`}
+  onSubmit={save}
+>
+  <div className="content-card">
         <p className="text-muted">
           Update several stock items at once. Changes are protected by the
           master password.
@@ -79,6 +103,8 @@ export default function MultiAlterStock() {
                       className="form-control"
                       value={item.item_name}
                       onChange={(event) => update(index, "item_name", event.target.value)}
+                      required
+                      disabled={saving}
                     />
                   </td>
                   <td>
@@ -86,6 +112,7 @@ export default function MultiAlterStock() {
                       className="form-select"
                       value={item.stock_group}
                       onChange={(event) => update(index, "stock_group", event.target.value)}
+                       required
                     >
                       {groups.map((g) => (
                         <option key={g.id} value={g.name}>
@@ -99,7 +126,9 @@ export default function MultiAlterStock() {
                       className="form-select"
                       value={item.unit}
                       onChange={(event) => update(index, "unit", event.target.value)}
-                    >
+                      required
+
+                   >
                       {units.map((u) => (
                         <option key={u.id} value={u.name}>
                           {u.name}
@@ -111,18 +140,25 @@ export default function MultiAlterStock() {
                     <input
                       type="number"
                       className="form-control"
-                      disabled={item.unit === "Kg"}
+                      disabled={item.unit === "Kgs"}
+                      required={item.unit !== "Kgs"}
                       value={item.conversion || ""}
                       onChange={(event) => update(index, "conversion", event.target.value)}
-                    />
+                      
+                   />
                   </td>
                   <td>
                     <input
-                      type="number"
-                      className="form-control"
-                      value={item.opening_qty}
-                      onChange={(event) => update(index, "opening_qty", event.target.value)}
-                    />
+  type="number"
+  className="form-control"
+  value={item.opening_qty}
+  onChange={(event) =>
+    update(index, "opening_qty", event.target.value)
+  }
+  required
+  min="0"
+  disabled={saving}
+/>
                   </td>
                 </tr>
               ))}
@@ -130,6 +166,7 @@ export default function MultiAlterStock() {
           </table>
         </div>
       </div>
+      </form>
     </div>
   );
 }

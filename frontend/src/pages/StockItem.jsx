@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 
-export default function StockItem({ onSaved, onMultiCreate } = {}) {
+export default function StockItem({ onMultiCreate } = {}) {
   
   const emptyItem = {
     id: null,
@@ -148,7 +148,7 @@ export default function StockItem({ onSaved, onMultiCreate } = {}) {
       }
 
       resetForm();
-      onSaved?.();
+      
     } catch (error) {
       console.error("Save Error:", error);
       alert(error.message);

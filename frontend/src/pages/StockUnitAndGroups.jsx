@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import PageHeader from "../components/PageHeader";
+
 
 function LookupPanel({ title, load, add, rename, deactivate }) {
   const [rows, setRows] = useState([]);
@@ -127,7 +127,7 @@ function LookupPanel({ title, load, add, rename, deactivate }) {
 export default function StockGroupsUnits() {
   return (
     <div className="page-shell">
-      <PageHeader eyebrow="Masters" title="Stock groups &amp; units" />
+     
       <div className="content-card">
         <LookupPanel
           title="Stock Groups"

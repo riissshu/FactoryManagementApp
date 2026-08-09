@@ -1,255 +1,6 @@
-// import { useEffect, useState } from "react";
-// import api from "../services/api";
-// import PageHeader from "../components/PageHeader";
-
-
-// const createEmptyRow = (groups = [], units = []) => {
- 
-
-//   return {
-//     item_name: "",
-//     stock_group: "",
-//     unit: "",
-//     alternate_unit: defaultUnit === "Kg" ? "" : "Kg",
-//     conversion: 0,
-//     opening_qty: 0,
-//   };
-// };
-
-// export default function MultiCreateStock() {
-//   const [items, setItems] = useState([]);
-//   const [saving, setSaving] = useState(false);
-//   const [groups, setGroups] = useState([]);
-//   const [units, setUnits] = useState([]);
-
-//     const addRow = () => {
-//     setItems((currentItems) => [
-//       ...currentItems,
-//       createEmptyRow(groups, units),
-//     ]);
-//   };
-  
-//     const update = (index, field, value) => {
-//     setItems((currentItems) =>
-//       currentItems.map((item, rowIndex) => {
-//         if (rowIndex !== index) {
-//           return item;
-//         }
-
-//         if (field === "unit") {
-//           return {
-//             ...item,
-//             unit: value,
-//             alternate_unit: value === "Kg" ? "" : "Kg",
-//             conversion: value === "Kg" ? 0 : item.conversion,
-//           };
-//         }
-
-//         return {
-//           ...item,
-//           [field]: value,
-//         };
-//       }),
-//     );
-//   };
-
-//   const save = async () => {
-//     // Ignore completely empty rows
-//     const filledItems = items.filter(
-//       (item) => item.item_name.trim() !== "",
-//     );
-
-//     if (filledItems.length === 0) {
-//       alert("Please enter at least one stock item.");
-//       return;
-//     }
-
-//     // Validate group
-//     const missingGroup = filledItems.find(
-//       (item) => !item.stock_group,
-//     );
-
-//     if (missingGroup) {
-//       alert("Please select a stock group for every item.");
-//       return;
-//     }
-
-//     // Validate unit
-//     const missingUnit = filledItems.find(
-//       (item) => !item.unit,
-//     );
-
-//     if (missingUnit) {
-//       alert("Please select a unit for every item.");
-//       return;
-//     }
-
-//     // Check duplicate names within this entry
-//     const names = filledItems.map((item) =>
-//       item.item_name.trim().toLowerCase(),
-//     );
-
-//     const duplicateNames = names.filter(
-//       (name, index) => names.indexOf(name) !== index,
-//     );
-
-//     if (duplicateNames.length > 0) {
-//       alert("Duplicate stock item names are not allowed.");
-//       return;
-//     }
-
-//     // Prepare data for API
-//     const stockItems = filledItems.map((item) => ({
-//       item_name: item.item_name.trim(),
-//       stock_group: item.stock_group,
-//       unit: item.unit,
-//       alternate_unit: item.alternate_unit || "",
-//       conversion: Number(item.conversion) || 0,
-//       opening_qty: Number(item.opening_qty) || 0,
-//     }));
-
-//     setSaving(true);
-
-//     try {
-//       // Use the existing bulk-create API
-//       await api.bulkCreateStockItems(stockItems);
-
-//       alert(
-//         `${stockItems.length} stock item${
-//           stockItems.length > 1 ? "s" : ""
-//         } created successfully.`,
-//       );
-
-//       resetRows();
-//     } catch (error) {
-//       console.error("Unable to create stock items:", error);
-
-//       alert(
-//         error?.message ||
-//           "Unable to create stock items.",
-//       );
-//     } finally {
-//       setSaving(false);
-//     }
-//   };
-
-
-
-//   return (
-//     <div className="page-shell">
-//       <PageHeader
-//         eyebrow="Masters"
-//         title="Multi create stock items"
-//         actions={
-//           <button className="btn btn-primary" disabled={saving} onClick={save}>
-//             {saving ? "Saving..." : "Save all changes"}
-//           </button>
-//         }
-//       />
-//       <div className="content-card">
-//         <p className="text-muted">
-//           Update several stock items at once. Changes are protected by the
-//           master password.
-//         </p>
-//         <div className="table-responsive">
-//           <table className="table app-table">
-//             <thead>
-//               <tr>
-//                 <th>Item</th>
-//                 <th>Group</th>
-//                 <th>Unit</th>
-//                 <th>Conversion to Kg</th>
-//                 <th>Opening qty</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {items.map((item, index) => (
-//                 <tr key={item.id}>
-//                   <td>
-//                     <input
-//                       className="form-control"
-//                       value={item.item_name}
-//                       onChange={(event) =>
-//                         update(index, "item_name", event.target.value)
-//                       }
-//                     />
-//                   </td>
-//                   <td>
-//                     <select
-//                       className="form-select"
-//                       value={item.stock_group}
-//                       onChange={(event) =>
-//                         update(index, "stock_group", event.target.value)
-//                       }
-//                     >
-//                       {groups.map((group) => (
-//                         <option key={group}>{group}</option>
-//                       ))}
-//                     </select>
-//                   </td>
-//                   <td>
-//                     <select
-//                       className="form-select"
-//                       value={item.unit}
-//                       onChange={(event) =>
-//                         update(index, "unit", event.target.value)
-//                       }
-//                     >
-//                       {units.map((unit) => (
-//                         <option key={unit}>{unit}</option>
-//                       ))}
-//                     </select>
-//                   </td>
-//                   <td>
-//                     <input
-//                       type="number"
-//                       className="form-control"
-//                       disabled={item.unit === "Kg"}
-//                       value={item.conversion || ""}
-//                       onChange={(event) =>
-//                         update(index, "conversion", event.target.value)
-//                       }
-//                     />
-//                   </td>
-//                   <td>
-//                     <input
-//                       type="number"
-//                       className="form-control"
-//                       value={item.opening_qty}
-//                       onChange={(event) =>
-//                         update(index, "opening_qty", event.target.value)
-//                       }
-//                     />
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//          <div className="mt-3">
-//           <button
-//             type="button"
-//             className="btn btn-outline-primary"
-//             onClick={addRow}
-//           >
-//             <i className="bi bi-plus-lg me-1"></i>
-//             Add Row
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
 import { useEffect, useState } from "react";
 import api from "../services/api";
-import PageHeader from "../components/PageHeader";
+
 
 const createEmptyRow = (groups = [], units = []) => {
   const defaultUnit = units[0]?.name || "";
@@ -270,6 +21,7 @@ export default function MultiCreateStock() {
   const [units, setUnits] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [validated, setValidated] = useState(false);
 
   useEffect(() => {
     const loadMasters = async () => {
@@ -349,119 +101,104 @@ export default function MultiCreateStock() {
     ]);
   };
 
-  const save = async () => {
-    // Ignore completely empty rows
-    const filledItems = items.filter(
-      (item) => item.item_name.trim() !== "",
-    );
+  const save = async (event) => {
+  event.preventDefault();
 
-    if (filledItems.length === 0) {
-      alert("Please enter at least one stock item.");
-      return;
-    }
+  // Prevent multiple rapid clicks
+  if (saving) return;
 
-    // Validate group
-    const missingGroup = filledItems.find(
-      (item) => !item.stock_group,
-    );
+  const form = event.currentTarget;
 
-    if (missingGroup) {
-      alert("Please select a stock group for every item.");
-      return;
-    }
+  // Bootstrap validation
+  if (!form.checkValidity()) {
+    event.stopPropagation();
+    setValidated(true);
+    return;
+  }
 
-    // Validate unit
-    const missingUnit = filledItems.find(
-      (item) => !item.unit,
-    );
+  // Ignore completely empty rows
+  const filledItems = items.filter(
+    (item) => item.item_name.trim() !== "",
+  );
 
-    if (missingUnit) {
-      alert("Please select a unit for every item.");
-      return;
-    }
+  if (filledItems.length === 0) {
+    setValidated(true);
+    return;
+  }
 
-    // Check duplicate names within this entry
-    const names = filledItems.map((item) =>
-      item.item_name.trim().toLowerCase(),
-    );
+  // Check duplicate names within this entry
+  const names = filledItems.map((item) =>
+    item.item_name.trim().toLowerCase(),
+  );
 
-    const duplicateNames = names.filter(
-      (name, index) => names.indexOf(name) !== index,
-    );
+  const duplicateNames = names.filter(
+    (name, index) => names.indexOf(name) !== index,
+  );
 
-    if (duplicateNames.length > 0) {
-      alert("Duplicate stock item names are not allowed.");
-      return;
-    }
+  if (duplicateNames.length > 0) {
+    alert("Duplicate stock item names are not allowed.");
+    setValidated(true);
+    return;
+  }
 
-    // Prepare data for API
-    const stockItems = filledItems.map((item) => ({
-      item_name: item.item_name.trim(),
-      stock_group: item.stock_group,
-      unit: item.unit,
-      alternate_unit: item.alternate_unit || "",
-      conversion: Number(item.conversion) || 0,
-      opening_qty: Number(item.opening_qty) || 0,
-    }));
+  const stockItems = filledItems.map((item) => ({
+    item_name: item.item_name.trim(),
+    stock_group: item.stock_group,
+    unit: item.unit,
+    alternate_unit: item.alternate_unit || "",
+    conversion: Number(item.conversion) || 0,
+    opening_qty: Number(item.opening_qty) || 0,
+  }));
 
+  try {
     setSaving(true);
 
-    try {
-      // Use the existing bulk-create API
-      await api.bulkCreateStockItems(stockItems);
+    await api.bulkCreateStockItems(stockItems);
 
-      alert(
-        `${stockItems.length} stock item${
-          stockItems.length > 1 ? "s" : ""
-        } created successfully.`,
-      );
+    alert(
+      `${stockItems.length} stock item${
+        stockItems.length > 1 ? "s" : ""
+      } created successfully.`,
+    );
 
-      resetRows();
-    } catch (error) {
-      console.error("Unable to create stock items:", error);
+    resetRows();
+    setValidated(false);
+  } catch (error) {
+    console.error("Unable to create stock items:", error);
 
-      alert(
-        error?.message ||
-          "Unable to create stock items.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+    alert(
+      error?.message || "Unable to create stock items.",
+    );
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) {
     return (
       <div className="page-shell">
-        <PageHeader
-          eyebrow="Masters"
-          title="Multi create stock items"
-        />
 
-        <div className="content-card">
+        <form
+  noValidate
+  className={`needs-validation ${
+    validated ? "was-validated" : ""
+  }`}
+  onSubmit={save}
+>
+  <div className="content-card">
           <p className="text-muted mb-0">
             Loading stock groups and units...
           </p>
         </div>
+        </form>
       </div>
+      
     );
   }
 
   return (
     <div className="page-shell">
-      <PageHeader
-        eyebrow="Masters"
-        title="Multi create stock items"
-        actions={
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={saving}
-            onClick={save}
-          >
-            {saving ? "Saving..." : "Save all items"}
-          </button>
-        }
-      />
+    
 
       <div className="content-card">
         <p className="text-muted">
@@ -499,7 +236,12 @@ export default function MultiCreateStock() {
                           event.target.value,
                         )
                       }
+                      required
                     />
+                  <div className="invalid-feedback">
+  Please enter stock item name.
+</div>
+
                   </td>
 
                   {/* Group */}
@@ -513,7 +255,7 @@ export default function MultiCreateStock() {
                           "stock_group",
                           event.target.value,
                         )
-                      }
+                      } required
                     >
                       <option value="">
                         Select group
@@ -528,6 +270,9 @@ export default function MultiCreateStock() {
                         </option>
                       ))}
                     </select>
+                    <div className="invalid-feedback">
+  Please select a stock group.
+</div>
                   </td>
 
                   {/* Unit */}
@@ -541,7 +286,7 @@ export default function MultiCreateStock() {
                           "unit",
                           event.target.value,
                         )
-                      }
+                      }  required
                     >
                       <option value="">
                         Select unit
@@ -565,8 +310,8 @@ export default function MultiCreateStock() {
                       className="form-control"
                       value={item.alternate_unit}
                       readOnly
-                    />
-                  </td>
+                    /> 
+                  </td> 
 
                   {/* Conversion */}
                   <td>
@@ -577,7 +322,7 @@ export default function MultiCreateStock() {
                       className="form-control"
                       disabled={
                         !item.unit ||
-                        item.unit === "Kg"
+                        item.unit === "Kgs"
                       }
                       value={item.conversion || ""}
                       onChange={(event) =>
@@ -586,7 +331,7 @@ export default function MultiCreateStock() {
                           "conversion",
                           event.target.value,
                         )
-                      }
+                      }   required={item.unit !== "Kgs"}
                     />
                   </td>
 
@@ -614,7 +359,7 @@ export default function MultiCreateStock() {
                       type="button"
                       className="btn btn-sm btn-outline-danger"
                       title="Remove row"
-                      disabled={items.length <= 1}
+                      disabled={saving || items.length <= 1}
                       onClick={() => removeRow(index)}
                     >
                       <i className="bi bi-trash"></i>
@@ -630,6 +375,7 @@ export default function MultiCreateStock() {
           <button
             type="button"
             className="btn btn-outline-primary"
+            disabled={saving}
             onClick={addRow}
           >
             <i className="bi bi-plus-lg me-1"></i>

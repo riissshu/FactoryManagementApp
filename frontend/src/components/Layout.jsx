@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import Dashboard from "../pages/Dashboard";
 import StockItem from "../pages/StockItem";
 import StockItemList from "../pages/StockItemList";
-import DailyReport from "../pages/DailyReport";
+import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
@@ -47,7 +47,7 @@ export default function Layout() {
       case "stockitem":
         return (
           <StockItem
-            onSaved={() => setActiveMenu("stockitemlist")}
+            
             onMultiCreate={() => setActiveMenu("multicreatestock")}
           />
         );
@@ -82,11 +82,11 @@ export default function Layout() {
 
       case "dailyreport":
         return (
-          <DailyReport
+          <CreateDailyReport
             reportId={selectedDailyReportId}
             mode={dailyReportMode}
             onClose={() => setActiveMenu("dashboard")}
-            onSaved={() => setActiveMenu("dailyreportregister")}
+            
           />
         );
 

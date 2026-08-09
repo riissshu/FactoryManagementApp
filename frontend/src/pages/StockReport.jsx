@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
-import PageHeader from "../components/PageHeader";
+
 
 
 export default function StockReport({ onViewSummary } = {}) {
@@ -33,14 +33,8 @@ export default function StockReport({ onViewSummary } = {}) {
   };
 
   return (
-    <div className="page-shell"><PageHeader eyebrow="Reports" title="Stock Report" actions={<>
-          {onViewSummary && (
-            <button className="btn btn-outline-secondary me-2" onClick={onViewSummary}>
-              <i className="bi bi-list-check me-2" />Stock Summary
-            </button>
-          )}
-          <button className="btn btn-outline-primary" onClick={exportPdf}><i className="bi bi-file-earmark-pdf me-2" />Export PDF</button>
-        </>} />
+    <div className="page-shell">
+         
         <div className="content-card">
           <div className="col-md-5 mb-4">
             <label className="form-label">Search Item</label>
