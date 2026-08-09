@@ -14,7 +14,7 @@ const createEmptyRow = (groups = [], units = []) => {
   };
 };
 
-export default function MultiCreateStock() {
+export default function MultiCreateStock({ onClose }) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [units, setUnits] = useState([]);
@@ -156,6 +156,7 @@ export default function MultiCreateStock() {
     } finally {
       setSaving(false);
     }
+
   };
 
   if (loading) {
@@ -394,6 +395,9 @@ export default function MultiCreateStock() {
           {saving ? "Saving..." : "Save"}
         </button>
       </form>
+
+
+      <button onClick={onClose} >Close</button>
     </div>
   );
 }

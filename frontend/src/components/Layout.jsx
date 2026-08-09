@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Dashboard from "../pages/Dashboard";
-import StockItem from "../pages/StockItem";
+import StockItem from "../pages/CreateStockItem";
 import StockItemList from "../pages/StockItemList";
 import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
@@ -13,6 +13,7 @@ import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
 import StockGroupsUnits from "../pages/StockUnitAndGroups";
+import ViewEditDailyreport from "../pages/ViewEditDailyReport"
 import api from "../services/api";
 
 
@@ -44,6 +45,11 @@ export default function Layout() {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
+        case "vieweditdailyreport":
+          return <ViewEditDailyreport      reportId={selectedDailyReportId}
+            mode={dailyReportMode}
+            onClose={() => setActiveMenu("dailyreportregister")} />
+
       case "stockitem":
         return (
           <StockItem
@@ -62,14 +68,14 @@ export default function Layout() {
       case "multialterstock":
         return (
         
-            <MultiAlterStock />
+            <MultiAlterStock  onClose={() => setActiveMenu("stockitemlist")}/>
          
         );
 
         case "multicreatestock":
   return (
    
-      <MultiCreateStock />
+      <MultiCreateStock onClose={() => setActiveMenu("stockitemlist")} />
    
   );
 
@@ -112,7 +118,7 @@ export default function Layout() {
             openDailyReport={(id) => {
               setSelectedDailyReportId(id);
               setDailyReportMode("view");
-              setActiveMenu("dailyreport");
+              setActiveMenu("vieweditdailyreport");
             }}
           />
         );

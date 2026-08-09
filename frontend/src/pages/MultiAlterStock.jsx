@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import api from "../services/api";
 
-export default function MultiAlterStock() {
+export default function MultiAlterStock({ onClose }) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [units, setUnits] = useState([]);
@@ -68,7 +68,7 @@ export default function MultiAlterStock() {
       await api.bulkUpdateStockItems(updatedItems);
 
       setValidated(false);
-
+   
       // Go to Dashboard after successful save
     
     } catch (error) {
@@ -79,6 +79,8 @@ export default function MultiAlterStock() {
     } finally {
       setSaving(false);
     }
+
+      onClose();
   };
 
   return (

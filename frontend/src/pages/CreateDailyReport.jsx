@@ -10,28 +10,15 @@ const fresh = () => ({
   gatePasses: [{ gatePassNo: "", items: [row()] }],
   manufactured: [{ consumption: [row()], production: [row()] }],
 });
-export default function DailyReport({ reportId, mode, onClose, }) {
+export default function DailyReport({ onClose, }) {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [currentMode, setCurrentMode] = useState(mode);
+
   const [stockItems, setStockItems] = useState([]);
   const [data, setData] = useState(fresh());
   useEffect(() => {
     api.getStockItems().then(setStockItems).catch(console.error);
   }, []);
-  useEffect(() => {
-    setCurrentMode(mode);
-    if (reportId && mode === "view")
-      api.getDailyReportById(reportId).then((report) => {
-        if (report) {
-          setDate(report.date);
-          setData({
-            purchases: report.purchases,
-            gatePasses: report.gatePasses,
-            manufactured: report.manufactured,
-          });
-        }
-      });
-  }, [reportId, mode]);
+ 
   const save = async () => {
     if (!date) return alert("Please select a report date.");
     const mismatch = data.manufactured.find(
@@ -51,9 +38,7 @@ export default function DailyReport({ reportId, mode, onClose, }) {
       return alert(
         "Consumption and production quantities must match. Add the difference as a Material loss row under Production before saving.",
       );
-    await (currentMode === "edit"
-      ? api.updateDailyReport(reportId, { report_date: date, ...data })
-      : api.saveDailyReport({ report_date: date, ...data }));
+    await api.saveDailyReport({ report_date: date, ...data });
       onClose ();
   };
 
@@ -74,7 +59,7 @@ export default function DailyReport({ reportId, mode, onClose, }) {
     });
   };
 
-  const disabled = currentMode === "view";
+
   return (
     <div className="page-shell">
      
@@ -111,32 +96,12 @@ export default function DailyReport({ reportId, mode, onClose, }) {
         />
       </fieldset>
       <div className="sticky-actions">
-        {!disabled && (
+     
           <button className="btn btn-primary" onClick={save}>
             Save report
           </button>
-        )}
-        {disabled && (
-          <button
-            className="btn btn-primary"
-            onClick={() => setCurrentMode("edit")}
-          >
-            Edit report
-          </button>
-        )}{" "}
-        {disabled && (
-          <button
-            className="btn btn-outline-danger"
-            onClick={async () => {
-              if (confirm("Delete this daily report?")) {
-                await api.deleteDailyReport(reportId);
-                
-              }
-            }}
-          >
-            Delete
-          </button>
-        )}
+      
+     
       </div>
     </div>
   );

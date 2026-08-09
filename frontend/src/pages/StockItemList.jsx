@@ -26,7 +26,7 @@ export default function StockItemList({ onAddNew, onMultiAlter } = {}) {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
-        <h2 className="mb-0">Existing Items</h2>
+        <h2 className="mb-0">Stock Item List</h2>
 
         <div className="d-flex gap-2">
           {onMultiAlter && (
