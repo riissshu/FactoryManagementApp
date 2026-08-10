@@ -17,7 +17,9 @@ export default function Dashboard({ navigate }) {
   // Only items with an alert quantity set (> 0) count as "low stock", and
   // only once the balance has actually dropped below that threshold.
   const lowStockItems = stock.filter(
-    (item) => Number(item.low_qty_alert) > 0 && item.balance_qty < Number(item.low_qty_alert),
+    (item) =>
+      Number(item.low_qty_alert) > 0 &&
+      item.balance_qty < Number(item.low_qty_alert),
   );
 
   return (
@@ -40,7 +42,9 @@ export default function Dashboard({ navigate }) {
           <div className="col-md-4 mb-2">
             <div className="border rounded p-3">
               <div className="text-muted">Low Balance Alert !</div>
-              <div className="fs-3 fw-bold text-danger">{lowStockItems.length}</div>
+              <div className="fs-3 fw-bold text-danger">
+                {lowStockItems.length}
+              </div>
             </div>
           </div>
         </div>
@@ -51,41 +55,6 @@ export default function Dashboard({ navigate }) {
             {lowStockItems.map((i) => i.item_name).join(", ")}
           </div>
         )}
-
-        <div className="row mb-4">
-          <div className="col-md-3 mb-2">
-            <button
-              className="btn btn-outline-primary w-100"
-              onClick={() => navigate("stockitem")}
-            >
-              Stock Item Master
-            </button>
-          </div>
-          <div className="col-md-3 mb-2">
-            <button
-              className="btn btn-outline-success w-100"
-              onClick={() => navigate("dailyreport")}
-            >
-              Daily Report
-            </button>
-          </div>
-          <div className="col-md-3 mb-2">
-            <button
-              className="btn btn-outline-warning w-100"
-              onClick={() => navigate("stocksummary")}
-            >
-              Stock Summary
-            </button>
-          </div>
-          <div className="col-md-3 mb-2">
-            <button
-              className="btn btn-outline-secondary w-100"
-              onClick={() => navigate("dailyreportregister")}
-            >
-              Daily Report Register
-            </button>
-          </div>
-        </div>
 
         <h5>Recent Daily Reports</h5>
         <div className="table-responsive">
@@ -105,7 +74,9 @@ export default function Dashboard({ navigate }) {
                     <td>{report.report_date}</td>
                     <td className="text-center">{report.purchase_count}</td>
                     <td className="text-center">{report.gatepass_count}</td>
-                    <td className="text-center">{report.manufacturing_count}</td>
+                    <td className="text-center">
+                      {report.manufacturing_count}
+                    </td>
                   </tr>
                 ))
               ) : (

@@ -27,6 +27,7 @@ export default function Layout() {
 
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
+  const [factoryProfilePage, setFactoryProfilePage] = useState("profile");
 
   const [settings, setSettings] = useState({
     factory_name: "Factory Book",
@@ -84,19 +85,40 @@ export default function Layout() {
           />
         );
 
+      case "factoryprofile":
       case "multialterstock":
-        return (
-          <MultiAlterStock onClose={() => setActiveMenu("factoryprofile")} />
-        );
-
       case "multicreatestock":
-        return (
-          <MultiCreateStock onClose={() => setActiveMenu("factoryprofile")} />
-        );
-
       case "stockgroupsunits":
         return (
-          <StockGroupsUnits onClose={() => setActiveMenu("factoryprofile")} />
+          <MasterLock onClose={() => setActiveMenu("dashboard")}>
+            {activeMenu === "factoryprofile" && (
+              <FactoryProfile
+                onProfileUpdated={reloadSettings}
+                onMultiAlter={() => setActiveMenu("multialterstock")}
+                onMultiCreate={() => setActiveMenu("multicreatestock")}
+                onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
+                onClose={() => setActiveMenu("dashboard")}
+              />
+            )}
+
+            {activeMenu === "multialterstock" && (
+              <MultiAlterStock
+                onClose={() => setActiveMenu("factoryprofile")}
+              />
+            )}
+
+            {activeMenu === "multicreatestock" && (
+              <MultiCreateStock
+                onClose={() => setActiveMenu("factoryprofile")}
+              />
+            )}
+
+            {activeMenu === "stockgroupsunits" && (
+              <StockGroupsUnits
+                onClose={() => setActiveMenu("factoryprofile")}
+              />
+            )}
+          </MasterLock>
         );
 
       case "dailyreport":
@@ -122,21 +144,6 @@ export default function Layout() {
             onAddNew={() => setActiveMenu("createstockitem")}
             onViewStock={() => setActiveMenu("stockitemlist")}
           />
-        );
-
-      case "factoryprofile":
-        return (
-          <MasterLock onClose={() => setActiveMenu("dashboard")}>
-            {" "}
-            <FactoryProfile
-              onProfileUpdated={reloadSettings}
-              onMultiAlter={() => setActiveMenu("multialterstock")}
-              onMultiCreate={() => setActiveMenu("multicreatestock")}
-              onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
-              onClose={() => setActiveMenu("dashboard")}
-            />
-            ;
-          </MasterLock>
         );
 
       case "backuprestore":
