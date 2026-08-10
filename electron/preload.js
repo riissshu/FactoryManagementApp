@@ -32,11 +32,17 @@ contextBridge.exposeInMainWorld("api", {
 
   // Stock Items
   getStockItems: () => ipcRenderer.invoke("stock:get"),
+  getStockItemById: (id) => ipcRenderer.invoke("stock:getById", id),
+
+  hasStockItemTransactions: (id) =>
+    ipcRenderer.invoke("stock:hasTransactions", id),
   saveStockItem: (item) => ipcRenderer.invoke("stock:save", item),
   updateStockItem: (item) => ipcRenderer.invoke("stock:update", item),
   updateLowQtyAlert: (id, value) =>
     ipcRenderer.invoke("stock:updateLowQtyAlert", id, value),
   inactivateStockItem: (id) => ipcRenderer.invoke("stock:inactivate", id),
+  deleteStockItem: (id) =>
+  ipcRenderer.invoke("stock:delete", id),
   getStockReport: () => ipcRenderer.invoke("stock:report"),
   bulkUpdateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkUpdate", items),

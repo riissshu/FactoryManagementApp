@@ -101,12 +101,27 @@ ipcMain.handle("stockUnits:deactivate", (event, id) => database.deactivateStockU
 // =======================
 
 ipcMain.handle("stock:get", () => database.getStockItems());
+
+ipcMain.handle("stock:getById", (event, id) =>
+  database.getStockItemById(id)
+);
+
+ipcMain.handle("stock:hasTransactions", (event, id) =>
+  database.hasStockItemTransactions(id)
+);
+
+
 ipcMain.handle("stock:save", (event, item) => database.saveStockItem(item));
 ipcMain.handle("stock:update", (event, item) => database.updateStockItem(item));
 ipcMain.handle("stock:updateLowQtyAlert", (event, id, value) =>
   database.updateLowQtyAlert(id, value),
 );
 ipcMain.handle("stock:inactivate", (event, id) => database.inactivateStockItem(id));
+
+ipcMain.handle("stock:delete", (event, id) =>
+  database.deleteStockItem(id)
+);
+
 ipcMain.handle("stock:report", () => database.getStockReport());
 ipcMain.handle("stock:bulkUpdate", (event, items) => database.bulkUpdateStockItems(items));
 ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockItems(items));

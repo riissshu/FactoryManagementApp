@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 
-export default function StockItemList({onClose}) {
+export default function StockItemList({onClose, onEditItem}) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState("All");
@@ -132,17 +132,12 @@ export default function StockItemList({onClose}) {
                   </tr>
 
                   {section.rows.map((row) => (
-                    <tr key={row.id}>
-                      {/*
-                        Fixed: onClick={() => editItem(row)} referenced a
-                        function that didn't exist anywhere in this component —
-                        it would throw as soon as a row was clicked. Since the
-                        edit page/flow isn't built yet, the click handler and
-                        the pointer cursor are removed for now rather than
-                        calling something undefined. Wire this back up (e.g.
-                        onClick={() => onEditItem(row)} via a prop, or
-                        navigation to an edit route) once that page exists.
-                      */}
+                    <tr key={row.id}
+                        onClick={() => onEditItem(row.id)}
+    style={{ cursor: "pointer" }}
+                    
+                    >
+                      
                       <td>{row.item_name}</td>
                       <td>{row.stock_group}</td>
                       <td>{row.unit}</td>

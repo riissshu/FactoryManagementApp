@@ -41,6 +41,15 @@ const api = {
   getStockItems() {
     return window.api.getStockItems();
   },
+
+  getStockItemById(id) {
+    return window.api.getStockItemById(id);
+  },
+
+  hasStockItemTransactions(id) {
+    return window.api.hasStockItemTransactions(id);
+  },
+
   saveStockItem(item) {
     return window.api.saveStockItem(item);
   },
@@ -53,6 +62,9 @@ const api = {
   inactivateStockItem(id) {
     return window.api.inactivateStockItem(id);
   },
+  deleteStockItem(id) {
+  return window.api.deleteStockItem(id);
+},
   getStockReport() {
     return window.api.getStockReport();
   },

@@ -4,9 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const DEFAULT_GROUPS = ["Raw Material", "Finished Goods", "Packaging Material"];
-const DEFAULT_UNITS = [
-  "Kgs", "Tin", "Pcs", "Bag", "Ctn", "Ltr", "Bkt", "Box"
-];
+const DEFAULT_UNITS = ["Kgs", "Tin", "Pcs", "Bag", "Ctn", "Ltr", "Bkt", "Box"];
 
 // createDatabase opens (or creates) a sqlite file at dbPath and returns a
 // bound set of functions for that connection. This lets the app switch
@@ -426,6 +424,72 @@ function createDatabase(dbPath) {
     return true;
   }
 
+  function getStockItemById(id) {
+    return db
+      .prepare(
+        `
+      SELECT *
+      FROM stock_items
+      WHERE id = ?
+    `,
+      )
+      .get(id);
+  }
+
+  function hasStockItemTransactions(id) {
+    const purchase = db
+      .prepare(
+        `
+      SELECT 1
+      FROM purchase_items
+      WHERE stock_item_id = ?
+      LIMIT 1
+    `,
+      )
+      .get(id);
+
+    if (purchase) return true;
+
+    const gatepass = db
+      .prepare(
+        `
+      SELECT 1
+      FROM gatepass_items
+      WHERE stock_item_id = ?
+      LIMIT 1
+    `,
+      )
+      .get(id);
+
+    if (gatepass) return true;
+
+    const consumption = db
+      .prepare(
+        `
+      SELECT 1
+      FROM manufacturing_consumption
+      WHERE stock_item_id = ?
+      LIMIT 1
+    `,
+      )
+      .get(id);
+
+    if (consumption) return true;
+
+    const production = db
+      .prepare(
+        `
+      SELECT 1
+      FROM manufacturing_production
+      WHERE stock_item_id = ?
+      LIMIT 1
+    `,
+      )
+      .get(id);
+
+    return !!production;
+  }
+
   function updateStockItem(item) {
     db.prepare(
       `
@@ -477,6 +541,23 @@ function createDatabase(dbPath) {
     return true;
   }
 
+  function deleteStockItem(id) {
+  // Never physically delete an item that has been used
+  // in any transaction.
+  if (hasStockItemTransactions(id)) {
+    throw new Error(
+      "This stock item has transactions and cannot be deleted."
+    );
+  }
+
+  db.prepare(`
+    DELETE FROM stock_items
+    WHERE id = ?
+  `).run(id);
+
+  return true;
+}
+
   function getDailyReports() {
     return db
       .prepare(
@@ -499,7 +580,9 @@ function createDatabase(dbPath) {
   // below.
   function getDailyReportByDate(date) {
     return db
-      .prepare("SELECT id, report_date FROM daily_reports WHERE report_date = ?")
+      .prepare(
+        "SELECT id, report_date FROM daily_reports WHERE report_date = ?",
+      )
       .get(date);
   }
 
@@ -628,7 +711,12 @@ function createDatabase(dbPath) {
 
           db.prepare(
             "INSERT INTO purchase_items (purchase_entry_id, stock_item_id, qty, unit) VALUES (?, ?, ?, ?)",
-          ).run(purchaseEntryId, Number(item.item), Number(item.qty), item.unit);
+          ).run(
+            purchaseEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
         });
       });
 
@@ -646,13 +734,20 @@ function createDatabase(dbPath) {
 
           db.prepare(
             "INSERT INTO gatepass_items (gatepass_entry_id, stock_item_id, qty, unit) VALUES (?, ?, ?, ?)",
-          ).run(gatePassEntryId, Number(item.item), Number(item.qty), item.unit);
+          ).run(
+            gatePassEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
         });
       });
 
       report.manufactured.forEach((manufacturing) => {
         const manufacturingEntry = db
-          .prepare("INSERT INTO manufacturing_entries (daily_report_id) VALUES (?)")
+          .prepare(
+            "INSERT INTO manufacturing_entries (daily_report_id) VALUES (?)",
+          )
           .run(dailyReportId);
 
         const manufacturingEntryId = manufacturingEntry.lastInsertRowid;
@@ -662,7 +757,12 @@ function createDatabase(dbPath) {
 
           db.prepare(
             "INSERT INTO manufacturing_consumption (manufacturing_entry_id, stock_item_id, qty, unit) VALUES (?, ?, ?, ?)",
-          ).run(manufacturingEntryId, Number(item.item), Number(item.qty), item.unit);
+          ).run(
+            manufacturingEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
         });
 
         manufacturing.production.forEach((item) => {
@@ -670,7 +770,12 @@ function createDatabase(dbPath) {
 
           db.prepare(
             "INSERT INTO manufacturing_production (manufacturing_entry_id, stock_item_id, qty, unit) VALUES (?, ?, ?, ?)",
-          ).run(manufacturingEntryId, Number(item.item), Number(item.qty), item.unit);
+          ).run(
+            manufacturingEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
         });
       });
     });
@@ -690,7 +795,9 @@ function createDatabase(dbPath) {
         .all(id)
         .map((row) => row.id);
       const manufacturingIds = db
-        .prepare("SELECT id FROM manufacturing_entries WHERE daily_report_id = ?")
+        .prepare(
+          "SELECT id FROM manufacturing_entries WHERE daily_report_id = ?",
+        )
         .all(id)
         .map((row) => row.id);
       const deleteChildren = (table, column, ids) =>
@@ -699,11 +806,25 @@ function createDatabase(dbPath) {
         );
       deleteChildren("purchase_items", "purchase_entry_id", purchaseIds);
       deleteChildren("gatepass_items", "gatepass_entry_id", gatePassIds);
-      deleteChildren("manufacturing_consumption", "manufacturing_entry_id", manufacturingIds);
-      deleteChildren("manufacturing_production", "manufacturing_entry_id", manufacturingIds);
-      db.prepare("DELETE FROM purchase_entries WHERE daily_report_id = ?").run(id);
-      db.prepare("DELETE FROM gatepass_entries WHERE daily_report_id = ?").run(id);
-      db.prepare("DELETE FROM manufacturing_entries WHERE daily_report_id = ?").run(id);
+      deleteChildren(
+        "manufacturing_consumption",
+        "manufacturing_entry_id",
+        manufacturingIds,
+      );
+      deleteChildren(
+        "manufacturing_production",
+        "manufacturing_entry_id",
+        manufacturingIds,
+      );
+      db.prepare("DELETE FROM purchase_entries WHERE daily_report_id = ?").run(
+        id,
+      );
+      db.prepare("DELETE FROM gatepass_entries WHERE daily_report_id = ?").run(
+        id,
+      );
+      db.prepare(
+        "DELETE FROM manufacturing_entries WHERE daily_report_id = ?",
+      ).run(id);
       db.prepare("DELETE FROM daily_reports WHERE id = ?").run(id);
     });
     remove();
@@ -769,6 +890,9 @@ function createDatabase(dbPath) {
     addStockUnit,
     renameStockUnit,
     deactivateStockUnit,
+    getStockItemById,
+    hasStockItemTransactions,
+    deleteStockItem,
 
     getStockItems,
     saveStockItem,
