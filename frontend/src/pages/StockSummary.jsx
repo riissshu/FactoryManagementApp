@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { exportTablePdf, exportTableExcel } from "../utils/exportUtils";
 
 export default function StockSummary({ onStockReport }) {
   const [rows, setRows] = useState([]);
@@ -42,16 +43,69 @@ export default function StockSummary({ onStockReport }) {
     return groups;
   }, [filteredRows]);
 
+  const exportPdf = async () => {
+    const settings = await api.getSettings();
+    await exportTablePdf({
+      title: "Stock Summary",
+      company: settings?.factory_name,
+      subtitle: new Date().toLocaleDateString("en-IN"),
+      filename: `${settings?.factory_name || "factory"}-stock-summary.pdf`,
+      headers: ["Item", "Group", "Balance", "Unit", "Alt Unit"],
+      rows: filteredRows.map((row) => [
+        row.item_name,
+        row.stock_group,
+        row.balance_qty,
+        row.unit,
+        row.alternate_unit || "-",
+      ]),
+      numericCols: [5, 6],
+    });
+  };
+
+  const exportExcel = () => {
+    exportTableExcel({
+      filename: "stock-summary.xlsx",
+      sheetName: "Stock Summary",
+      headers: ["Item", "Group", "Balance", "Unit", "Alt Unit"],
+      rows: filteredRows.map((row) => [
+        row.item_name,
+        row.stock_group,
+        row.balance_qty,
+        row.unit,
+        row.alternate_unit || "-",
+      ]),
+    });
+  };
+
   return (
     <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Stock Summary</h4>
 
         {onStockReport && (
-          <button type="button" className="btn btn-outline-secondary" onClick={onStockReport}>
-                View Detailed Stock Report
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={onStockReport}
+          >
+            View Detailed Stock Report
           </button>
         )}
+
+        <button
+          type="button"
+          className="btn btn-outline-primary ms-2"
+          onClick={exportPdf}
+        >
+          Export PDF
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline-success ms-2"
+          onClick={exportExcel}
+        >
+          Export Excel
+        </button>
       </div>
 
       <div className="row mb-3">
