@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-export default function StockSummary({ onBack } = {}) {
+export default function StockSummary({ onStockReport }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -47,9 +47,9 @@ export default function StockSummary({ onBack } = {}) {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="mb-0">Stock Summary</h4>
 
-        {onBack && (
-          <button type="button" className="btn btn-outline-secondary" onClick={onBack}>
-            <i className="bi bi-arrow-left me-2" />Back to Stock Report
+        {onStockReport && (
+          <button type="button" className="btn btn-outline-secondary" onClick={onStockReport}>
+                View Detailed Stock Report
           </button>
         )}
       </div>

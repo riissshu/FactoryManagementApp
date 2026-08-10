@@ -1,6 +1,6 @@
 import { useState } from "react";
 import api from "../services/api";
-export default function MasterLock({ children }) {
+export default function MasterLock({ children, onClose } = {}) {
   const [unlocked, setUnlocked] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -15,12 +15,12 @@ export default function MasterLock({ children }) {
   return (
     <div className="lock-card">
       <i className="bi bi-shield-lock"></i>
-      <h2>Master access</h2>
-      <p>Enter the factory master password to change stock items.</p>
+      <h2>Restricted Access</h2>
+      <p>Login to edit profile & settings</p>
       <input
         type="password"
         className="form-control"
-        placeholder="Master password"
+        placeholder="password"
         value={password}
         onChange={(event) => {
           setPassword(event.target.value);
@@ -30,8 +30,10 @@ export default function MasterLock({ children }) {
       />
       {error && <small className="text-danger">{error}</small>}
       <button className="btn btn-primary" onClick={unlock}>
-        Unlock master
+        Login
       </button>
+
+      <button onClick={onClose} className="btn btn-secondary">Close</button>
     </div>
   );
 }

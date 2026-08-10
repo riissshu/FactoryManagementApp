@@ -16,7 +16,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
       type: "heading",
     },
 
-    { title: "Stock Item", icon: "bi-box-seam", key: "stockitemlist", type: "menu" },
+    { title: "Stock Item", icon: "bi-box-seam", key: "stockitemmaster", type: "menu" },
 
 
     {
@@ -39,7 +39,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     {
       title: "Stock Report Register",
       icon: "bi-bar-chart",
-      key: "stockreport",
+      key: "stocksummary",
       type: "menu",
     },
 

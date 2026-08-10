@@ -68,7 +68,7 @@ export default function Navbar({
                 <div className="dropdown-divider"></div>
 
                 <button
-                  className="dropdown-item"
+                  className="dropdown-item fw-bold"
                   onClick={() => {
                     setActiveMenu("factoryprofile");
 
@@ -76,7 +76,7 @@ export default function Navbar({
                   }}
                 >
                   <i className="bi bi-building me-2"></i>
-                  Factory Profile
+                   Profile
                 </button>
               </div>
             )}

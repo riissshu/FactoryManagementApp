@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const DEFAULT_GROUPS = ["Raw Material", "Finished Goods", "Packaging Material"];
 const DEFAULT_UNITS = [
-  "Kgs", "Tin", "Pcs", "Bag", "Ctn", "Ltr",
+  "Kgs", "Tin", "Pcs", "Bag", "Ctn", "Ltr", "Bkt", "Box"
 ];
 
 // createDatabase opens (or creates) a sqlite file at dbPath and returns a

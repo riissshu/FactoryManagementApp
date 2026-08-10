@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 
-export default function StockItem({onClose}) {
+export default function CreateStockItem({onClose}) {
   
   const emptyItem = {
     id: null,
@@ -399,6 +399,10 @@ export default function StockItem({onClose}) {
       </form>
 
                   <button className="btn btn-secondary" onClick={onClose}>Close</button>
+
+
+
+           
 
     </div>
   );

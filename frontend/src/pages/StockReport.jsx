@@ -4,7 +4,7 @@ import api from "../services/api";
 
 
 
-export default function StockReport({ onViewSummary } = {}) {
+export default function StockReport({ onClose } = {}) {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
 
@@ -34,6 +34,10 @@ export default function StockReport({ onViewSummary } = {}) {
 
   return (
     <div className="page-shell">
+
+     <h2>Detailed Stock Report</h2>
+
+      <button onClick={onClose} className="btn btn-secondary">Close</button>
          
         <div className="content-card">
           <div className="col-md-5 mb-4">

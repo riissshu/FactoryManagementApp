@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 
-export default function StockItemList({ onAddNew, onMultiAlter, onMultiCreate, onStockGroupUnits } = {}) {
+export default function StockItemList({onClose}) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState("All");
@@ -63,44 +63,8 @@ export default function StockItemList({ onAddNew, onMultiAlter, onMultiCreate, o
     <div>
       <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
         <h2 className="mb-0">Stock Item List</h2>
-
-        <div className="d-flex gap-2">
-          {onMultiAlter && (
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={onMultiAlter}
-            >
-              Multi Alter Stock
-            </button>
-          )}
-
-          {onMultiCreate && (
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              onClick={onMultiCreate}
-            >
-              Multi Create Stock
-            </button>
-          )}
-
-          
-
-            {onAddNew && (
-            <button type="button" className="btn btn-primary" onClick={onAddNew}>
-              + Add New Item
-            </button>
-          )}
-
-            {onStockGroupUnits && (
-            <button type="button" className="btn btn-primary" onClick={onStockGroupUnits}>
-              Stock Groups & Units
-            </button>
-          )}
-
-
-        </div>
+        <button onClick={onClose} className="btn btn-secondary">Close</button>
+        
       </div>
 
       <div className="btn-group mb-3" role="group" aria-label="Filter by stock group">

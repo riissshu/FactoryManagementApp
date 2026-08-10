@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Dashboard from "../pages/Dashboard";
-import StockItem from "../pages/CreateStockItem";
+import CreateStockItem from "../pages/CreateStockItem";
 import StockItemList from "../pages/StockItemList";
 import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
@@ -14,11 +14,13 @@ import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
 import StockGroupsUnits from "../pages/StockUnitAndGroups";
 import ViewEditDailyreport from "../pages/ViewEditDailyReport"
+import MasterLock from "../components/MasterLock"
+import StockItemMaster from "../pages/StockItemMaster";
 import api from "../services/api";
 
 
 export default function Layout() {
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
 
   const [activeMenu, setActiveMenu] = useState("dashboard");
 
@@ -50,41 +52,41 @@ export default function Layout() {
             mode={dailyReportMode}
             onClose={() => setActiveMenu("dailyreportregister")} />
 
-      case "stockitem":
+      case "createstockitem":
         return (
-          <StockItem
-            onClose={() => setActiveMenu("stockitemlist")}
+          <CreateStockItem
             
+            onClose={() => setActiveMenu("stockitemmaster")}
           />
         );
 
       case "stockitemlist":
         return (
           <StockItemList
-            onAddNew={() => setActiveMenu("stockitem")}
-            onMultiAlter={() => setActiveMenu("multialterstock")}
-            onMultiCreate={() => setActiveMenu("multicreatestock")}
-            onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
+           onClose={() => setActiveMenu("stockitemmaster")}
+         
           />
         );
+
+
       case "multialterstock":
         return (
         
-            <MultiAlterStock  onClose={() => setActiveMenu("stockitemlist")}/>
+            <MultiAlterStock  onClose={() => setActiveMenu("factoryprofile")}/>
          
         );
 
         case "multicreatestock":
   return (
    
-      <MultiCreateStock onClose={() => setActiveMenu("stockitemlist")} />
+      <MultiCreateStock onClose={() => setActiveMenu("factoryprofile")} />
    
   );
 
   case "stockgroupsunits":
   return (
    
-      <StockGroupsUnits onClose={() => setActiveMenu("stockitemlist")}/>
+      <StockGroupsUnits onClose={() => setActiveMenu("factoryprofile")}/>
     
   );
 
@@ -100,16 +102,29 @@ export default function Layout() {
 
       case "stockreport":
         return (
-          <StockReport onViewSummary={() => setActiveMenu("stocksummary")} />
+          <StockReport onClose={() => setActiveMenu("stocksummary")} />
         );
 
       case "stocksummary":
         return (
-          <StockSummary onBack={() => setActiveMenu("dashboard")} />
+          <StockSummary  onStockReport={() => setActiveMenu("stockreport")} />
         );
 
+        case "stockitemmaster":
+          return <StockItemMaster  onAddNew={() => setActiveMenu("createstockitem")} 
+                          onViewStock={() => setActiveMenu("stockitemlist")}
+          />
+
+
       case "factoryprofile":
-        return <FactoryProfile onProfileUpdated={reloadSettings} />;
+        return <MasterLock onClose={() => setActiveMenu("dashboard")}> <FactoryProfile onProfileUpdated={reloadSettings}
+                   onMultiAlter={() => setActiveMenu("multialterstock")}
+            onMultiCreate={() => setActiveMenu("multicreatestock")}
+            onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
+            onClose={() => setActiveMenu("dashboard")}
+        
+        />; 
+        </MasterLock>
 
       case "backuprestore":
         return <BackupRestore />;

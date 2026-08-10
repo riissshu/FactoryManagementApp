@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import api from "../services/api";
 
-export default function FactoryProfile({ onProfileUpdated }) {
+export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter, onMultiCreate, onStockGroupUnits}) {
   const [factoryName, setFactoryName] = useState("");
   const [logo, setLogo] = useState(null);
 
@@ -119,10 +119,15 @@ export default function FactoryProfile({ onProfileUpdated }) {
 
   return (
     <div className="container-fluid">
+      <div className="d-flex align-items-between justify-content-between">
       <h3 className="fw-bold mb-4">
         <i className="bi bi-building me-2"></i>
         Factory Profile
       </h3>
+    <div className="me-5">
+      <button onClick={onClose} className="btn btn-secondary">Sign Out</button>
+    </div>
+</div>
 
       <div className="card shadow-sm mb-4">
         <div className="card-body p-4">
@@ -267,7 +272,51 @@ export default function FactoryProfile({ onProfileUpdated }) {
             </div>
           </div>
         </div>
-      </div>
+     </div>
+
+               <div className="card shadow-sm mt-4">
+                <div className="card-body p-4">
+      <h5 className="fw-bold mb-1">
+            <i className="bi bi-hdd-stack me-2"></i>
+            Stock Master - Settings
+          </h5>
+          <p className="text-muted mb-4">
+            Manage Stock Items, Multi-Alter-Stock, Multi-Create-Stock & Edit Stock Group & Units
+          </p>
+
+          <div className="d-flex gap-2">
+          {onMultiAlter && (
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={onMultiAlter}
+            >
+              Multi Alter Stock
+            </button>
+          )}
+
+          {onMultiCreate && (
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={onMultiCreate}
+            >
+              Multi Create Stock
+            </button>
+          )}
+
+            {onStockGroupUnits && (
+            <button type="button" className="btn btn-primary" onClick={onStockGroupUnits}>
+              Stock Groups & Units
+            </button>
+          )}
+
+
+        </div>
+
+        </div>
+
+    </div>
     </div>
   );
 }
