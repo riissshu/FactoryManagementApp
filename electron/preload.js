@@ -24,18 +24,10 @@ contextBridge.exposeInMainWorld("api", {
   deactivateStockGroup: (id) =>
     ipcRenderer.invoke("stockGroups:deactivate", id),
   hasStockGroupTransactions: (id) =>
-  ipcRenderer.invoke(
-    "stockGroups:hasTransactions",
-    id
-  ),
-
-
+    ipcRenderer.invoke("stockGroups:hasTransactions", id),
 
   hasStockUnitTransactions: (id) =>
-  ipcRenderer.invoke(
-    "stockUnits:hasTransactions",
-    id
-  ),
+    ipcRenderer.invoke("stockUnits:hasTransactions", id),
   getStockUnits: () => ipcRenderer.invoke("stockUnits:get"),
   addStockUnit: (name) => ipcRenderer.invoke("stockUnits:add", name),
   renameStockUnit: (id, name) =>
@@ -53,8 +45,7 @@ contextBridge.exposeInMainWorld("api", {
   updateLowQtyAlert: (id, value) =>
     ipcRenderer.invoke("stock:updateLowQtyAlert", id, value),
   inactivateStockItem: (id) => ipcRenderer.invoke("stock:inactivate", id),
-  deleteStockItem: (id) =>
-  ipcRenderer.invoke("stock:delete", id),
+  deleteStockItem: (id) => ipcRenderer.invoke("stock:delete", id),
   getStockReport: () => ipcRenderer.invoke("stock:report"),
   bulkUpdateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkUpdate", items),
@@ -67,9 +58,14 @@ contextBridge.exposeInMainWorld("api", {
   getDailyReportById: (id) => ipcRenderer.invoke("dailyReport:getById", id),
   getDailyReportByDate: (date) =>
     ipcRenderer.invoke("dailyReport:getByDate", date),
-  updateDailyReport: (id, report) =>
-    ipcRenderer.invoke("dailyReport:update", id, report),
-  deleteDailyReport: (id) => ipcRenderer.invoke("dailyReport:delete", id),
+  updateDailyReport: (id, report, masterPassword) =>
+    ipcRenderer.invoke("dailyReport:update", id, report, masterPassword),
+  deleteDailyReport: (id, masterPassword) => ipcRenderer.invoke("dailyReport:delete", id, masterPassword),
+  markDailyReportExported: (id) =>
+  ipcRenderer.invoke(
+    "dailyReport:markExported",
+    id
+),
 
   // Backup / Restore
   createBackup: () => ipcRenderer.invoke("backup:create"),

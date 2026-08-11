@@ -77,9 +77,17 @@ function createDatabase(dbPath) {
     CREATE TABLE IF NOT EXISTS daily_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         report_date TEXT NOT NULL,
+        is_exported INTEGER NOT NULL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     `);
+
+    try {
+  db.exec(
+    "ALTER TABLE daily_reports ADD COLUMN is_exported INTEGER NOT NULL DEFAULT 0"
+  );
+} catch (_) {}
+
 
   // One report per calendar date, enforced at the DB layer so concurrent
   // requests can't both slip past the application-level check below.
@@ -730,7 +738,7 @@ function createDatabase(dbPath) {
 
   function getDailyReportById(id) {
     const report = db
-      .prepare("SELECT id, report_date FROM daily_reports WHERE id = ?")
+      .prepare("SELECT id, report_date, is_exported FROM daily_reports WHERE id = ?")
       .get(id);
     if (!report) return null;
 
@@ -807,6 +815,7 @@ function createDatabase(dbPath) {
     return {
       id: report.id,
       date: report.report_date,
+       is_exported: Boolean(report.is_exported),
       purchases: report.purchases,
       gatePasses: report.gatePasses.map((entry) => ({
         gatePassNo: entry.gatepass_no,
@@ -926,72 +935,429 @@ function createDatabase(dbPath) {
     return true;
   }
 
-  function deleteDailyReport(id) {
-    const remove = db.transaction(() => {
-      const purchaseIds = db
-        .prepare("SELECT id FROM purchase_entries WHERE daily_report_id = ?")
-        .all(id)
-        .map((row) => row.id);
-      const gatePassIds = db
-        .prepare("SELECT id FROM gatepass_entries WHERE daily_report_id = ?")
-        .all(id)
-        .map((row) => row.id);
-      const manufacturingIds = db
-        .prepare(
-          "SELECT id FROM manufacturing_entries WHERE daily_report_id = ?",
-        )
-        .all(id)
-        .map((row) => row.id);
-      const deleteChildren = (table, column, ids) =>
-        ids.forEach((entryId) =>
-          db.prepare(`DELETE FROM ${table} WHERE ${column} = ?`).run(entryId),
-        );
-      deleteChildren("purchase_items", "purchase_entry_id", purchaseIds);
-      deleteChildren("gatepass_items", "gatepass_entry_id", gatePassIds);
-      deleteChildren(
-        "manufacturing_consumption",
-        "manufacturing_entry_id",
-        manufacturingIds,
-      );
-      deleteChildren(
-        "manufacturing_production",
-        "manufacturing_entry_id",
-        manufacturingIds,
-      );
-      db.prepare("DELETE FROM purchase_entries WHERE daily_report_id = ?").run(
-        id,
-      );
-      db.prepare("DELETE FROM gatepass_entries WHERE daily_report_id = ?").run(
-        id,
-      );
-      db.prepare(
-        "DELETE FROM manufacturing_entries WHERE daily_report_id = ?",
-      ).run(id);
-      db.prepare("DELETE FROM daily_reports WHERE id = ?").run(id);
-    });
-    remove();
-    return true;
+  function markDailyReportExported(id) {
+  const result = db
+    .prepare(
+      `
+        UPDATE daily_reports
+        SET is_exported = 1
+        WHERE id = ?
+      `,
+    )
+    .run(id);
+
+  if (result.changes === 0) {
+    throw new Error("Daily report not found.");
   }
+
+  return true;
+}
+
+
+  function deleteDailyReport(id, masterPassword = null) {
+  const report = db
+    .prepare(
+      `
+        SELECT is_exported
+        FROM daily_reports
+        WHERE id = ?
+      `,
+    )
+    .get(id);
+
+  if (!report) {
+    throw new Error("Daily report not found.");
+  }
+
+  // Exported reports require master password
+  if (report.is_exported) {
+    if (!masterPassword || !verifyMasterPassword(masterPassword)) {
+      throw new Error(
+        "Unable to delete after daily report exported. You can delete it with Master Password."
+      );
+    }
+  }
+
+  const remove = db.transaction(() => {
+    const purchaseIds = db
+      .prepare(
+        "SELECT id FROM purchase_entries WHERE daily_report_id = ?",
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    const gatePassIds = db
+      .prepare(
+        "SELECT id FROM gatepass_entries WHERE daily_report_id = ?",
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    const manufacturingIds = db
+      .prepare(
+        "SELECT id FROM manufacturing_entries WHERE daily_report_id = ?",
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    const deleteChildren = (table, column, ids) =>
+      ids.forEach((entryId) =>
+        db
+          .prepare(`DELETE FROM ${table} WHERE ${column} = ?`)
+          .run(entryId),
+      );
+
+    deleteChildren(
+      "purchase_items",
+      "purchase_entry_id",
+      purchaseIds,
+    );
+
+    deleteChildren(
+      "gatepass_items",
+      "gatepass_entry_id",
+      gatePassIds,
+    );
+
+    deleteChildren(
+      "manufacturing_consumption",
+      "manufacturing_entry_id",
+      manufacturingIds,
+    );
+
+    deleteChildren(
+      "manufacturing_production",
+      "manufacturing_entry_id",
+      manufacturingIds,
+    );
+
+    db.prepare(
+      "DELETE FROM purchase_entries WHERE daily_report_id = ?",
+    ).run(id);
+
+    db.prepare(
+      "DELETE FROM gatepass_entries WHERE daily_report_id = ?",
+    ).run(id);
+
+    db.prepare(
+      "DELETE FROM manufacturing_entries WHERE daily_report_id = ?",
+    ).run(id);
+
+    db.prepare(
+      "DELETE FROM daily_reports WHERE id = ?",
+    ).run(id);
+  });
+
+  remove();
+
+  return true;
+}
 
   // Replaces an existing daily report's contents (and possibly its date)
   // in a single transaction. If report.report_date has been changed to a
   // date that belongs to a *different* existing report, this rolls back
   // and throws instead of silently creating a duplicate.
-  function updateDailyReport(id, report) {
-    const replace = db.transaction(() => {
-      const collision = getDailyReportByDate(report.report_date);
-      if (collision && collision.id !== id) {
-        throw new Error(
-          `A daily report for ${report.report_date} already exists.`,
-        );
-      }
+  function updateDailyReport(id, report, masterPassword = null) {
+  const existing = db
+    .prepare(
+      `
+        SELECT
+          id,
+          is_exported
+        FROM daily_reports
+        WHERE id = ?
+      `,
+    )
+    .get(id);
 
-      deleteDailyReport(id);
-      saveDailyReport(report);
-    });
-    replace();
-    return true;
+  if (!existing) {
+    throw new Error("Daily report not found.");
   }
+
+  // Exported reports require master password
+  if (existing.is_exported) {
+    if (!masterPassword || !verifyMasterPassword(masterPassword)) {
+      throw new Error(
+        "Unable to edit after daily report exported. You can edit it with Master Password."
+      );
+    }
+  }
+
+  const collision = getDailyReportByDate(report.report_date);
+
+  if (collision && collision.id !== id) {
+    throw new Error(
+      `A daily report for ${report.report_date} already exists.`,
+    );
+  }
+
+  const replace = db.transaction(() => {
+    // Update date only.
+    // Keep is_exported unchanged.
+    db.prepare(
+      `
+        UPDATE daily_reports
+        SET report_date = ?
+        WHERE id = ?
+      `,
+    ).run(report.report_date, id);
+
+    // --------------------------------
+    // Purchase entries
+    // --------------------------------
+
+    const purchaseIds = db
+      .prepare(
+        `
+          SELECT id
+          FROM purchase_entries
+          WHERE daily_report_id = ?
+        `,
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    purchaseIds.forEach((purchaseId) => {
+      db.prepare(
+        `
+          DELETE FROM purchase_items
+          WHERE purchase_entry_id = ?
+        `,
+      ).run(purchaseId);
+    });
+
+    db.prepare(
+      `
+        DELETE FROM purchase_entries
+        WHERE daily_report_id = ?
+      `,
+    ).run(id);
+
+    // --------------------------------
+    // Gate pass entries
+    // --------------------------------
+
+    const gatePassIds = db
+      .prepare(
+        `
+          SELECT id
+          FROM gatepass_entries
+          WHERE daily_report_id = ?
+        `,
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    gatePassIds.forEach((gatePassId) => {
+      db.prepare(
+        `
+          DELETE FROM gatepass_items
+          WHERE gatepass_entry_id = ?
+        `,
+      ).run(gatePassId);
+    });
+
+    db.prepare(
+      `
+        DELETE FROM gatepass_entries
+        WHERE daily_report_id = ?
+      `,
+    ).run(id);
+
+    // --------------------------------
+    // Manufacturing entries
+    // --------------------------------
+
+    const manufacturingIds = db
+      .prepare(
+        `
+          SELECT id
+          FROM manufacturing_entries
+          WHERE daily_report_id = ?
+        `,
+      )
+      .all(id)
+      .map((row) => row.id);
+
+    manufacturingIds.forEach((manufacturingId) => {
+      db.prepare(
+        `
+          DELETE FROM manufacturing_consumption
+          WHERE manufacturing_entry_id = ?
+        `,
+      ).run(manufacturingId);
+
+      db.prepare(
+        `
+          DELETE FROM manufacturing_production
+          WHERE manufacturing_entry_id = ?
+        `,
+      ).run(manufacturingId);
+    });
+
+    db.prepare(
+      `
+        DELETE FROM manufacturing_entries
+        WHERE daily_report_id = ?
+      `,
+    ).run(id);
+
+    // --------------------------------
+    // Re-insert purchases
+    // --------------------------------
+
+    (report.purchases || []).forEach((purchase) => {
+      const purchaseEntry = db
+        .prepare(
+          `
+            INSERT INTO purchase_entries
+            (
+              daily_report_id,
+              purchase_no
+            )
+            VALUES (?, ?)
+          `,
+        )
+        .run(id, purchase.purchaseNo);
+
+      const purchaseEntryId = purchaseEntry.lastInsertRowid;
+
+      (purchase.items || []).forEach((item) => {
+        if (!item.item || !item.qty) return;
+
+        db.prepare(
+          `
+            INSERT INTO purchase_items
+            (
+              purchase_entry_id,
+              stock_item_id,
+              qty,
+              unit
+            )
+            VALUES (?, ?, ?, ?)
+          `,
+        ).run(
+          purchaseEntryId,
+          Number(item.item),
+          Number(item.qty),
+          item.unit,
+        );
+      });
+    });
+
+    // --------------------------------
+    // Re-insert gate passes
+    // --------------------------------
+
+    (report.gatePasses || []).forEach((gatePass) => {
+      const gatePassEntry = db
+        .prepare(
+          `
+            INSERT INTO gatepass_entries
+            (
+              daily_report_id,
+              gatepass_no
+            )
+            VALUES (?, ?)
+          `,
+        )
+        .run(id, gatePass.gatePassNo);
+
+      const gatePassEntryId = gatePassEntry.lastInsertRowid;
+
+      (gatePass.items || []).forEach((item) => {
+        if (!item.item || !item.qty) return;
+
+        db.prepare(
+          `
+            INSERT INTO gatepass_items
+            (
+              gatepass_entry_id,
+              stock_item_id,
+              qty,
+              unit
+            )
+            VALUES (?, ?, ?, ?)
+          `,
+        ).run(
+          gatePassEntryId,
+          Number(item.item),
+          Number(item.qty),
+          item.unit,
+        );
+      });
+    });
+
+    // --------------------------------
+    // Re-insert manufacturing
+    // --------------------------------
+
+    (report.manufactured || []).forEach((manufacturing) => {
+      const manufacturingEntry = db
+        .prepare(
+          `
+            INSERT INTO manufacturing_entries
+            (
+              daily_report_id
+            )
+            VALUES (?)
+          `,
+        )
+        .run(id);
+
+      const manufacturingEntryId =
+        manufacturingEntry.lastInsertRowid;
+
+      (manufacturing.consumption || []).forEach((item) => {
+        if (!item.item || !item.qty) return;
+
+        db.prepare(
+          `
+            INSERT INTO manufacturing_consumption
+            (
+              manufacturing_entry_id,
+              stock_item_id,
+              qty,
+              unit
+            )
+            VALUES (?, ?, ?, ?)
+          `,
+        ).run(
+          manufacturingEntryId,
+          Number(item.item),
+          Number(item.qty),
+          item.unit,
+        );
+      });
+
+      (manufacturing.production || []).forEach((item) => {
+        if (!item.item || !item.qty) return;
+
+        db.prepare(
+          `
+            INSERT INTO manufacturing_production
+            (
+              manufacturing_entry_id,
+              stock_item_id,
+              qty,
+              unit
+            )
+            VALUES (?, ?, ?, ?)
+          `,
+        ).run(
+          manufacturingEntryId,
+          Number(item.item),
+          Number(item.qty),
+          item.unit,
+        );
+      });
+    });
+  });
+
+  replace();
+
+  return true;
+}
 
   function getStockReport() {
     return db
@@ -1046,6 +1412,7 @@ function createDatabase(dbPath) {
 
     getDailyReports,
     saveDailyReport,
+    markDailyReportExported,
     getDailyReportById,
     getDailyReportByDate,
     updateDailyReport,

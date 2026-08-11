@@ -94,12 +94,16 @@ const api = {
   getDailyReportByDate(date) {
     return window.api.getDailyReportByDate(date);
   },
-  updateDailyReport(id, report) {
-    return window.api.updateDailyReport(id, report);
+  updateDailyReport(id, report, masterPassword) {
+    return window.api.updateDailyReport(id, report, masterPassword);
   },
-  deleteDailyReport(id) {
-    return window.api.deleteDailyReport(id);
+  deleteDailyReport(id, masterPassword) {
+    return window.api.deleteDailyReport(id, masterPassword);
   },
+
+  markDailyReportExported(id) {
+  return window.api.markDailyReportExported(id);
+},
 
   // Backup / Restore
   createBackup() {

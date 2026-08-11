@@ -147,10 +147,15 @@ ipcMain.handle("dailyReport:get", () => database.getDailyReports());
 ipcMain.handle("dailyReport:save", (event, report) => database.saveDailyReport(report));
 ipcMain.handle("dailyReport:getById", (event, id) => database.getDailyReportById(id));
 ipcMain.handle("dailyReport:getByDate", (event, date) => database.getDailyReportByDate(date));
-ipcMain.handle("dailyReport:update", (event, id, report) =>
-  database.updateDailyReport(id, report),
+ipcMain.handle("dailyReport:update", (event, id, report, masterPassword) =>
+  database.updateDailyReport(id, report, masterPassword),
 );
-ipcMain.handle("dailyReport:delete", (event, id) => database.deleteDailyReport(id));
+ipcMain.handle("dailyReport:delete", (event, id, masterPassword) => database.deleteDailyReport(id,  masterPassword));
+ipcMain.handle(
+  "dailyReport:markExported",
+  (event, id) =>
+    database.markDailyReportExported(id)
+);
 
 // =======================
 // Backup / Restore (copies files, current db stays active)
