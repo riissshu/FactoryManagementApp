@@ -18,6 +18,9 @@ const api = {
   addStockGroup(name) {
     return window.api.addStockGroup(name);
   },
+  hasStockGroupTransactions(id) {
+  return window.api.hasStockGroupTransactions(id);
+},
   renameStockGroup(id, name) {
     return window.api.renameStockGroup(id, name);
   },
@@ -30,6 +33,9 @@ const api = {
   addStockUnit(name) {
     return window.api.addStockUnit(name);
   },
+  hasStockUnitTransactions(id) {
+  return window.api.hasStockUnitTransactions(id);
+},
   renameStockUnit(id, name) {
     return window.api.renameStockUnit(id, name);
   },

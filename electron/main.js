@@ -91,6 +91,19 @@ ipcMain.handle("stockGroups:add", (event, name) => database.addStockGroup(name))
 ipcMain.handle("stockGroups:rename", (event, id, name) => database.renameStockGroup(id, name));
 ipcMain.handle("stockGroups:deactivate", (event, id) => database.deactivateStockGroup(id));
 
+ipcMain.handle(
+  "stockGroups:hasTransactions",
+  (event, id) =>
+    database.hasStockGroupTransactions(id)
+);
+
+ipcMain.handle(
+  "stockUnits:hasTransactions",
+  (event, id) =>
+    database.hasStockUnitTransactions(id)
+);
+
+
 ipcMain.handle("stockUnits:get", () => database.getStockUnits());
 ipcMain.handle("stockUnits:add", (event, name) => database.addStockUnit(name));
 ipcMain.handle("stockUnits:rename", (event, id, name) => database.renameStockUnit(id, name));

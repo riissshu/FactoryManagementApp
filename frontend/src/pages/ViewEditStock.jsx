@@ -11,6 +11,7 @@ export default function ViewEditStock({ itemId, onClose }) {
     conversion: "",
     openingQty: "",
     lowQtyAlert: "",
+    isActive: 1,
   };
 
   const [item, setItem] = useState(emptyItem);
@@ -19,7 +20,14 @@ export default function ViewEditStock({ itemId, onClose }) {
   const [units, setUnits] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
+  // Used for API calls
   const [processing, setProcessing] = useState(false);
+
+  // Specifically used while checking Edit permission
+  const [checkingEdit, setCheckingEdit] = useState(false);
+
+  const [editing, setEditing] = useState(false);
 
   const [validated, setValidated] = useState(false);
 
@@ -27,11 +35,13 @@ export default function ViewEditStock({ itemId, onClose }) {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showInactiveModal, setShowInactiveModal] = useState(false);
 
-  const [alternateEnabled, setAlternateEnabled] = useState(false);
+  const [alternateEnabled, setAlternateEnabled] =
+    useState(false);
 
   // --------------------------------------------------
-  // Load item
+  // LOAD ITEM
   // --------------------------------------------------
 
   useEffect(() => {
@@ -49,12 +59,15 @@ export default function ViewEditStock({ itemId, onClose }) {
       setLoading(true);
       setError("");
       setMessage("");
+      setEditing(false);
+      setHasTransactions(false);
 
-      const [groups, unitList, stockItem] = await Promise.all([
-        api.getStockGroups(),
-        api.getStockUnits(),
-        api.getStockItemById(itemId),
-      ]);
+      const [groups, unitList, stockItem] =
+        await Promise.all([
+          api.getStockGroups(),
+          api.getStockUnits(),
+          api.getStockItemById(itemId),
+        ]);
 
       setStockGroups(groups || []);
       setUnits(unitList || []);
@@ -75,32 +88,16 @@ export default function ViewEditStock({ itemId, onClose }) {
         isActive: stockItem.is_active,
       });
 
-      // ----------------------------------------------
-      // Automatic transaction check
-      // ----------------------------------------------
-
-      const transactions =
-        await api.hasStockItemTransactions(stockItem.id);
-
-      setHasTransactions(Boolean(transactions));
-
-      // We DO NOT automatically inactivate.
-      // The user will be asked below if needed.
-
-      if (transactions && stockItem.is_active) {
-        const makeInactive = window.confirm(
-          `This stock item has existing transactions.\n\n` +
-          `Do you want to make "${stockItem.item_name}" inactive?`
-        );
-
-        if (makeInactive) {
-          await makeInactiveItem(stockItem.id);
-        }
-      }
+      // Set current alternate-unit state
+      setAlternateEnabled(
+        stockItem.alternate_unit === "Kgs"
+      );
     } catch (err) {
       console.error(err);
+
       setError(
-        err?.message || "Unable to load stock item."
+        err?.message ||
+          "Unable to load stock item."
       );
     } finally {
       setLoading(false);
@@ -108,11 +105,233 @@ export default function ViewEditStock({ itemId, onClose }) {
   };
 
   // --------------------------------------------------
-  // Inactivate
+  // EDIT BUTTON
   // --------------------------------------------------
 
-  const makeInactiveItem = async (id = item.id) => {
-    if (!id || processing) return;
+  const handleEdit = async () => {
+    // Prevent multiple clicks
+    if (
+      processing ||
+      checkingEdit ||
+      editing ||
+      !item.id
+    ) {
+      return;
+    }
+
+    try {
+      setCheckingEdit(true);
+      setError("");
+      setMessage("");
+
+      // Check transaction status NOW
+      const transactions =
+        await api.hasStockItemTransactions(item.id);
+
+      if (transactions) {
+        setHasTransactions(true);
+        setEditing(false);
+
+        setMessage(
+          "This item cannot be modified because transactions exist."
+        );
+
+        return;
+      }
+
+      // No transactions
+      setHasTransactions(false);
+      setEditing(true);
+
+      setMessage("You can edit this item.");
+    } catch (err) {
+      console.error(
+        "Unable to check stock item:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Unable to check whether this item can be modified."
+      );
+    } finally {
+      setCheckingEdit(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // INPUT CHANGE
+  // --------------------------------------------------
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setItem((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // --------------------------------------------------
+  // SAVE ITEM
+  // --------------------------------------------------
+
+  const saveItem = async (e) => {
+    e.preventDefault();
+
+    // Prevent multiple clicks
+    if (
+      processing ||
+      checkingEdit ||
+      !editing ||
+      !item.id
+    ) {
+      return;
+    }
+
+    setValidated(true);
+    setError("");
+    setMessage("");
+
+    if (
+      !item.itemName ||
+      !item.stockGroup ||
+      !item.unit
+    ) {
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      const alternateUnit =
+        getEffectiveAlternateUnit();
+
+      await api.updateStockItem({
+        id: item.id,
+        item_name: item.itemName.trim(),
+        stock_group: item.stockGroup,
+        unit: item.unit,
+        alternate_unit: alternateUnit,
+        conversion:
+          Number(item.conversion) || 0,
+        opening_qty:
+          Number(item.openingQty) || 0,
+        low_qty_alert:
+          Number(item.lowQtyAlert) || 0,
+      });
+
+      // --------------------------------------------
+      // IMPORTANT:
+      // Get the actual saved data from database
+      // --------------------------------------------
+
+      const freshItem =
+        await api.getStockItemById(item.id);
+
+      if (freshItem) {
+        setItem({
+          id: freshItem.id,
+          itemName: freshItem.item_name || "",
+          stockGroup:
+            freshItem.stock_group || "",
+          unit: freshItem.unit || "",
+          conversion:
+            freshItem.conversion ?? "",
+          openingQty:
+            freshItem.opening_qty ?? "",
+          lowQtyAlert:
+            freshItem.low_qty_alert ?? "",
+          isActive: freshItem.is_active,
+        });
+
+        setAlternateEnabled(
+          freshItem.alternate_unit === "Kgs"
+        );
+      }
+
+      setEditing(false);
+      setValidated(false);
+
+      setMessage("Saved to database.");
+    } catch (err) {
+      console.error(
+        "Unable to update item:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Unable to update item."
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // CANCEL EDIT
+  // --------------------------------------------------
+
+  const handleCancelEdit = async () => {
+    if (processing || checkingEdit) {
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      setError("");
+      setMessage("");
+
+      // Reload original database values
+      const freshItem =
+        await api.getStockItemById(item.id);
+
+      if (freshItem) {
+        setItem({
+          id: freshItem.id,
+          itemName: freshItem.item_name || "",
+          stockGroup:
+            freshItem.stock_group || "",
+          unit: freshItem.unit || "",
+          conversion:
+            freshItem.conversion ?? "",
+          openingQty:
+            freshItem.opening_qty ?? "",
+          lowQtyAlert:
+            freshItem.low_qty_alert ?? "",
+          isActive: freshItem.is_active,
+        });
+
+        setAlternateEnabled(
+          freshItem.alternate_unit === "Kgs"
+        );
+      }
+
+      setEditing(false);
+      setValidated(false);
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err?.message ||
+          "Unable to reload stock item."
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // INACTIVATE
+  // --------------------------------------------------
+
+  const makeInactiveItem = async (
+    id = item.id
+  ) => {
+    if (!id || processing || checkingEdit) {
+      return;
+    }
 
     try {
       setProcessing(true);
@@ -126,12 +345,17 @@ export default function ViewEditStock({ itemId, onClose }) {
         isActive: 0,
       }));
 
-      setMessage("Item has been made inactive successfully.");
+      setEditing(false);
+
+      setMessage(
+        "Item has been made inactive successfully."
+      );
     } catch (err) {
       console.error(err);
 
       setError(
-        err?.message || "Unable to make item inactive."
+        err?.message ||
+          "Unable to make item inactive."
       );
     } finally {
       setProcessing(false);
@@ -139,167 +363,134 @@ export default function ViewEditStock({ itemId, onClose }) {
   };
 
   // --------------------------------------------------
-  // Input change
+  // DELETE
   // --------------------------------------------------
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+ const deleteItem = async () => {
+  if (
+    !item.id ||
+    processing ||
+    checkingEdit
+  ) {
+    return;
+  }
 
-    setItem((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  // --------------------------------------------------
-  // Save / Edit
-  // --------------------------------------------------
-
-  const saveItem = async (e) => {
-    e.preventDefault();
-
-    if (processing) return;
-
-    setValidated(true);
+  try {
+    setProcessing(true);
     setError("");
     setMessage("");
 
-    if (!item.itemName || !item.stockGroup || !item.unit) {
+    // Check transaction before delete
+    const transactions =
+      await api.hasStockItemTransactions(item.id);
+
+    // --------------------------------------------
+    // TRANSACTION EXISTS
+    // --------------------------------------------
+
+    if (transactions) {
+      setHasTransactions(true);
+
+      // Do not delete.
+      // Show Bootstrap modal asking whether
+      // the user wants to make the item inactive.
+      setShowInactiveModal(true);
+
       return;
     }
 
-    try {
-      setProcessing(true);
-
-      // Check again before modifying.
-      // This protects us if a transaction was created
-      // after the page initially loaded.
-      const transactions =
-        await api.hasStockItemTransactions(item.id);
-
-      if (transactions) {
-        setHasTransactions(true);
-
-        const makeInactive = window.confirm(
-          `This stock item now has existing transactions.\n\n` +
-          `Do you want to make "${item.itemName}" inactive?`
-        );
-
-        if (makeInactive) {
-          await api.inactivateStockItem(item.id);
-
-          setItem((prev) => ({
-            ...prev,
-            isActive: 0,
-          }));
-
-          setMessage(
-            "Item has been made inactive successfully."
-          );
-        }
-
-        return;
-      }
-
-      const alternateUnit =
-        getEffectiveAlternateUnit();
-
-      await api.updateStockItem({
-        id: item.id,
-        item_name: item.itemName.trim(),
-        stock_group: item.stockGroup,
-        unit: item.unit,
-        alternate_unit: alternateUnit,
-        conversion: Number(item.conversion) || 0,
-        opening_qty: Number(item.openingQty) || 0,
-        low_qty_alert: Number(item.lowQtyAlert) || 0,
-      });
-
-      setMessage("Item updated successfully.");
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err?.message || "Unable to update item."
-      );
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // --------------------------------------------------
-  // Delete
-  // --------------------------------------------------
-
-  const deleteItem = async () => {
-    if (!item.id || processing) return;
+    // --------------------------------------------
+    // NO TRANSACTION
+    // --------------------------------------------
 
     const confirmed = window.confirm(
       `Are you sure you want to delete "${item.itemName}"?\n\n` +
-      `This action cannot be undone.`
+        `This action cannot be undone.`
     );
 
-    if (!confirmed) return;
-
-    try {
-      setProcessing(true);
-      setError("");
-      setMessage("");
-
-      // Check before delete.
-      const transactions =
-        await api.hasStockItemTransactions(item.id);
-
-      if (transactions) {
-        setHasTransactions(true);
-
-        const makeInactive = window.confirm(
-          `This item has existing transactions and cannot be deleted.\n\n` +
-          `Do you want to make "${item.itemName}" inactive instead?`
-        );
-
-        if (makeInactive) {
-          await api.inactivateStockItem(item.id);
-
-          setItem((prev) => ({
-            ...prev,
-            isActive: 0,
-          }));
-
-          setMessage(
-            "Item has been made inactive successfully."
-          );
-        }
-
-        return;
-      }
-
-      await api.deleteStockItem(item.id);
-
-      setMessage("Item deleted successfully.");
-
-      // Give the user a moment to see the success message,
-      // then return to the previous page.
-      setTimeout(() => {
-        handleClose();
-      }, 700);
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err?.message || "Unable to delete item."
-      );
-    } finally {
-      setProcessing(false);
+    if (!confirmed) {
+      return;
     }
-  };
+
+    await api.deleteStockItem(item.id);
+
+    setMessage(
+      "Item deleted successfully."
+    );
+
+    setTimeout(() => {
+      handleClose();
+    }, 700);
+
+  } catch (err) {
+    console.error(
+      "Unable to delete item:",
+      err
+    );
+
+    setError(
+      err?.message ||
+        "Unable to delete item."
+    );
+  } finally {
+    setProcessing(false);
+  }
+};
+
+const handleMakeInactive = async () => {
+  if (
+    !item.id ||
+    processing ||
+    checkingEdit
+  ) {
+    return;
+  }
+
+  try {
+    setProcessing(true);
+    setError("");
+    setMessage("");
+
+    await api.inactivateStockItem(item.id);
+
+    setItem((prev) => ({
+      ...prev,
+      isActive: 0,
+    }));
+
+    setShowInactiveModal(false);
+    setEditing(false);
+
+    setMessage(
+      "Item has been made inactive successfully."
+    );
+  } catch (err) {
+    console.error(
+      "Unable to make item inactive:",
+      err
+    );
+
+    setError(
+      err?.message ||
+        "Unable to make item inactive."
+    );
+  } finally {
+    setProcessing(false);
+  }
+};
 
   // --------------------------------------------------
-  // Low quantity alert
+  // LOW QUANTITY ALERT
   // --------------------------------------------------
 
   const saveLowQtyAlertOnly = async () => {
-    if (!item.id || processing) return;
+    if (
+      !item.id ||
+      processing ||
+      checkingEdit
+    ) {
+      return;
+    }
 
     try {
       setProcessing(true);
@@ -311,7 +502,9 @@ export default function ViewEditStock({ itemId, onClose }) {
         Number(item.lowQtyAlert) || 0
       );
 
-      setMessage("Low stock alert updated successfully.");
+      setMessage(
+        "Low stock alert updated successfully."
+      );
     } catch (err) {
       console.error(err);
 
@@ -325,33 +518,39 @@ export default function ViewEditStock({ itemId, onClose }) {
   };
 
   // --------------------------------------------------
-  // Alternate unit
+  // ALTERNATE UNIT
   // --------------------------------------------------
 
   const isPackagingMaterial =
     item.stockGroup === "Packaging Material";
 
   const autoAlternateOn =
-    item.unit !== "" && item.unit !== "Kgs";
+    item.unit !== "" &&
+    item.unit !== "Kgs";
 
   const switchOn = isPackagingMaterial
     ? alternateEnabled
     : autoAlternateOn;
 
-  const switchInteractive = isPackagingMaterial;
+  const switchInteractive =
+    isPackagingMaterial;
 
-  const effectiveAltUnit = switchOn ? "Kgs" : "";
+  const effectiveAltUnit =
+    switchOn ? "Kgs" : "";
 
-  const getEffectiveAlternateUnit = () => {
-    return switchOn ? "Kgs" : "";
-  };
+  const getEffectiveAlternateUnit =
+    () => {
+      return switchOn ? "Kgs" : "";
+    };
 
   // --------------------------------------------------
-  // Close
+  // CLOSE
   // --------------------------------------------------
 
   const handleClose = () => {
-    if (processing) return;
+    if (processing || checkingEdit) {
+      return;
+    }
 
     if (onClose) {
       onClose();
@@ -361,7 +560,7 @@ export default function ViewEditStock({ itemId, onClose }) {
   };
 
   // --------------------------------------------------
-  // Loading
+  // LOADING
   // --------------------------------------------------
 
   if (loading) {
@@ -374,17 +573,28 @@ export default function ViewEditStock({ itemId, onClose }) {
               role="status"
             />
 
-            <div>Loading stock item...</div>
+            <div>
+              Loading stock item...
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
+  // --------------------------------------------------
+  // READ / EDIT MODE
+  // --------------------------------------------------
+
+  const fieldsReadOnly =
+    !editing ||
+    processing ||
+    checkingEdit;
+
   return (
     <div className="container mt-4">
 
-      {/* Header */}
+      {/* HEADER */}
 
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -398,10 +608,9 @@ export default function ViewEditStock({ itemId, onClose }) {
             </small>
           )}
         </div>
-
       </div>
 
-      {/* Success */}
+      {/* SUCCESS */}
 
       {message && (
         <div
@@ -412,7 +621,7 @@ export default function ViewEditStock({ itemId, onClose }) {
         </div>
       )}
 
-      {/* Error */}
+      {/* ERROR */}
 
       {error && (
         <div
@@ -423,40 +632,32 @@ export default function ViewEditStock({ itemId, onClose }) {
         </div>
       )}
 
-      {/* Transaction status */}
+      {/* TRANSACTION WARNING */}
 
       {hasTransactions && (
-        <div className="alert alert-warning d-flex justify-content-between align-items-center">
-          <div>
-            <strong>Transaction found.</strong>
-            <div className="small">
-              This item has already been used in a transaction.
-            </div>
-          </div>
+        <div className="alert alert-warning">
+          <strong>
+            This item cannot be modified.
+          </strong>
 
-          {item.isActive === 1 && (
-            <button
-              type="button"
-              className="btn btn-warning"
-              onClick={() => makeInactiveItem()}
-              disabled={processing}
-            >
-              {processing
-                ? "Processing..."
-                : "Make Inactive"}
-            </button>
-          )}
+          <div className="small mt-1">
+            This stock item already has
+            transactions.
+          </div>
         </div>
       )}
 
       <form
         noValidate
         className={`needs-validation ${
-          validated ? "was-validated" : ""
+          validated
+            ? "was-validated"
+            : ""
         }`}
         onSubmit={saveItem}
       >
         <div className="card shadow-sm">
+
           <div className="card-body">
 
             <div className="row">
@@ -464,6 +665,8 @@ export default function ViewEditStock({ itemId, onClose }) {
               {/* LEFT */}
 
               <div className="col-md-6">
+
+                {/* ITEM NAME */}
 
                 <div className="mb-3">
                   <label className="form-label">
@@ -474,16 +677,24 @@ export default function ViewEditStock({ itemId, onClose }) {
                     type="text"
                     className="form-control"
                     name="itemName"
-                    value={item.itemName}
-                    onChange={handleChange}
+                    value={
+                      item.itemName
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    readOnly={
+                      fieldsReadOnly
+                    }
                     required
-                    disabled={processing}
                   />
 
                   <div className="invalid-feedback">
                     Please enter Item Name.
                   </div>
                 </div>
+
+                {/* STOCK GROUP */}
 
                 <div className="mb-3">
                   <label className="form-label">
@@ -493,29 +704,39 @@ export default function ViewEditStock({ itemId, onClose }) {
                   <select
                     className="form-select"
                     name="stockGroup"
-                    value={item.stockGroup}
-                    onChange={handleChange}
+                    value={
+                      item.stockGroup
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      fieldsReadOnly
+                    }
                     required
-                    disabled={processing}
                   >
                     <option value="">
                       Select Stock Group
                     </option>
 
-                    {stockGroups.map((g) => (
-                      <option
-                        key={g.id}
-                        value={g.name}
-                      >
-                        {g.name}
-                      </option>
-                    ))}
+                    {stockGroups.map(
+                      (g) => (
+                        <option
+                          key={g.id}
+                          value={g.name}
+                        >
+                          {g.name}
+                        </option>
+                      )
+                    )}
                   </select>
 
                   <div className="invalid-feedback">
                     Please select Stock Group.
                   </div>
                 </div>
+
+                {/* PRIMARY UNIT */}
 
                 <div className="mb-3">
                   <label className="form-label">
@@ -525,23 +746,31 @@ export default function ViewEditStock({ itemId, onClose }) {
                   <select
                     className="form-select"
                     name="unit"
-                    value={item.unit}
-                    onChange={handleChange}
+                    value={
+                      item.unit
+                    }
+                    onChange={
+                      handleChange
+                    }
+                    disabled={
+                      fieldsReadOnly
+                    }
                     required
-                    disabled={processing}
                   >
                     <option value="">
                       Select Primary Unit
                     </option>
 
-                    {units.map((u) => (
-                      <option
-                        key={u.id}
-                        value={u.name}
-                      >
-                        {u.name}
-                      </option>
-                    ))}
+                    {units.map(
+                      (u) => (
+                        <option
+                          key={u.id}
+                          value={u.name}
+                        >
+                          {u.name}
+                        </option>
+                      )
+                    )}
                   </select>
 
                   <div className="invalid-feedback">
@@ -549,35 +778,46 @@ export default function ViewEditStock({ itemId, onClose }) {
                   </div>
                 </div>
 
+                {/* ALTERNATE + CONVERSION */}
+
                 <div className="row">
 
                   <div className="col-md-6">
+
                     <label className="form-label">
                       Alternate Unit
                     </label>
 
                     <div className="form-check form-switch">
+
                       <input
                         className="form-check-input"
                         type="checkbox"
                         role="switch"
                         id="alternateUnitSwitch"
-                        checked={switchOn}
+                        checked={
+                          switchOn
+                        }
                         disabled={
-                          processing ||
+                          fieldsReadOnly ||
                           !switchInteractive
                         }
                         onChange={(e) => {
                           const enabled =
                             e.target.checked;
 
-                          setAlternateEnabled(enabled);
+                          setAlternateEnabled(
+                            enabled
+                          );
 
                           if (!enabled) {
-                            setItem((prev) => ({
-                              ...prev,
-                              conversion: "",
-                            }));
+                            setItem(
+                              (prev) => ({
+                                ...prev,
+                                conversion:
+                                  "",
+                              })
+                            );
                           }
                         }}
                       />
@@ -586,14 +826,18 @@ export default function ViewEditStock({ itemId, onClose }) {
                         className="form-check-label"
                         htmlFor="alternateUnitSwitch"
                       >
-                        {switchOn ? "On" : "Off"}
+                        {switchOn
+                          ? "On"
+                          : "Off"}
                       </label>
+
                     </div>
 
                     <select
                       className="form-select"
-                      name="altUnitDisplay"
-                      value={effectiveAltUnit}
+                      value={
+                        effectiveAltUnit
+                      }
                       disabled
                     >
                       {!switchOn && (
@@ -606,9 +850,11 @@ export default function ViewEditStock({ itemId, onClose }) {
                         Kgs
                       </option>
                     </select>
+
                   </div>
 
                   <div className="col-md-6 mb-3">
+
                     <label className="form-label">
                       Conversion
                     </label>
@@ -627,13 +873,19 @@ export default function ViewEditStock({ itemId, onClose }) {
                         type="number"
                         className="form-control"
                         name="conversion"
-                        value={item.conversion}
-                        onChange={handleChange}
+                        value={
+                          item.conversion
+                        }
+                        onChange={
+                          handleChange
+                        }
                         min="0.01"
                         step="any"
-                        required={switchOn}
+                        required={
+                          switchOn
+                        }
                         disabled={
-                          processing ||
+                          fieldsReadOnly ||
                           !switchOn
                         }
                       />
@@ -647,14 +899,18 @@ export default function ViewEditStock({ itemId, onClose }) {
                       </div>
 
                     </div>
+
                   </div>
 
                 </div>
+
               </div>
 
               {/* RIGHT */}
 
               <div className="col-md-6">
+
+                {/* OPENING QTY */}
 
                 <div className="mb-3">
                   <label className="form-label">
@@ -665,13 +921,21 @@ export default function ViewEditStock({ itemId, onClose }) {
                     type="number"
                     className="form-control"
                     name="openingQty"
-                    value={item.openingQty}
-                    onChange={handleChange}
+                    value={
+                      item.openingQty
+                    }
+                    onChange={
+                      handleChange
+                    }
                     min="0"
                     step="any"
-                    disabled={processing}
+                    disabled={
+                      fieldsReadOnly
+                    }
                   />
                 </div>
+
+                {/* LOW STOCK ALERT */}
 
                 <div className="mb-3">
 
@@ -689,30 +953,43 @@ export default function ViewEditStock({ itemId, onClose }) {
                       className="form-control"
                       name="lowQtyAlert"
                       placeholder="e.g. 50"
-                      value={item.lowQtyAlert}
-                      onChange={handleChange}
+                      value={
+                        item.lowQtyAlert
+                      }
+                      onChange={
+                        handleChange
+                      }
                       min="0"
                       step="any"
-                      disabled={processing}
+                      disabled={
+                        processing ||
+                        checkingEdit
+                      }
                     />
 
                     <button
                       type="button"
                       className="btn btn-outline-secondary"
-                      title="Save just the alert quantity"
-                      onClick={saveLowQtyAlertOnly}
+                      onClick={
+                        saveLowQtyAlertOnly
+                      }
                       disabled={
-                        processing || !item.id
+                        processing ||
+                        checkingEdit ||
+                        !item.id
                       }
                     >
-                      Save alert only
+                      {processing
+                        ? "Saving..."
+                        : "Save alert only"}
                     </button>
 
                   </div>
 
                   <div className="form-text">
-                    Dashboard flags this item when balance
-                    drops below this quantity.
+                    Dashboard flags this
+                    item when balance drops
+                    below this quantity.
                   </div>
 
                 </div>
@@ -724,40 +1001,96 @@ export default function ViewEditStock({ itemId, onClose }) {
 
             <div className="mt-4 pt-3 border-top d-flex gap-2">
 
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={
-                  processing ||
-                  !item.id ||
-                  !item.isActive
-                }
-              >
-                {processing
-                  ? "Processing..."
-                  : "Edit / Save"}
-              </button>
+              {/* EDIT */}
 
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={deleteItem}
-                disabled={
-                  processing ||
-                  !item.id ||
-                  !item.isActive
-                }
-              >
-                {processing
-                  ? "Processing..."
-                  : "Delete"}
-              </button>
+              {!editing && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={
+                    handleEdit
+                  }
+                  disabled={
+                    processing ||
+                    checkingEdit ||
+                    !item.id ||
+                    !item.isActive
+                  }
+                >
+                  {checkingEdit
+                    ? "Checking..."
+                    : "Edit"}
+                </button>
+              )}
+
+              {/* SAVE */}
+
+              {editing && (
+                <button
+                  type="submit"
+                  className="btn btn-success"
+                  disabled={
+                    processing ||
+                    checkingEdit ||
+                    !item.id
+                  }
+                >
+                  {processing
+                    ? "Saving..."
+                    : "Save"}
+                </button>
+              )}
+
+              {/* CANCEL */}
+
+              {editing && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={
+                    handleCancelEdit
+                  }
+                  disabled={
+                    processing ||
+                    checkingEdit
+                  }
+                >
+                  Cancel
+                </button>
+              )}
+
+              {/* DELETE */}
+
+              {!editing && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={
+                    deleteItem
+                  }
+                  disabled={
+                    processing ||
+                    checkingEdit ||
+                    !item.id ||
+                    !item.isActive
+                  }
+                >
+                  Delete
+                </button>
+              )}
+
+              {/* CLOSE */}
 
               <button
                 type="button"
                 className="btn btn-outline-secondary"
-                onClick={handleClose}
-                disabled={processing}
+                onClick={
+                  handleClose
+                }
+                disabled={
+                  processing ||
+                  checkingEdit
+                }
               >
                 Close
               </button>
@@ -767,6 +1100,92 @@ export default function ViewEditStock({ itemId, onClose }) {
           </div>
         </div>
       </form>
+
+      
+        {showInactiveModal && (
+  <div
+    className="modal fade show d-block"
+    tabIndex="-1"
+    role="dialog"
+    style={{
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    }}
+  >
+    <div
+      className="modal-dialog modal-dialog-centered"
+      role="document"
+    >
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            Delete Not Allowed
+          </h5>
+
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() =>
+              !processing &&
+              setShowInactiveModal(false)
+            }
+            disabled={processing}
+          />
+        </div>
+
+        <div className="modal-body">
+
+          <p className="mb-2">
+            <strong>
+              This item cannot be deleted.
+            </strong>
+          </p>
+
+          <p className="mb-0 text-muted">
+            This stock item has existing
+            transactions.
+          </p>
+
+          <p className="mt-3 mb-0">
+            Would you like to make
+            <strong> "{item.itemName}" </strong>
+            inactive instead?
+          </p>
+
+        </div>
+
+        <div className="modal-footer">
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() =>
+              setShowInactiveModal(false)
+            }
+            disabled={processing}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-warning"
+            onClick={handleMakeInactive}
+            disabled={processing}
+          >
+            {processing
+              ? "Processing..."
+              : "Make Inactive"}
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+
+
     </div>
   );
 }

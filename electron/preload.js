@@ -23,7 +23,19 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("stockGroups:rename", id, name),
   deactivateStockGroup: (id) =>
     ipcRenderer.invoke("stockGroups:deactivate", id),
+  hasStockGroupTransactions: (id) =>
+  ipcRenderer.invoke(
+    "stockGroups:hasTransactions",
+    id
+  ),
 
+
+
+  hasStockUnitTransactions: (id) =>
+  ipcRenderer.invoke(
+    "stockUnits:hasTransactions",
+    id
+  ),
   getStockUnits: () => ipcRenderer.invoke("stockUnits:get"),
   addStockUnit: (name) => ipcRenderer.invoke("stockUnits:add", name),
   renameStockUnit: (id, name) =>

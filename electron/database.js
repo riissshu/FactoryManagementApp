@@ -285,12 +285,72 @@ function createDatabase(dbPath) {
   }
 
   function renameStockGroup(id, name) {
+      if (hasStockGroupTransactions(id)) {
+    throw new Error(
+      "This stock group is used in a transaction and cannot be modified."
+    );
+  }
+
     db.prepare("UPDATE stock_groups SET name = ? WHERE id = ?").run(
       name.trim(),
       id,
     );
     return true;
   }
+
+  function hasStockGroupTransactions(id) {
+  const group = db
+    .prepare(
+      `
+        SELECT name
+        FROM stock_groups
+        WHERE id = ?
+      `
+    )
+    .get(id);
+
+  if (!group) {
+    return false;
+  }
+
+  const result = db
+    .prepare(
+      `
+        SELECT 1
+        FROM stock_items si
+        WHERE si.stock_group = ?
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM purchase_items pi
+            WHERE pi.stock_item_id = si.id
+          )
+
+          OR EXISTS (
+            SELECT 1
+            FROM gatepass_items gi
+            WHERE gi.stock_item_id = si.id
+          )
+
+          OR EXISTS (
+            SELECT 1
+            FROM manufacturing_consumption mc
+            WHERE mc.stock_item_id = si.id
+          )
+
+          OR EXISTS (
+            SELECT 1
+            FROM manufacturing_production mp
+            WHERE mp.stock_item_id = si.id
+          )
+        )
+        LIMIT 1
+      `
+    )
+    .get(group.name);
+
+  return Boolean(result);
+}
 
   function deactivateStockGroup(id) {
     db.prepare("UPDATE stock_groups SET is_active = 0 WHERE id = ?").run(id);
@@ -308,7 +368,68 @@ function createDatabase(dbPath) {
     return true;
   }
 
+  function hasStockUnitTransactions(id) {
+  const unit = db
+    .prepare(
+      `
+        SELECT name
+        FROM stock_units
+        WHERE id = ?
+      `
+    )
+    .get(id);
+
+  if (!unit) {
+    return false;
+  }
+
+  const result = db
+    .prepare(
+      `
+        SELECT 1
+        FROM stock_items si
+        WHERE
+          (si.unit = ? OR si.alternate_unit = ?)
+          AND (
+            EXISTS (
+              SELECT 1
+              FROM purchase_items pi
+              WHERE pi.stock_item_id = si.id
+            )
+
+            OR EXISTS (
+              SELECT 1
+              FROM gatepass_items gi
+              WHERE gi.stock_item_id = si.id
+            )
+
+            OR EXISTS (
+              SELECT 1
+              FROM manufacturing_consumption mc
+              WHERE mc.stock_item_id = si.id
+            )
+
+            OR EXISTS (
+              SELECT 1
+              FROM manufacturing_production mp
+              WHERE mp.stock_item_id = si.id
+            )
+          )
+        LIMIT 1
+      `
+    )
+    .get(unit.name, unit.name);
+
+  return Boolean(result);
+}
+
   function renameStockUnit(id, name) {
+     if (hasStockUnitTransactions(id)) {
+    throw new Error(
+      "This stock unit is used in a transaction and cannot be modified."
+    );
+  }
+
     db.prepare("UPDATE stock_units SET name = ? WHERE id = ?").run(
       name.trim(),
       id,
@@ -325,26 +446,47 @@ function createDatabase(dbPath) {
   // Stock Items
   // =======================
 
-  function bulkUpdateStockItems(items) {
-    const update = db.prepare(
-      "UPDATE stock_items SET item_name = ?, stock_group = ?, unit = ?, alternate_unit = ?, conversion = ?, opening_qty = ? WHERE id = ?",
-    );
-    const transaction = db.transaction(() =>
-      items.forEach((item) =>
-        update.run(
-          item.item_name,
-          item.stock_group,
-          item.unit,
-          item.alternate_unit,
-          Number(item.conversion) || 0,
-          Number(item.opening_qty) || 0,
-          item.id,
-        ),
-      ),
-    );
-    transaction();
-    return true;
-  }
+ function bulkUpdateStockItems(items) {
+  const update = db.prepare(
+    `
+      UPDATE stock_items
+      SET
+        item_name = ?,
+        stock_group = ?,
+        unit = ?,
+        alternate_unit = ?,
+        conversion = ?,
+        opening_qty = ?
+      WHERE id = ?
+    `,
+  );
+
+  const transaction = db.transaction(() => {
+    items.forEach((item) => {
+      // Do not allow alteration of an item
+      // that already has any transaction.
+      if (hasStockItemTransactions(item.id)) {
+        throw new Error(
+          `Stock item "${item.item_name}" has transactions and cannot be modified.`
+        );
+      }
+
+      update.run(
+        item.item_name,
+        item.stock_group,
+        item.unit,
+        item.alternate_unit,
+        Number(item.conversion) || 0,
+        Number(item.opening_qty) || 0,
+        item.id,
+      );
+    });
+  });
+
+  transaction();
+
+  return true;
+}
 
   function bulkCreateStockItems(items) {
     const insert = db.prepare(
@@ -884,10 +1026,12 @@ function createDatabase(dbPath) {
 
     getStockGroups,
     addStockGroup,
+     hasStockGroupTransactions,
     renameStockGroup,
     deactivateStockGroup,
     getStockUnits,
     addStockUnit,
+     hasStockUnitTransactions,
     renameStockUnit,
     deactivateStockUnit,
     getStockItemById,

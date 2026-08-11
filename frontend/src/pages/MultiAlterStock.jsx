@@ -1,26 +1,100 @@
 import { useEffect, useState } from "react";
-
 import api from "../services/api";
 
 export default function MultiAlterStock({ onClose }) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [units, setUnits] = useState([]);
-  const [saving, setSaving] = useState(false);
-  const [validated, setValidated] = useState(false);
 
- 
+  const [editing, setEditing] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  // ----------------------------------------
+  // LOAD
+  // ----------------------------------------
 
   useEffect(() => {
-    api.getStockItems().then(setItems).catch(console.error);
-    api.getStockGroups().then(setGroups).catch(console.error);
-    api.getStockUnits().then(setUnits).catch(console.error);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const [stockItems, stockGroups, stockUnits] =
+        await Promise.all([
+          api.getStockItems(),
+          api.getStockGroups(),
+          api.getStockUnits(),
+        ]);
+
+      setItems(stockItems);
+      setGroups(stockGroups);
+      setUnits(stockUnits);
+    } catch (err) {
+      console.error(err);
+      setError("Unable to load stock items.");
+    }
+  };
+
+  // ----------------------------------------
+  // EDIT
+  // ----------------------------------------
+
+  const handleEdit = async () => {
+    if (checking || saving || editing) {
+      return;
+    }
+
+    try {
+      setChecking(true);
+      setMessage("");
+      setError("");
+
+      const checkedItems = await Promise.all(
+        items.map(async (item) => {
+          const hasTransactions =
+            await api.hasStockItemTransactions(item.id);
+
+          return {
+            ...item,
+            transaction_locked: hasTransactions,
+          };
+        })
+      );
+
+      setItems(checkedItems);
+      setEditing(true);
+    } catch (err) {
+      console.error(
+        "Unable to check stock transactions:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Unable to check stock transactions."
+      );
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // ----------------------------------------
+  // UPDATE FIELD
+  // ----------------------------------------
 
   const update = (index, field, value) => {
     setItems((currentItems) =>
       currentItems.map((item, rowIndex) => {
         if (rowIndex !== index) {
+          return item;
+        }
+
+        // Transaction item cannot be changed
+        if (item.transaction_locked) {
           return item;
         }
 
@@ -39,121 +113,191 @@ export default function MultiAlterStock({ onClose }) {
           ...item,
           [field]: value,
         };
-      }),
+      })
     );
   };
 
-  const save = async (event) => {
-    event.preventDefault();
+  // ----------------------------------------
+  // SAVE
+  // ----------------------------------------
 
-    if (saving) return;
+  const handleSave = async () => {
+  if (saving || checking || !editing) {
+    return;
+  }
 
-    const form = event.currentTarget;
+  try {
+    setSaving(true);
+    setMessage("");
+    setError("");
 
-    if (!form.checkValidity()) {
-      event.stopPropagation();
-      setValidated(true);
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const updatedItems = items.map((item) => ({
+    // Only send rows that were allowed to be edited
+    const editableItems = items
+      .filter((item) => !item.transaction_locked)
+      .map((item) => ({
         ...item,
         conversion: Number(item.conversion) || 0,
         opening_qty: Number(item.opening_qty) || 0,
       }));
 
-      await api.bulkUpdateStockItems(updatedItems);
-
-      setValidated(false);
-   
-      // Go to Dashboard after successful save
-    
-    } catch (error) {
-      console.error("Unable to update stock items:", error);
-
-      // Keep error alert for now
-      alert(error?.message || "Unable to update stock items.");
-    } finally {
-      setSaving(false);
+    if (editableItems.length === 0) {
+      setMessage("No stock items were available for modification.");
+      return;
     }
 
+    await api.bulkUpdateStockItems(editableItems);
+
+    // Get fresh data from database
+    const freshItems = await api.getStockItems();
+
+    setItems(freshItems);
+    setEditing(false);
+
+    setMessage("Saved to database.");
+  } catch (err) {
+    console.error("Unable to save stock items:", err);
+
+    setError(
+      err?.message || "Unable to save stock items."
+    );
+  } finally {
+    setSaving(false);
+  }
+};
+
+  // ----------------------------------------
+  // CANCEL
+  // ----------------------------------------
+
+  const handleCancel = async () => {
+    if (saving || checking) {
+      return;
+    }
+
+    setEditing(false);
+    setMessage("");
+    setError("");
+
+    await loadData();
   };
+
+  // ----------------------------------------
+  // UI
+  // ----------------------------------------
 
   return (
     <div className="page-shell">
-      <h2 className="pt-2 pb-2 fw-bold">Multi Alter Stock Item</h2>
 
-      <form
-        id="multi-alter-stock-form"
-        noValidate
-        className={`needs-validation ${
-          validated ? "was-validated" : ""
-        }`}
-        onSubmit={save}
-      >
-        <div className="content-card">
-          <p className="text-muted">
-            Update several stock items at once. Changes are protected by the
-            master password.
-          </p>
+      <h2 className="pt-2 pb-2 fw-bold">
+        Multi Alter Stock Item
+      </h2>
 
-          <div className="table-responsive">
-            <table className="table app-table align-middle">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Group</th>
-                  <th>Unit</th>
-                  <th>Alternate Unit</th>
-                  <th>Conversion</th>
-                  <th>Opening Qty</th>
-                </tr>
-              </thead>
+      {/* SUCCESS */}
+      {message && (
+        <div className="alert alert-success">
+          {message}
+        </div>
+      )}
 
-              <tbody>
-                {items.map((item, index) => (
-                  <tr key={item.id}>
-                    {/* Item */}
+      {/* ERROR */}
+      {error && (
+        <div className="alert alert-danger">
+          {error}
+        </div>
+      )}
+
+      <div className="content-card">
+
+        <p className="text-muted">
+          Click Edit to modify stock items. Items
+          having transactions cannot be modified.
+        </p>
+
+        <div className="table-responsive">
+
+          <table className="table app-table align-middle">
+
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Group</th>
+                <th>Unit</th>
+                <th>Alternate Unit</th>
+                <th>Conversion</th>
+                <th>Opening Qty</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              {items.map((item, index) => {
+
+                const locked =
+                  item.transaction_locked === true;
+
+                const readOnly =
+                  !editing || locked;
+
+                return (
+                  <tr
+                    key={item.id}
+                    className={
+                      locked
+                        ? "table-secondary"
+                        : ""
+                    }
+                  >
+
+                    {/* ITEM */}
                     <td>
+
                       <input
                         type="text"
                         className="form-control"
-                        value={item.item_name}
-                        onChange={(event) =>
+                        value={
+                          item.item_name || ""
+                        }
+                        readOnly={readOnly}
+                        onChange={(e) =>
                           update(
                             index,
                             "item_name",
-                            event.target.value,
+                            e.target.value
                           )
                         }
-                        required
-                        disabled={saving}
                       />
 
-                      <div className="invalid-feedback">
-                        Please enter stock item name.
-                      </div>
+                      {locked && (
+                        <small className="text-danger fw-semibold d-block mt-1">
+                          🔒 This item cannot be
+                          modified because
+                          transactions exist.
+                        </small>
+                      )}
+
                     </td>
 
-                    {/* Group */}
+                    {/* GROUP */}
                     <td>
+
                       <select
                         className="form-select"
-                        value={item.stock_group}
-                        onChange={(event) =>
+                        value={
+                          item.stock_group || ""
+                        }
+                        disabled={readOnly}
+                        onChange={(e) =>
                           update(
                             index,
                             "stock_group",
-                            event.target.value,
+                            e.target.value
                           )
                         }
-                        required
-                        disabled={saving}
                       >
-                        <option value="">Select group</option>
+
+                        <option value="">
+                          Select group
+                        </option>
 
                         {groups.map((group) => (
                           <option
@@ -163,29 +307,30 @@ export default function MultiAlterStock({ onClose }) {
                             {group.name}
                           </option>
                         ))}
+
                       </select>
 
-                      <div className="invalid-feedback">
-                        Please select a stock group.
-                      </div>
                     </td>
 
-                    {/* Primary Unit */}
+                    {/* UNIT */}
                     <td>
+
                       <select
                         className="form-select"
-                        value={item.unit}
-                        onChange={(event) =>
+                        value={item.unit || ""}
+                        disabled={readOnly}
+                        onChange={(e) =>
                           update(
                             index,
                             "unit",
-                            event.target.value,
+                            e.target.value
                           )
                         }
-                        required
-                        disabled={saving}
                       >
-                        <option value="">Select unit</option>
+
+                        <option value="">
+                          Select unit
+                        </option>
 
                         {units.map((unit) => (
                           <option
@@ -195,30 +340,36 @@ export default function MultiAlterStock({ onClose }) {
                             {unit.name}
                           </option>
                         ))}
+
                       </select>
 
-                      <div className="invalid-feedback">
-                        Please select a unit.
-                      </div>
                     </td>
 
-                    {/* Alternate Unit */}
+                    {/* ALTERNATE UNIT */}
                     <td>
+
                       <select
                         className="form-select"
-                        value={item.alternate_unit || ""}
-                        onChange={(event) =>
+                        value={
+                          item.alternate_unit || ""
+                        }
+                        disabled={
+                          readOnly ||
+                          !item.unit
+                        }
+                        onChange={(e) =>
                           update(
                             index,
                             "alternate_unit",
-                            event.target.value,
+                            e.target.value
                           )
                         }
-                        disabled={!item.unit || saving}
-                        
                       >
+
                         {item.unit !== "Kgs" ? (
-                          <option value="Kgs">Kgs</option>
+                          <option value="Kgs">
+                            Kgs
+                          </option>
                         ) : (
                           <>
                             <option value="">
@@ -228,7 +379,8 @@ export default function MultiAlterStock({ onClose }) {
                             {units
                               .filter(
                                 (unit) =>
-                                  unit.name !== "Kgs",
+                                  unit.name !==
+                                  "Kgs"
                               )
                               .map((unit) => (
                                 <option
@@ -240,94 +392,152 @@ export default function MultiAlterStock({ onClose }) {
                               ))}
                           </>
                         )}
+
                       </select>
 
-                      {item.unit === "Kgs" && (
-                        <div className="invalid-feedback">
-                          Please select alternate unit.
-                        </div>
-                      )}
                     </td>
 
-                    {/* Conversion */}
+                    {/* CONVERSION */}
                     <td>
-  <div className="input-group">
-    <input
-      type="number"
-      min="0"
-      step="any"
-      className="form-control"
-      disabled={
-        !item.unit ||
-        !item.alternate_unit ||
-        saving
-      }
-      required={!!item.alternate_unit}
-      value={item.conversion || ""}
-      onChange={(event) =>
-        update(
-          index,
-          "conversion",
-          event.target.value,
-        )
-      }
-    />
 
-    <span className="input-group-text">
-      {item.alternate_unit || "Unit"}
-    </span>
-  </div>
+                      <div className="input-group">
 
-  {item.unit && item.alternate_unit && (
-    <small className="text-muted">
-      1 {item.unit} = {item.conversion || "?"}{" "}
-      {item.alternate_unit}
-    </small>
-  )}
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="form-control"
+                          value={
+                            item.conversion || ""
+                          }
+                          disabled={
+                            readOnly ||
+                            !item.unit ||
+                            !item.alternate_unit
+                          }
+                          onChange={(e) =>
+                            update(
+                              index,
+                              "conversion",
+                              e.target.value
+                            )
+                          }
+                        />
 
-  {item.alternate_unit && (
-    <div className="invalid-feedback">
-      Please enter conversion.
-    </div>
-  )}
-</td>
+                        <span className="input-group-text">
+                          {item.alternate_unit ||
+                            "Unit"}
+                        </span>
 
-                    {/* Opening Qty */}
+                      </div>
+
+                      {item.unit &&
+                        item.alternate_unit && (
+                          <small className="text-muted">
+                            1 {item.unit} ={" "}
+                            {item.conversion || "?"}{" "}
+                            {item.alternate_unit}
+                          </small>
+                        )}
+
+                    </td>
+
+                    {/* OPENING QTY */}
                     <td>
+
                       <input
                         type="number"
                         min="0"
                         step="any"
                         className="form-control"
-                        value={item.opening_qty}
-                        onChange={(event) =>
+                        value={
+                          item.opening_qty || ""
+                        }
+                        disabled={readOnly}
+                        onChange={(e) =>
                           update(
                             index,
                             "opening_qty",
-                            event.target.value,
+                            e.target.value
                           )
                         }
-                        required
-                        disabled={saving}
                       />
+
                     </td>
+
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+
+            </tbody>
+
+          </table>
+
         </div>
+      </div>
+
+      {/* ACTION BUTTONS */}
+
+      <div className="mt-3 d-flex gap-2">
+
+        {!editing ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={
+              checking ||
+              saving ||
+              items.length === 0
+            }
+            onClick={handleEdit}
+          >
+            {checking
+              ? "Checking..."
+              : "Edit"}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn btn-success"
+              disabled={
+                saving ||
+                checking
+              }
+              onClick={handleSave}
+            >
+              {saving
+                ? "Saving..."
+                : "Save"}
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={
+                saving ||
+                checking
+              }
+              onClick={handleCancel}
+            >
+              Cancel
+            </button>
+          </>
+        )}
 
         <button
-          type="submit"
-          className="btn btn-primary mt-3"
-          disabled={saving}
+          type="button"
+          className="btn btn-secondary"
+          disabled={
+            saving ||
+            checking
+          }
+          onClick={onClose}
         >
-          {saving ? "Saving..." : "Save"}
+          Close
         </button>
-      </form>
 
-                <button className="btn btn-secondary" onClick={onClose}>Close</button>
+      </div>
 
     </div>
   );
