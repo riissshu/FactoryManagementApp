@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
+import ImportStockItems from "../components/ImportStockItems";
 
 export default function CreateStockItem({onClose}) {
   
@@ -17,6 +18,8 @@ export default function CreateStockItem({onClose}) {
   const [item, setItem] = useState(emptyItem);
   const [stockGroups, setStockGroups] = useState([]);
   const [units, setUnits] = useState([]);
+
+   const [showImport, setShowImport] = useState(false);
 
   const [validated, setValidated] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -174,6 +177,29 @@ export default function CreateStockItem({onClose}) {
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2 className="mb-0">Stock Item Master</h2>
+
+
+ <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
+      
+        <button onClick={onClose} className="btn btn-secondary me-2">Close</button>
+
+        <button
+  type="button"
+  className="btn btn-primary"
+  onClick={() => setShowImport(true)}
+>
+  Import Excel
+</button>   
+
+{showImport && (
+  <ImportStockItems
+    onClose={() => setShowImport(false)}
+  />
+)}
+
+        
+      </div>
+
 
       </div>
 

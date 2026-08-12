@@ -6,7 +6,7 @@ export default function BackupRestore() {
     const result = await api.createBackup();
 
     if (!result?.canceled) {
-      alert("Backup saved successfully.");
+        console.log("Backup Created")
     }
   };
 
