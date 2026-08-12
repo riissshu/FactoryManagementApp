@@ -34,6 +34,12 @@ function createDatabase(dbPath) {
     db.exec("ALTER TABLE settings ADD COLUMN master_password_hash TEXT");
   } catch (_) {}
 
+  try {
+  db.exec(
+    "ALTER TABLE settings ADD COLUMN open_pdf_after_export INTEGER NOT NULL DEFAULT 1"
+  );
+} catch (_) {}
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS stock_groups (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -216,19 +222,20 @@ function createDatabase(dbPath) {
     );
   }
 
-  function saveSettings(factoryName, factoryLogo, masterPassword) {
+  function saveSettings(factoryName, factoryLogo, masterPassword,  openPdfAfterExport = true) {
     const existing = getSettings();
 
     if (existing) {
       db.prepare(
         `
                 UPDATE settings
-                SET factory_name = ?, factory_logo = ?, master_password_hash = COALESCE(?, master_password_hash)
+                SET factory_name = ?, factory_logo = ?,  open_pdf_after_export = ?, master_password_hash = COALESCE(?, master_password_hash)
                 WHERE id = ?
             `,
       ).run(
         factoryName,
         factoryLogo,
+         openPdfAfterExport ? 1 : 0,
         masterPassword ? hashPassword(masterPassword) : null,
         existing.id,
       );
@@ -236,16 +243,16 @@ function createDatabase(dbPath) {
       db.prepare(
         `
                 INSERT INTO settings
-                (factory_name, factory_logo, master_password_hash)
-                VALUES (?, ?, ?)
+                (factory_name, factory_logo, master_password_hash,  open_pdf_after_export)
+                VALUES (?, ?, ?, ?)
             `,
-      ).run(factoryName, factoryLogo, hashPassword(masterPassword));
+      ).run(factoryName, factoryLogo, hashPassword(masterPassword),    openPdfAfterExport ? 1 : 0, );
     }
 
     return true;
   }
 
-  function updateFactoryProfile(factoryName, factoryLogo, password) {
+  function updateFactoryProfile(factoryName, factoryLogo, password, openPdfAfterExport) {
     const existing = getSettings();
 
     if (!existing) {
@@ -258,6 +265,7 @@ function createDatabase(dbPath) {
             SET
                 factory_name = ?,
                 factory_logo = ?,
+                   open_pdf_after_export = ?,
                 master_password_hash =
                     CASE
                         WHEN ? IS NOT NULL
@@ -269,6 +277,7 @@ function createDatabase(dbPath) {
     ).run(
       factoryName,
       factoryLogo,
+        openPdfAfterExport ? 1 : 0,
       password,
       password ? hashPassword(password) : null,
       existing.id,

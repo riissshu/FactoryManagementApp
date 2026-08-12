@@ -28,7 +28,7 @@ export default function StockReport({ onClose } = {}) {
 
   const exportPdf = async () => {
     const settings = await api.getSettings();
-    const result = await exportTablePdf({
+    await exportTablePdf({
       title: "Stock Report",
       company: settings?.factory_name,
       subtitle: new Date().toLocaleDateString("en-IN"),
@@ -61,7 +61,7 @@ export default function StockReport({ onClose } = {}) {
   };
 
   const exportExcel = () => {
-    const settings = api.getSettings ? undefined : undefined; // not needed for excel
+    
     exportTableExcel({
       filename: "stock-report.xlsx",
       sheetName: "Stock Report",

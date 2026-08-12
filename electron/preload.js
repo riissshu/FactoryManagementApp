@@ -3,11 +3,12 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
   getSettings: () => ipcRenderer.invoke("settings:get"),
 
-  saveSettings: (factoryName, factoryLogo, masterPassword) =>
+  saveSettings: (factoryName, factoryLogo, masterPassword, openPdfAfterExport) =>
     ipcRenderer.invoke("settings:save", {
       factoryName,
       factoryLogo,
       masterPassword,
+       openPdfAfterExport,
     }),
 
   updateFactoryProfile: (data) =>

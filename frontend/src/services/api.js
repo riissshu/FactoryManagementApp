@@ -3,8 +3,8 @@ const api = {
     return window.api.getSettings();
   },
 
-  saveSettings(factoryName, factoryLogo, masterPassword) {
-    return window.api.saveSettings(factoryName, factoryLogo, masterPassword);
+  saveSettings(factoryName, factoryLogo, masterPassword, openPdfAfterExport) {
+    return window.api.saveSettings(factoryName, factoryLogo, masterPassword, openPdfAfterExport);
   },
 
   verifyMasterPassword(password) {

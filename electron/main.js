@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -71,7 +71,7 @@ const relaunch = () => {
 ipcMain.handle("settings:get", () => database.getSettings());
 
 ipcMain.handle("settings:save", (event, data) => {
-  return database.saveSettings(data.factoryName, data.factoryLogo, data.masterPassword);
+  return database.saveSettings(data.factoryName, data.factoryLogo, data.masterPassword,  data.openPdfAfterExport);
 });
 
 ipcMain.handle("settings:updateProfile", (event, data) => {
@@ -328,26 +328,74 @@ ipcMain.handle("backup:firstInstallRestore", async () => {
   return { restored: true };
 });
 
-ipcMain.handle("report:exportPdf", async (event, { title, html, filename }) => {
-  const result = await dialog.showSaveDialog(mainWindow, {
-    title: "Export PDF",
-    defaultPath: filename || `${safeName(title)}.pdf`,
-    filters: [{ name: "PDF", extensions: ["pdf"] }],
-  });
-  if (result.canceled || !result.filePath) return { canceled: true };
-  const printWindow = new BrowserWindow({ show: false, webPreferences: { sandbox: true } });
-  await printWindow.loadURL(
-    `data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:Arial,sans-serif;color:#1f2937;padding:28px}h1{color:#0f766e;font-size:22px;margin:0 0 4px}p{color:#64748b;margin:0 0 20px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#0f766e;color:#fff}th,td{border:1px solid #cbd5e1;padding:7px;text-align:left}td.num,th.num{text-align:right}@page{margin:16mm}</style></head><body>${html}</body></html>`)}`,
-  );
-  const pdf = await printWindow.webContents.printToPDF({
-    printBackground: true,
-    pageSize: "A4",
-    landscape: true,
-  });
-  fs.writeFileSync(result.filePath, pdf);
-  printWindow.destroy();
-  return { path: result.filePath };
-});
+ipcMain.handle(
+  "report:exportPdf",
+  async (
+    event,
+    {
+      title,
+      filename,
+      pdfData,
+      openPdfAfterExport = false,
+    },
+  ) => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Export PDF",
+      defaultPath: filename || `${safeName(title)}.pdf`,
+      filters: [
+        {
+          name: "PDF",
+          extensions: ["pdf"],
+        },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return {
+        canceled: true,
+      };
+    }
+
+    try {
+      // Convert ArrayBuffer received from renderer
+      // into a Node.js Buffer.
+      const pdfBuffer = Buffer.from(pdfData);
+
+      // Write the exact jsPDF-generated PDF.
+      fs.writeFileSync(
+        result.filePath,
+        pdfBuffer
+      );
+
+      // Automatically open if enabled
+      if (  Number(openPdfAfterExport) === 1 ||
+  openPdfAfterExport === true ) {
+        const openError = await shell.openPath(
+          result.filePath
+        );
+
+        if (openError) {
+          console.error(
+            "Unable to open exported PDF:",
+            openError
+          );
+        }
+      }
+
+      return {
+        path: result.filePath,
+        opened: openPdfAfterExport,
+      };
+    } catch (error) {
+      console.error(
+        "PDF export failed:",
+        error
+      );
+
+      throw error;
+    }
+  }
+);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

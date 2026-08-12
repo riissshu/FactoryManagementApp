@@ -9,6 +9,8 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [openPdfAfterExport, setOpenPdfAfterExport] = useState(true);
+
   const [folders, setFolders] = useState(null);
 
   const fileInputRef = useRef(null);
@@ -23,6 +25,10 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
     if (settings) {
       setFactoryName(settings.factory_name || "");
       setLogo(settings.factory_logo || null);
+
+       setOpenPdfAfterExport(
+      settings.open_pdf_after_export !== 0
+    );
     }
   };
 
@@ -58,7 +64,7 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
       }
     }
 
-    await api.saveSettings(factoryName, logo, newPassword || null);
+    await api.saveSettings(factoryName, logo, newPassword, openPdfAfterExport || null);
 
     if (onProfileUpdated) onProfileUpdated();
 
@@ -169,6 +175,40 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
               Change Logo
             </button>
           </div>
+
+          <h5 className="fw-bold mb-1">
+  <i className="bi bi-file-earmark-pdf me-2"></i>
+  PDF Export Settings
+</h5>
+
+<p className="text-muted mb-3">
+  Choose whether exported PDF reports should open automatically after export.
+</p>
+
+<div className="d-flex justify-content-between align-items-center border rounded p-3 mb-4">
+  <div>
+    <div className="fw-bold">
+      Open PDF automatically after export
+    </div>
+
+    <div className="text-muted small">
+      The exported PDF will open in your computer's default PDF viewer.
+    </div>
+  </div>
+
+  <div className="form-check form-switch fs-4 mb-0">
+    <input
+      className="form-check-input"
+      type="checkbox"
+      role="switch"
+      id="openPdfAfterExport"
+      checked={openPdfAfterExport}
+      onChange={(e) =>
+        setOpenPdfAfterExport(e.target.checked)
+      }
+    />
+  </div>
+</div>
 
           <hr />
 
