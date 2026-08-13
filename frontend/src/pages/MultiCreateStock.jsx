@@ -21,6 +21,7 @@ export default function MultiCreateStock({ onClose }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadMasters = async () => {
@@ -130,10 +131,13 @@ export default function MultiCreateStock({ onClose }) {
       (name, index) => names.indexOf(name) !== index,
     );
 
-    if (duplicateNames.length > 0) {
-      setValidated(true);
-      return;
-    }
+   if (duplicateNames.length > 0) {
+  setValidated(true);
+  setError(
+    "Duplicate stock item names found. Each stock item name must be unique.",
+  );
+  return;
+}
 
     const stockItems = filledItems.map((item) => ({
       item_name: item.item_name.trim(),
@@ -146,6 +150,7 @@ export default function MultiCreateStock({ onClose }) {
 
     try {
       setSaving(true);
+        setError("");
 
       await api.bulkCreateStockItems(stockItems);
 
@@ -153,6 +158,9 @@ export default function MultiCreateStock({ onClose }) {
       setValidated(false);
     } catch (error) {
       console.error("Unable to create stock items:", error);
+       setError(
+    error?.message || "Unable to create stock items."
+  );
     } finally {
       setSaving(false);
     }
@@ -184,6 +192,12 @@ export default function MultiCreateStock({ onClose }) {
       
      
       <h2 className="pt-2 fw-bold">Create Multiple Stock Items</h2>
+
+      {error && (
+  <div className="alert alert-danger">
+    {error}
+  </div>
+)}
 
       <div className="d-flex justify-content-end me-5 mb-2">
       <button onClick={onClose} className="btn btn-secondary">Close</button>

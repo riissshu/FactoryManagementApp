@@ -20,6 +20,7 @@ export default function CreateStockItem({onClose}) {
   const [units, setUnits] = useState([]);
 
    const [showImport, setShowImport] = useState(false);
+   const [error, setError] = useState("");
 
   const [validated, setValidated] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,12 +115,14 @@ export default function CreateStockItem({onClose}) {
     setItem(emptyItem);
     setValidated(false);
     setAlternateEnabled(false);
+      setError("");
   };
 
   const saveItem = async (e) => {
     e.preventDefault();
 
     if (saving) return;
+    setError("");
 
     const form = e.currentTarget;
 
@@ -154,7 +157,8 @@ export default function CreateStockItem({onClose}) {
       
     } catch (error) {
       console.error("Save Error:", error);
-      alert(error.message);
+      setError(error?.message || "Unable to save stock item.");
+
     } finally {
       setSaving(false);
     }
@@ -177,6 +181,12 @@ export default function CreateStockItem({onClose}) {
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2 className="mb-0">Stock Item Master</h2>
+
+        {error && (
+  <div className="alert alert-danger mt-3">
+    {error}
+  </div>
+)}
 
 
  <div className="d-flex justify-content-between align-items-center pt-2 pb-2">

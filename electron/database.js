@@ -79,6 +79,21 @@ function createDatabase(dbPath) {
     db.exec("ALTER TABLE stock_items ADD COLUMN low_qty_alert REAL DEFAULT 0");
   } catch (_) {}
 
+    // Stock item names must be unique, ignoring case and surrounding spaces.
+  // Example: "Cement", "cement", and " Cement " are considered duplicates.
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_items_unique_name
+      ON stock_items (LOWER(TRIM(item_name)))
+    `);
+  } catch (err) {
+    console.error(
+      "Could not enforce unique stock item names. " +
+      "Existing duplicate stock item names must be resolved first.",
+      err.message
+    );
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS daily_reports (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -463,6 +478,41 @@ function createDatabase(dbPath) {
   // Stock Items
   // =======================
 
+  function checkDuplicateStockItemName(itemName, excludeId = null) {
+    const name = String(itemName || "").trim();
+
+    if (!name) {
+      throw new Error("Stock item name is required.");
+    }
+
+    const existing = excludeId
+      ? db
+          .prepare(`
+            SELECT id, item_name
+            FROM stock_items
+            WHERE LOWER(TRIM(item_name)) = LOWER(TRIM(?))
+              AND id != ?
+            LIMIT 1
+          `)
+          .get(name, excludeId)
+      : db
+          .prepare(`
+            SELECT id, item_name
+            FROM stock_items
+            WHERE LOWER(TRIM(item_name)) = LOWER(TRIM(?))
+            LIMIT 1
+          `)
+          .get(name);
+
+    if (existing) {
+      throw new Error(
+        `Stock item "${existing.item_name}" already exists. Please use a different name.`
+      );
+    }
+
+    return false;
+  }
+
  function bulkUpdateStockItems(items) {
   const update = db.prepare(
     `
@@ -479,17 +529,42 @@ function createDatabase(dbPath) {
   );
 
   const transaction = db.transaction(() => {
+    const namesInUpdate = new Map();
+
     items.forEach((item) => {
-      // Do not allow alteration of an item
-      // that already has any transaction.
+      const itemName = String(item.item_name || "").trim();
+
+      if (!itemName) {
+        throw new Error("Stock item name cannot be empty.");
+      }
+
+      // Existing transaction protection
       if (hasStockItemTransactions(item.id)) {
         throw new Error(
-          `Stock item "${item.item_name}" has transactions and cannot be modified.`
+          `Stock item "${item.item_name}" has transactions and cannot be modified.`,
         );
       }
 
+      const normalizedName = itemName.toLowerCase();
+
+      // Detect duplicate names among rows being updated
+      if (
+        namesInUpdate.has(normalizedName) &&
+        namesInUpdate.get(normalizedName) !== item.id
+      ) {
+        throw new Error(
+          `Duplicate stock item "${itemName}" found. Please use a different name.`,
+        );
+      }
+
+      namesInUpdate.set(normalizedName, item.id);
+
+      // Detect duplicate against existing database items.
+      // Excludes the current item's own ID.
+      checkDuplicateStockItemName(itemName, item.id);
+
       update.run(
-        item.item_name,
+        itemName,
         item.stock_group,
         item.unit,
         item.alternate_unit,
@@ -506,29 +581,60 @@ function createDatabase(dbPath) {
 }
 
   function bulkCreateStockItems(items) {
-    const insert = db.prepare(
-      `INSERT INTO stock_items
-        (item_name, stock_group, unit, alternate_unit, conversion, opening_qty, low_qty_alert, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-    );
-    const transaction = db.transaction(() =>
-      items
-        .filter((item) => (item.item_name || "").trim() !== "")
-        .forEach((item) =>
-          insert.run(
-            item.item_name,
-            item.stock_group,
-            item.unit,
-            item.alternate_unit,
-            Number(item.conversion) || 0,
-            Number(item.opening_qty) || 0,
-            Number(item.low_qty_alert) || 0,
-          ),
-        ),
-    );
-    transaction();
-    return true;
-  }
+  const insert = db.prepare(
+    `
+      INSERT INTO stock_items
+      (
+        item_name,
+        stock_group,
+        unit,
+        alternate_unit,
+        conversion,
+        opening_qty,
+        low_qty_alert,
+        is_active
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    `,
+  );
+
+  const transaction = db.transaction(() => {
+    const namesInCreate = new Set();
+
+    items
+      .filter((item) => (item.item_name || "").trim() !== "")
+      .forEach((item) => {
+        const itemName = String(item.item_name).trim();
+        const normalizedName = itemName.toLowerCase();
+
+        // Duplicate inside the current MultiCreate operation
+        if (namesInCreate.has(normalizedName)) {
+          throw new Error(
+            `Duplicate stock item "${itemName}" found. Please use a different name.`,
+          );
+        }
+
+        namesInCreate.add(normalizedName);
+
+        // Duplicate against existing stock items
+        checkDuplicateStockItemName(itemName);
+
+        insert.run(
+          itemName,
+          item.stock_group,
+          item.unit,
+          item.alternate_unit,
+          Number(item.conversion) || 0,
+          Number(item.opening_qty) || 0,
+          Number(item.low_qty_alert) || 0,
+        );
+      });
+  });
+
+  transaction();
+
+  return true;
+}
 
   function backupTo(destination) {
     db.pragma("wal_checkpoint(TRUNCATE)");
@@ -554,6 +660,11 @@ function createDatabase(dbPath) {
   }
 
   function saveStockItem(item) {
+
+       const itemName = String(item.item_name || "").trim();
+
+    checkDuplicateStockItemName(itemName);
+
     db.prepare(
       `
             INSERT INTO stock_items
@@ -650,6 +761,12 @@ function createDatabase(dbPath) {
   }
 
   function updateStockItem(item) {
+
+        const itemName = String(item.item_name || "").trim();
+
+    checkDuplicateStockItemName(itemName, item.id);
+
+
     db.prepare(
       `
             UPDATE stock_items

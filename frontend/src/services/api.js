@@ -56,9 +56,15 @@ const api = {
     return window.api.hasStockItemTransactions(id);
   },
 
-  saveStockItem(item) {
-    return window.api.saveStockItem(item);
-  },
+saveStockItem(item) {
+  return window.api.saveStockItem(item).then((result) => {
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  });
+},
   updateStockItem(item) {
     return window.api.updateStockItem(item);
   },

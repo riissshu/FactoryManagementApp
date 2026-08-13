@@ -124,7 +124,19 @@ ipcMain.handle("stock:hasTransactions", (event, id) =>
 );
 
 
-ipcMain.handle("stock:save", (event, item) => database.saveStockItem(item));
+ipcMain.handle("stock:save", (event, item) => {
+  try {
+    return {
+      success: true,
+      data: database.saveStockItem(item),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error?.message || "Unable to save stock item.",
+    };
+  }
+});
 ipcMain.handle("stock:update", (event, item) => database.updateStockItem(item));
 ipcMain.handle("stock:updateLowQtyAlert", (event, id, value) =>
   database.updateLowQtyAlert(id, value),

@@ -145,6 +145,21 @@ export default function MultiAlterStock({ onClose }) {
       return;
     }
 
+        const names = editableItems.map((item) =>
+      String(item.item_name || "").trim().toLowerCase()
+    );
+
+    const duplicateNames = names.filter(
+      (name, index) => names.indexOf(name) !== index
+    );
+
+    if (duplicateNames.length > 0) {
+      setError(
+        "Duplicate stock item names found. Each stock item name must be unique."
+      );
+      return;
+    }
+
     await api.bulkUpdateStockItems(editableItems);
 
     // Get fresh data from database
