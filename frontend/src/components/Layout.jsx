@@ -28,6 +28,7 @@ export default function Layout() {
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
   const [factoryProfilePage, setFactoryProfilePage] = useState("profile");
+  const [showMasterLock, setShowMasterLock] = useState(false);
 
   const [settings, setSettings] = useState({
     factory_name: "Factory Book",
@@ -85,41 +86,37 @@ export default function Layout() {
           />
         );
 
-      case "factoryprofile":
-      case "multialterstock":
-      case "multicreatestock":
-      case "stockgroupsunits":
-        return (
-          <MasterLock onClose={() => setActiveMenu("dashboard")}>
-            {activeMenu === "factoryprofile" && (
-              <FactoryProfile
-                onProfileUpdated={reloadSettings}
-                onMultiAlter={() => setActiveMenu("multialterstock")}
-                onMultiCreate={() => setActiveMenu("multicreatestock")}
-                onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
-                onClose={() => setActiveMenu("dashboard")}
-              />
-            )}
+        case "factoryprofile":
+  return (
+    <FactoryProfile
+      onProfileUpdated={reloadSettings}
+      onMultiAlter={() => setActiveMenu("multialterstock")}
+      onMultiCreate={() => setActiveMenu("multicreatestock")}
+      onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
+      onClose={() => setActiveMenu("dashboard")}
+    />
+  );
 
-            {activeMenu === "multialterstock" && (
-              <MultiAlterStock
-                onClose={() => setActiveMenu("factoryprofile")}
-              />
-            )}
+case "multialterstock":
+  return (
+    <MultiAlterStock
+      onClose={() => setActiveMenu("factoryprofile")}
+    />
+  );
 
-            {activeMenu === "multicreatestock" && (
-              <MultiCreateStock
-                onClose={() => setActiveMenu("factoryprofile")}
-              />
-            )}
+case "multicreatestock":
+  return (
+    <MultiCreateStock
+      onClose={() => setActiveMenu("factoryprofile")}
+    />
+  );
 
-            {activeMenu === "stockgroupsunits" && (
-              <StockGroupsUnits
-                onClose={() => setActiveMenu("factoryprofile")}
-              />
-            )}
-          </MasterLock>
-        );
+case "stockgroupsunits":
+  return (
+    <StockGroupsUnits
+      onClose={() => setActiveMenu("factoryprofile")}
+    />
+  );
 
       case "dailyreport":
         return (
@@ -166,6 +163,11 @@ export default function Layout() {
   };
 
   const selectMenu = (key) => {
+      if (key === "factoryprofile") {
+    setShowMasterLock(true);
+    return;
+  }
+
     if (key === "dailyreport") {
       setSelectedDailyReportId(null);
       setDailyReportMode("new");
@@ -194,7 +196,7 @@ export default function Layout() {
           factoryName={settings.factory_name}
           factoryLogo={settings.factory_logo}
           collapsed={collapsed}
-          setActiveMenu={setActiveMenu}
+          setActiveMenu={selectMenu}
         />
 
         <main
@@ -205,6 +207,19 @@ export default function Layout() {
         >
           {renderPage()}
         </main>
+
+          {showMasterLock && (
+  <MasterLock
+    onClose={() => {
+      setShowMasterLock(false);
+    }}
+    onUnlock={() => {
+      setShowMasterLock(false);
+      setActiveMenu("factoryprofile");
+    }}
+  />
+)}
+
       </div>
     </>
   );
