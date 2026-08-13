@@ -1,8 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
-import TransactionTable from "../components/TransactionTable";
-import ManufacturingSection from "../components/ManufacturingSection";
+
+import PurchaseEntry from "../components/PurchaseEntry";
+import DispatchEntry from "../components/DispatchEntry";
+import ManufacturingEntry from "../components/ManufacturingEntry";
+import DailyReportTables from "../components/DailyReportTables";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -14,74 +17,93 @@ const emptyReport = () => ({
   manufactured: [],
 });
 
-// A row counts as "filled" once the user has picked an item AND entered a
-// quantity greater than zero. Anything less (blank row, item picked but no
-// qty, qty typed but no item) does not count as a usable line item.
-const isFilledRow = (row) => Boolean(row.item) && Number(row.qty) > 0;
-const isTouchedRow = (row) => Boolean(row.item) || row.qty !== "";
+const isFilledRow = (row) =>
+  Boolean(row.item) && Number(row.qty) > 0;
 
-// Cleans a purchases/gatePasses array ahead of submit:
-//  - entries where NOTHING was entered (no doc number, no touched rows)
-//    are dropped silently -- these are just unused rows left over from
-//    "+ Add entry".
-//  - entries with SOME input but not enough to be valid (missing doc
-//    number, or no row with both an item and a qty) block the submit with
-//    a message, instead of saving a half-empty entry or silently losing
-//    what the user typed.
+const isTouchedRow = (row) =>
+  Boolean(row.item) || row.qty !== "";
+
 function cleanDocuments(documents, field, label) {
   const cleaned = [];
 
   for (const document of documents) {
-    const hasNumber = (document[field] || "").trim() !== "";
-    const filledItems = document.items.filter(isFilledRow);
-    const touchedAnyRow = document.items.some(isTouchedRow);
+    const hasNumber =
+      (document[field] || "").trim() !== "";
 
-    if (!hasNumber && !touchedAnyRow) continue; // fully blank -> drop
+    const filledItems =
+      document.items.filter(isFilledRow);
+
+    const touchedAnyRow =
+      document.items.some(isTouchedRow);
+
+    if (!hasNumber && !touchedAnyRow) continue;
 
     if (!hasNumber || filledItems.length === 0) {
       return {
         cleaned: null,
-        error: `Every ${label} entry needs a ${label} number and at least one item with a quantity. Remove the incomplete entry or finish filling it in.`,
+        error: `Every ${label} entry needs a ${label} number and at least one item with a quantity.`,
       };
     }
 
-    cleaned.push({ ...document, items: filledItems });
+    cleaned.push({
+      ...document,
+      items: filledItems,
+    });
   }
 
-  return { cleaned, error: null };
+  return {
+    cleaned,
+    error: null,
+  };
 }
 
 function cleanManufacturing(entries) {
   const cleaned = [];
 
   for (const entry of entries) {
-    const filledConsumption = entry.consumption.filter(isFilledRow);
-    const filledProduction = entry.production.filter(isFilledRow);
+    const filledConsumption =
+      entry.consumption.filter(isFilledRow);
+
+    const filledProduction =
+      entry.production.filter(isFilledRow);
+
     const touchedAny =
       entry.consumption.some(isTouchedRow) ||
       entry.production.some(isTouchedRow);
 
-    if (!touchedAny) continue; // fully blank batch -> drop
+    if (!touchedAny) continue;
 
-    if (filledConsumption.length === 0 || filledProduction.length === 0) {
+    if (
+      filledConsumption.length === 0 ||
+      filledProduction.length === 0
+    ) {
       return {
         cleaned: null,
         error:
-          "Every manufacturing batch needs at least one consumption item and one production item, each with a quantity. Remove the incomplete batch or finish filling it in.",
+          "Every manufacturing batch needs at least one consumption item and one production item, each with a quantity.",
       };
     }
 
-    cleaned.push({ consumption: filledConsumption, production: filledProduction });
+    cleaned.push({
+      ...entry,
+      consumption: filledConsumption,
+      production: filledProduction,
+    });
   }
 
-  return { cleaned, error: null };
+  return {
+    cleaned,
+    error: null,
+  };
 }
 
-// reportId: pass an existing report's id to edit it. Leave undefined/null
-// to create a new one.
-export default function DailyReportForm({ reportId, onSaved }) {
+export default function DailyReportForm({
+  reportId,
+  onSaved,
+}) {
   const [report, setReport] = useState(emptyReport);
   const [stockItems, setStockItems] = useState([]);
+
   const [saving, setSaving] = useState(false);
   const [validated, setValidated] = useState(false);
 
@@ -91,24 +113,42 @@ export default function DailyReportForm({ reportId, onSaved }) {
     manufactured: null,
   });
 
+  const [dateConflict, setDateConflict] =
+    useState(null);
+
+  const [checkingDate, setCheckingDate] =
+    useState(false);
+
   const dateInputRef = useRef(null);
 
-  // Holds the *other* report occupying the currently-picked date, if any.
-  // Null means the date is free (or belongs to this same report, when
-  // editing).
-  const [dateConflict, setDateConflict] = useState(null);
-  const [checkingDate, setCheckingDate] = useState(false);
+  const [modal, setModal] = useState(null);
 
+  const [editingPurchase, setEditingPurchase] =
+    useState(null);
+
+  const [editingDispatch, setEditingDispatch] =
+    useState(null);
+
+  const [editingManufacturing, setEditingManufacturing] =
+    useState(null);
+
+  // Load stock items
   useEffect(() => {
-    api.getStockItems().then(setStockItems).catch(console.error);
+    api
+      .getStockItems()
+      .then(setStockItems)
+      .catch(console.error);
   }, []);
 
+  // Load existing report
   useEffect(() => {
     if (!reportId) return;
+
     api
       .getDailyReportById(reportId)
       .then((existing) => {
         if (!existing) return;
+
         setReport({
           id: existing.id,
           date: existing.date,
@@ -120,21 +160,25 @@ export default function DailyReportForm({ reportId, onSaved }) {
       .catch(console.error);
   }, [reportId]);
 
-  // Check-before-submit: whenever the date changes, ask the DB whether a
-  // report already exists for it. This is a courtesy check for the user —
-  // saveDailyReport / updateDailyReport enforce the real rule server-side,
-  // so a race between two tabs still gets caught there.
+  // Date conflict check
   const checkDate = useCallback(
     (date) => {
       if (!date) {
         setDateConflict(null);
         return;
       }
+
       setCheckingDate(true);
+
       api
         .getDailyReportByDate(date)
         .then((existing) => {
-          const conflict = existing && existing.id !== report.id ? existing : null;
+          const conflict =
+            existing &&
+            existing.id !== report.id
+              ? existing
+              : null;
+
           setDateConflict(conflict);
         })
         .catch(console.error)
@@ -145,21 +189,185 @@ export default function DailyReportForm({ reportId, onSaved }) {
 
   useEffect(() => {
     checkDate(report.date);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [report.date]);
+  }, [report.date, checkDate]);
 
-  // Feed the conflict into the native validation API so the date field
-  // participates in the same needs-validation / was-validated flow as
-  // every other required field on this form -- checkValidity() will
-  // return false while a conflict exists, without a separate gate.
   useEffect(() => {
     if (!dateInputRef.current) return;
+
     dateInputRef.current.setCustomValidity(
       dateConflict
         ? `A daily report for ${report.date} already exists.`
         : "",
     );
   }, [dateConflict, report.date]);
+
+  // -----------------------------
+  // Purchase
+  // -----------------------------
+
+  const openPurchase = (entry = null) => {
+    setEditingPurchase(entry);
+    setModal("purchase");
+  };
+
+  const savePurchase = (entry) => {
+    setReport((prev) => {
+      const purchases = [...prev.purchases];
+
+      if (editingPurchase) {
+        const index = prev.purchases.indexOf(
+          editingPurchase,
+        );
+
+        if (index !== -1) {
+          purchases[index] = entry;
+        }
+      } else {
+        purchases.push(entry);
+      }
+
+      return {
+        ...prev,
+        purchases,
+      };
+    });
+
+    setEditingPurchase(null);
+    setModal(null);
+  };
+
+  // -----------------------------
+  // Dispatch
+  // -----------------------------
+
+  const openDispatch = (entry = null) => {
+    setEditingDispatch(entry);
+    setModal("dispatch");
+  };
+
+  const saveDispatch = (entry) => {
+    setReport((prev) => {
+      const gatePasses = [...prev.gatePasses];
+
+      if (editingDispatch) {
+        const index = prev.gatePasses.indexOf(
+          editingDispatch,
+        );
+
+        if (index !== -1) {
+          gatePasses[index] = entry;
+        }
+      } else {
+        gatePasses.push(entry);
+      }
+
+      return {
+        ...prev,
+        gatePasses,
+      };
+    });
+
+    setEditingDispatch(null);
+    setModal(null);
+  };
+
+  // -----------------------------
+  // Manufacturing
+  // -----------------------------
+
+  const openManufacturing = (entry = null) => {
+    setEditingManufacturing(entry);
+    setModal("manufacturing");
+  };
+
+  const saveManufacturing = (entry) => {
+    setReport((prev) => {
+      const manufactured = [
+        ...prev.manufactured,
+      ];
+
+      if (editingManufacturing) {
+        const index =
+          prev.manufactured.indexOf(
+            editingManufacturing,
+          );
+
+        if (index !== -1) {
+          manufactured[index] = entry;
+        }
+      } else {
+        manufactured.push(entry);
+      }
+
+      return {
+        ...prev,
+        manufactured,
+      };
+    });
+
+    setEditingManufacturing(null);
+    setModal(null);
+  };
+
+  // -----------------------------
+  // Delete
+  // -----------------------------
+
+  const deletePurchase = (index) => {
+    if (
+      !window.confirm(
+        "Delete this purchase entry?",
+      )
+    ) {
+      return;
+    }
+
+    setReport((prev) => ({
+      ...prev,
+      purchases: prev.purchases.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+  };
+
+  const deleteDispatch = (index) => {
+    if (
+      !window.confirm(
+        "Delete this dispatch entry?",
+      )
+    ) {
+      return;
+    }
+
+    setReport((prev) => ({
+      ...prev,
+      gatePasses: prev.gatePasses.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+  };
+
+  const deleteManufacturing = (index) => {
+    if (
+      !window.confirm(
+        "Delete this manufacturing entry?",
+      )
+    ) {
+      return;
+    }
+
+    setReport((prev) => ({
+      ...prev,
+      manufactured:
+        prev.manufactured.filter(
+          (_, i) => i !== index,
+        ),
+    }));
+  };
+
+  // -----------------------------
+  // Final save
+  // -----------------------------
 
   const save = async (e) => {
     e.preventDefault();
@@ -179,12 +387,17 @@ export default function DailyReportForm({ reportId, onSaved }) {
       "purchaseNo",
       "Purchase",
     );
+
     const gatePassesResult = cleanDocuments(
       report.gatePasses,
       "gatePassNo",
       "Gate pass",
     );
-    const manufacturedResult = cleanManufacturing(report.manufactured);
+
+    const manufacturedResult =
+      cleanManufacturing(
+        report.manufactured,
+      );
 
     if (
       purchasesResult.error ||
@@ -192,21 +405,29 @@ export default function DailyReportForm({ reportId, onSaved }) {
       manufacturedResult.error
     ) {
       setValidated(true);
+
       setSectionErrors({
         purchases: purchasesResult.error,
         gatePasses: gatePassesResult.error,
-        manufactured: manufacturedResult.error,
+        manufactured:
+          manufacturedResult.error,
       });
+
       return;
     }
 
-    setSectionErrors({ purchases: null, gatePasses: null, manufactured: null });
+    setSectionErrors({
+      purchases: null,
+      gatePasses: null,
+      manufactured: null,
+    });
 
     const payload = {
       report_date: report.date,
       purchases: purchasesResult.cleaned,
       gatePasses: gatePassesResult.cleaned,
-      manufactured: manufacturedResult.cleaned,
+      manufactured:
+        manufacturedResult.cleaned,
     };
 
     try {
@@ -214,19 +435,21 @@ export default function DailyReportForm({ reportId, onSaved }) {
       setSaving(true);
 
       if (report.id) {
-        await api.updateDailyReport(report.id, payload);
+        await api.updateDailyReport(
+          report.id,
+          payload,
+        );
       } else {
         await api.saveDailyReport(payload);
       }
 
       onSaved?.();
+
       setReport(emptyReport());
       setValidated(false);
     } catch (error) {
       console.error("Save Error:", error);
       alert(error.message);
-      // The date may have collided (e.g. a concurrent save from another
-      // tab beat us to it) -- re-check so the UI reflects reality.
       checkDate(report.date);
     } finally {
       setSaving(false);
@@ -234,82 +457,224 @@ export default function DailyReportForm({ reportId, onSaved }) {
   };
 
   return (
-    <div className="container mt-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="mb-0">
-          {report.id ? "Edit Daily Report" : "New Daily Report"}
-        </h2>
-      </div>
+    <div className="container-fluid px-4 py-4">
+      {/* HEADER */}
 
-      <form
-        noValidate
-        className={`needs-validation ${validated ? "was-validated" : ""}`}
-        onSubmit={save}
-      >
-        <div className="mb-3" style={{ maxWidth: 260 }}>
-          <label className="form-label">Report Date</label>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="fw-bold mb-1">
+            {report.id
+              ? "Edit Daily Report"
+              : "Daily Report"}
+          </h2>
+
+          <div className="text-muted">
+            Record today's factory stock movements
+          </div>
+        </div>
+
+        <div style={{ width: 190 }}>
+          <label className="form-label fw-semibold">
+            Report Date
+          </label>
+
           <input
             ref={dateInputRef}
             type="date"
             className="form-control"
-            name="date"
             value={report.date}
             onChange={(e) =>
-              setReport((prev) => ({ ...prev, date: e.target.value }))
+              setReport((prev) => ({
+                ...prev,
+                date: e.target.value,
+              }))
             }
             required
           />
+
           <div className="invalid-feedback">
             {dateConflict
-              ? `A daily report for ${report.date} already exists. Only one report is allowed per date.`
+              ? `A daily report for ${report.date} already exists.`
               : "Please select a Report Date."}
           </div>
+
           {checkingDate && (
-            <div className="form-text">Checking date&hellip;</div>
+            <div className="small text-muted mt-1">
+              Checking date...
+            </div>
           )}
         </div>
+      </div>
 
-        <TransactionTable
-          title="Purchases"
-          field="purchaseNo"
-          documents={report.purchases}
-          setDocuments={(purchases) =>
-            setReport((prev) => ({ ...prev, purchases }))
+      {/* TOP CARDS */}
+
+      <div className="row g-3 mb-4">
+        <div className="col-md-4">
+          <button
+            type="button"
+            className="w-100 text-start border rounded-3 bg-white p-4 shadow-sm"
+            style={{
+              cursor: "pointer",
+              minHeight: 150,
+            }}
+            onClick={() => openPurchase()}
+          >
+            <div className="fs-1 mb-2">📥</div>
+
+            <h5 className="fw-bold mb-1">
+              Purchase
+            </h5>
+
+            <div className="text-muted small mb-3">
+              Add material received
+            </div>
+
+            <span className="btn btn-primary btn-sm">
+              + Add Purchase
+            </span>
+          </button>
+        </div>
+
+        <div className="col-md-4">
+          <button
+            type="button"
+            className="w-100 text-start border rounded-3 bg-white p-4 shadow-sm"
+            style={{
+              cursor: "pointer",
+              minHeight: 150,
+            }}
+            onClick={() => openDispatch()}
+          >
+            <div className="fs-1 mb-2">🚚</div>
+
+            <h5 className="fw-bold mb-1">
+              Dispatch
+            </h5>
+
+            <div className="text-muted small mb-3">
+              Add material dispatched
+            </div>
+
+            <span className="btn btn-primary btn-sm">
+              + Add Dispatch
+            </span>
+          </button>
+        </div>
+
+        <div className="col-md-4">
+          <button
+            type="button"
+            className="w-100 text-start border rounded-3 bg-white p-4 shadow-sm"
+            style={{
+              cursor: "pointer",
+              minHeight: 150,
+            }}
+            onClick={() =>
+              openManufacturing()
+            }
+          >
+            <div className="fs-1 mb-2">🏭</div>
+
+            <h5 className="fw-bold mb-1">
+              Manufacturing
+            </h5>
+
+            <div className="text-muted small mb-3">
+              Add production activity
+            </div>
+
+            <span className="btn btn-primary btn-sm">
+              + Add Manufacturing
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <form
+        noValidate
+        className={
+          validated
+            ? "was-validated"
+            : ""
+        }
+        onSubmit={save}
+      >
+        <DailyReportTables
+          purchases={report.purchases}
+          gatePasses={report.gatePasses}
+          manufactured={report.manufactured}
+            stockItems={stockItems}
+          errors={sectionErrors}
+          onEditPurchase={openPurchase}
+          onDeletePurchase={
+            deletePurchase
           }
-          stockItems={stockItems}
-          error={sectionErrors.purchases}
+          onEditDispatch={openDispatch}
+          onDeleteDispatch={
+            deleteDispatch
+          }
+          onEditManufacturing={
+            openManufacturing
+          }
+          onDeleteManufacturing={
+            deleteManufacturing
+          }
         />
 
-        <TransactionTable
-          title="Gate Passes"
-          field="gatePassNo"
-          documents={report.gatePasses}
-          setDocuments={(gatePasses) =>
-            setReport((prev) => ({ ...prev, gatePasses }))
-          }
-          stockItems={stockItems}
-          error={sectionErrors.gatePasses}
-        />
-
-        <ManufacturingSection
-          entries={report.manufactured}
-          setEntries={(manufactured) =>
-            setReport((prev) => ({ ...prev, manufactured }))
-          }
-          stockItems={stockItems}
-          error={sectionErrors.manufactured}
-        />
-
-        <div className="mt-3">
+        <div className="d-flex justify-content-end pb-4">
           <button
             type="submit"
-            className="btn btn-primary me-2"
-            disabled={saving || checkingDate}
+            className="btn btn-primary px-4"
+            disabled={
+              saving || checkingDate
+            }
           >
-            {saving ? "Saving..." : "Save Report"}
+            {saving
+              ? "Saving..."
+              : report.id
+                ? "Update Daily Report"
+                : "Save Daily Report"}
           </button>
         </div>
       </form>
+
+      {/* MODALS */}
+
+      {modal === "purchase" && (
+        <PurchaseEntry
+          stockItems={stockItems}
+          entry={editingPurchase}
+          onSave={savePurchase}
+          onClose={() => {
+            setModal(null);
+            setEditingPurchase(null);
+          }}
+        />
+      )}
+
+      {modal === "dispatch" && (
+        <DispatchEntry
+          stockItems={stockItems}
+          entry={editingDispatch}
+          onSave={saveDispatch}
+          onClose={() => {
+            setModal(null);
+            setEditingDispatch(null);
+          }}
+        />
+      )}
+
+      {modal === "manufacturing" && (
+        <ManufacturingEntry
+          stockItems={stockItems}
+          entry={editingManufacturing}
+          onSave={saveManufacturing}
+          onClose={() => {
+            setModal(null);
+            setEditingManufacturing(null);
+          }}
+        />
+      )}
     </div>
   );
 }
