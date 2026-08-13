@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
+import api from "../services/api";
 
 export default function ImportStockItems({ onClose }) {
   const [importedRows, setImportedRows] = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [existingItems, setExistingItems] = useState([]);
+  const [creating, setCreating] = useState(false);
 
   const downloadStockItemTemplate = () => {
     const headers = [
@@ -32,7 +35,7 @@ export default function ImportStockItems({ onClose }) {
 
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result);
 
       const workbook = XLSX.read(data, {
@@ -50,7 +53,13 @@ export default function ImportStockItems({ onClose }) {
         defval: "",
       });
 
-      const formattedRows = rows.map((row) => ({
+      const nonEmptyRows = rows.filter((row) =>
+  Object.values(row).some(
+    (value) => String(value).trim() !== ""
+  )
+);
+
+      const formattedRows = nonEmptyRows.map((row) => ({
   item_name: row["Item Name"],
   stock_group: row["Group"],
   unit: row["Unit"],
@@ -60,20 +69,147 @@ export default function ImportStockItems({ onClose }) {
   low_qty_alert: row["Low Qty Alert"],
 }));
 
-      const errors = validateRows(formattedRows);
+const stockItems = await api.getStockItems();
+
+setExistingItems(stockItems);
+
+     const errors = validateRows(formattedRows, stockItems);
+
+     const previewRows = formattedRows.map((row, index) => ({
+  ...row,
+  error: getRowError(
+    row,
+    index,
+    formattedRows,
+    stockItems
+  ),
+}));
 
 setValidationErrors(errors);
-setImportedRows(formattedRows);
+setImportedRows(previewRows);
     };
 
     reader.readAsArrayBuffer(file);
   };
 
-  const validateRows = (rows) => {
+const getRowError = (row, index, rows, existingItems) => {
+  const rowNumber = index + 2;
+
+  const itemName = String(row.item_name || "")
+    .trim()
+    .toLowerCase();
+
+  if (!itemName) {
+    return "Item Name is required.";
+  }
+
+  if (!row.stock_group || !String(row.stock_group).trim()) {
+    return "Group is required.";
+  }
+
+  if (!row.unit || !String(row.unit).trim()) {
+    return "Unit is required.";
+  }
+
+  if (
+    row.opening_qty === "" ||
+    row.opening_qty === null ||
+    row.opening_qty === undefined
+  ) {
+    return "Opening Stock is required.";
+  }
+
+  if (isNaN(Number(row.opening_qty))) {
+    return "Opening Stock must be a number.";
+  }
+
+  if (row.alternate_unit && !row.conversion) {
+    return "Conversion is required when Alternate Unit is provided.";
+  }
+
+  if (!row.alternate_unit && row.conversion) {
+    return "Alternate Unit is required when Conversion is provided.";
+  }
+
+  if (
+    row.conversion !== "" &&
+    row.conversion !== null &&
+    row.conversion !== undefined
+  ) {
+    if (isNaN(Number(row.conversion)) || Number(row.conversion) <= 0) {
+      return "Conversion must be greater than 0.";
+    }
+  }
+
+  if (
+    row.low_qty_alert !== "" &&
+    row.low_qty_alert !== null &&
+    row.low_qty_alert !== undefined
+  ) {
+    if (isNaN(Number(row.low_qty_alert))) {
+      return "Low Qty Alert must be a number.";
+    }
+  }
+
+  const duplicateIndex = rows.findIndex(
+    (otherRow, otherIndex) =>
+      otherIndex !== index &&
+      String(otherRow.item_name || "")
+        .trim()
+        .toLowerCase() === itemName
+  );
+
+  if (duplicateIndex !== -1) {
+    return "Duplicate item in Excel.";
+  }
+
+  const existingItemNames = new Set(
+    existingItems.map((item) =>
+      String(item.item_name || "")
+        .trim()
+        .toLowerCase()
+    )
+  );
+
+  if (existingItemNames.has(itemName)) {
+    return "Item already exists.";
+  }
+
+  return null;
+};
+
+
+const validateRows = (rows, existingItems = []) => {
   const errors = [];
+  const itemNames = new Set();
+
+  const existingItemNames = new Set(
+  existingItems.map((item) =>
+    String(item.item_name || "").trim().toLowerCase()
+  )
+);
 
   rows.forEach((row, index) => {
     const rowNumber = index + 2; // Excel row number; row 1 is headers
+
+    const itemName = String(row.item_name || "").trim().toLowerCase();
+
+if (itemName) {
+  if (itemNames.has(itemName)) {
+    errors.push(
+      `Row ${rowNumber}: Duplicate stock item "${row.item_name}".`
+    );
+  } else {
+    itemNames.add(itemName);
+  }
+}
+
+if (itemName && existingItemNames.has(itemName)) {
+  errors.push(
+    `Row ${rowNumber}: Stock item "${row.item_name}" already exists.`
+  );
+}
+
 
     if (!row.item_name || !String(row.item_name).trim()) {
       errors.push(`Row ${rowNumber}: Item Name is required.`);
@@ -129,6 +265,76 @@ setImportedRows(formattedRows);
   return errors;
 };
 
+
+const handleCreate = async () => {
+  if (importedRows.length === 0) {
+    return;
+  }
+
+const readyRows = importedRows.filter((row) => !row.error);
+
+if (readyRows.length === 0) {
+  alert("There are no valid stock items to create.");
+  return;
+}
+
+  try {
+    setCreating(true);
+
+    const itemsToCreate = readyRows.map((row) => ({
+      item_name: String(row.item_name).trim(),
+      stock_group: String(row.stock_group).trim(),
+      unit: String(row.unit).trim(),
+      alternate_unit: row.alternate_unit
+        ? String(row.alternate_unit).trim()
+        : "",
+      conversion:
+        row.conversion === "" ||
+        row.conversion === null ||
+        row.conversion === undefined
+          ? null
+          : Number(row.conversion),
+      opening_qty: Number(row.opening_qty),
+      low_qty_alert:
+        row.low_qty_alert === "" ||
+        row.low_qty_alert === null ||
+        row.low_qty_alert === undefined
+          ? null
+          : Number(row.low_qty_alert),
+    }));
+
+    const result = await api.bulkCreateStockItems(itemsToCreate);
+
+    console.log("Bulk create result:", result);
+
+    alert(
+      `${itemsToCreate.length} stock item(s) created successfully.`
+    );
+
+    setImportedRows([]);
+    setValidationErrors([]);
+  } catch (error) {
+    console.error("Bulk stock item creation failed:", error);
+
+    alert(
+      error?.message ||
+        "Unable to create stock items."
+    );
+  } finally {
+    setCreating(false);
+  }
+};
+
+
+const isValid = importedRows.length > 0 && validationErrors.length === 0;
+
+const readyRows = importedRows.filter((row) => !row.error);
+
+const errorRows = importedRows.filter((row) => row.error);
+
+const readyCount = readyRows.length;
+const errorCount = errorRows.length;
+
   return (
     <div className="modal d-block" tabIndex="-1">
       <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -167,6 +373,27 @@ setImportedRows(formattedRows);
 
                 {importedRows.length > 0 && (
   <div className="mt-4">
+
+{importedRows.length > 0 && (
+  <div className="d-flex gap-2 flex-wrap mt-3">
+
+    <span className="badge bg-secondary">
+      {importedRows.length} Found
+    </span>
+
+    <span className="badge bg-success">
+      {readyCount} Ready
+    </span>
+
+    {errorCount > 0 && (
+      <span className="badge bg-danger">
+        {errorCount} Error
+      </span>
+    )}
+
+  </div>
+)}
+
     <h6>Preview</h6>
 
 {validationErrors.length > 0 && (
@@ -194,6 +421,7 @@ setImportedRows(formattedRows);
             <th>Conversion</th>
             <th>Opening Stock</th>
             <th>Low Qty Alert</th>
+            <th>Status</th>
           </tr>
         </thead>
 
@@ -208,6 +436,17 @@ setImportedRows(formattedRows);
               <td>{row.conversion}</td>
               <td>{row.opening_qty}</td>
               <td>{row.low_qty_alert}</td>
+              <td>
+  {row.error ? (
+    <span className="text-danger">
+      ❌ {row.error}
+    </span>
+  ) : (
+    <span className="text-success">
+      ✅ Ready
+    </span>
+  )}
+</td>
             </tr>
           ))}
         </tbody>
@@ -230,9 +469,28 @@ setImportedRows(formattedRows);
               type="button"
               className="btn btn-secondary"
               onClick={onClose}
+               disabled={creating}
             >
               Close
             </button>
+
+              {importedRows.length > 0 && (
+    <button
+      type="button"
+      className="btn btn-success"
+      onClick={handleCreate}
+      disabled={
+        creating ||
+          readyCount === 0
+      }
+    >
+      {creating
+  ? "Creating..."
+  : `Create ${readyCount} Stock Item${readyCount !== 1 ? "s" : ""}`}
+    </button>
+  )}
+
+
           </div>
         </div>
       </div>
