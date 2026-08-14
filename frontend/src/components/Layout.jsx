@@ -16,6 +16,7 @@ import StockGroupsUnits from "../pages/StockUnitAndGroups";
 import ViewDailyreport from "../pages/ViewDailyReport";
 import ViewEditStock from "../pages/ViewEditStock";
 import MasterLock from "../components/MasterLock";
+import EditDailyReport from "../pages/EditDailyReport";
 import StockItemMaster from "../pages/StockItemMaster";
 import api from "../services/api";
 
@@ -27,6 +28,13 @@ export default function Layout() {
 
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
+  const [selectedEditDailyReportId, setSelectedEditDailyReportId] =
+  useState(null);
+
+  const [
+  editDailyReportMasterPassword,
+  setEditDailyReportMasterPassword,
+] = useState("");
   const [factoryProfilePage, setFactoryProfilePage] = useState("profile");
   const [showMasterLock, setShowMasterLock] = useState(false);
 
@@ -50,14 +58,44 @@ export default function Layout() {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
+
+
+
+
       case "viewdailyreport":
         return (
           <ViewDailyreport
             reportId={selectedDailyReportId}
             mode={dailyReportMode}
+             onEdit={(id,  masterPassword = "") => {
+        setSelectedEditDailyReportId(id);
+         setEditDailyReportMasterPassword(masterPassword);
+        setActiveMenu("editdailyreport");
+      }}
             onClose={() => setActiveMenu("dailyreportregister")}
           />
         );
+
+
+        case "editdailyreport":
+  return (
+    <EditDailyReport
+      reportId={selectedEditDailyReportId}
+       masterPassword={
+        editDailyReportMasterPassword
+      }
+      onClose={() => {
+        setSelectedEditDailyReportId(null);
+         setEditDailyReportMasterPassword("");
+        setActiveMenu("viewdailyreport");
+      }}
+      onSaved={() => {
+        setSelectedEditDailyReportId(null);
+           setEditDailyReportMasterPassword("");
+        setActiveMenu("viewdailyreport");
+      }}
+    />
+  );
 
       case "createstockitem":
         return (

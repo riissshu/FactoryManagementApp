@@ -6,6 +6,7 @@ import PurchaseEntry from "../components/PurchaseEntry";
 import DispatchEntry from "../components/DispatchEntry";
 import ManufacturingEntry from "../components/ManufacturingEntry";
 import DailyReportTables from "../components/DailyReportTables";
+import PreviewDailyReport from "./PreviewDailyReport";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -106,6 +107,61 @@ export default function DailyReportForm({
 
   const [saving, setSaving] = useState(false);
   const [validated, setValidated] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+
+  const openPreview = () => {
+  if (saving || checkingDate) return;
+
+  const form = dateInputRef.current?.form;
+
+  if (form && !form.checkValidity()) {
+    setValidated(true);
+    return;
+  }
+
+  const purchasesResult = cleanDocuments(
+    report.purchases,
+    "purchaseNo",
+    "Purchase",
+  );
+
+  const gatePassesResult = cleanDocuments(
+    report.gatePasses,
+    "gatePassNo",
+    "Gate pass",
+  );
+
+  const manufacturedResult =
+    cleanManufacturing(
+      report.manufactured,
+    );
+
+  if (
+    purchasesResult.error ||
+    gatePassesResult.error ||
+    manufacturedResult.error
+  ) {
+    setValidated(true);
+
+    setSectionErrors({
+      purchases: purchasesResult.error,
+      gatePasses: gatePassesResult.error,
+      manufactured:
+        manufacturedResult.error,
+    });
+
+    return;
+  }
+
+  setSectionErrors({
+    purchases: null,
+    gatePasses: null,
+    manufactured: null,
+  });
+
+  setShowPreview(true);
+};
 
   const [sectionErrors, setSectionErrors] = useState({
     purchases: null,
@@ -370,7 +426,7 @@ export default function DailyReportForm({
   // -----------------------------
 
   const save = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
 
     if (saving || checkingDate) return;
 
@@ -442,8 +498,16 @@ export default function DailyReportForm({
       } else {
         await api.saveDailyReport(payload);
       }
+      setSaveMessage(
+  report.id
+    ? "Daily report updated successfully."
+    : "Daily report saved successfully."
+);
+setShowPreview(false);
 
       onSaved?.();
+
+
 
       setReport(emptyReport());
       setValidated(false);
@@ -503,6 +567,13 @@ export default function DailyReportForm({
               Checking date...
             </div>
           )}
+
+          {saveMessage && (
+  <div className="alert alert-success">
+    {saveMessage}
+  </div>
+)}
+
         </div>
       </div>
 
@@ -623,18 +694,13 @@ export default function DailyReportForm({
 
         <div className="d-flex justify-content-end pb-4">
           <button
-            type="submit"
-            className="btn btn-primary px-4"
-            disabled={
-              saving || checkingDate
-            }
-          >
-            {saving
-              ? "Saving..."
-              : report.id
-                ? "Update Daily Report"
-                : "Save Daily Report"}
-          </button>
+  type="button"
+  className="btn btn-primary px-4"
+  onClick={openPreview}
+  disabled={saving || checkingDate}
+>
+  Preview
+</button>
         </div>
       </form>
 
@@ -675,6 +741,16 @@ export default function DailyReportForm({
           }}
         />
       )}
+
+      {showPreview && (
+  <PreviewDailyReport
+    report={report}
+    stockItems={stockItems}
+    onBack={() => setShowPreview(false)}
+    onSave={save}
+    saving={saving}
+  />
+)}
     </div>
   );
 }

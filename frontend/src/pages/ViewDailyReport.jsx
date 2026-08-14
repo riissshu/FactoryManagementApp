@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import PreviewDailyReportTables from "../components/PreviewDailyReportTables";
+import ViewDailyReportTables from "../components/ViewDailyReportTables";
 import api from "../services/api";
 import { exportDailyReportPdf } from "../utils/exportDailyReportPdf";
 import { exportDailyReportExcel } from "../utils/exportDailyReportExcel";
 
-export default function VieweditDailyReport({
+export default function ViewDailyReport({
   reportId,
   mode = "view",
   onClose,
+  onEdit,
 }) {
   const [date, setDate] = useState("");
   const [stockItems, setStockItems] = useState([]);
@@ -118,8 +119,7 @@ export default function VieweditDailyReport({
       if (action === "edit") {
         // Keep the password temporarily so the backend can
         // authorize the actual save operation.
-        setEditMasterPassword(masterPassword);
-        setCurrentMode("edit");
+          onEdit?.(reportId, masterPassword);
       }
 
       if (action === "delete") {
@@ -289,13 +289,13 @@ export default function VieweditDailyReport({
     type="button"
     className="btn btn-primary"
     onClick={() => {
-      if (isExported) {
-        openPasswordModal("edit");
-        return;
-      }
+  if (isExported) {
+    openPasswordModal("edit");
+    return;
+  }
 
-      setCurrentMode("edit");
-    }}
+  onEdit?.(reportId);
+}}
   >
     Edit Report
   </button>
@@ -359,7 +359,7 @@ export default function VieweditDailyReport({
       <>
         {/* READ-ONLY TABLES */}
 
-        <PreviewDailyReportTables
+        <ViewDailyReportTables
           purchases={data.purchases}
           gatePasses={data.gatePasses}
           manufactured={data.manufactured}
