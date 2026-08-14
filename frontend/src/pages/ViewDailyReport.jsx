@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import PreviewDailyReportTables from "../components/PreviewDailyReportTables";
 import api from "../services/api";
 import { exportDailyReportPdf } from "../utils/exportDailyReportPdf";
+import { exportDailyReportExcel } from "../utils/exportDailyReportExcel";
 
 export default function VieweditDailyReport({
   reportId,
@@ -240,6 +241,34 @@ export default function VieweditDailyReport({
     }
   };
 
+  const exportExcel = async () => {
+  try {
+    const settings = await api.getSettings();
+
+    exportDailyReportExcel({
+      company: settings?.factory_name,
+      reportDate: date,
+      purchases: data.purchases,
+      gatePasses: data.gatePasses,
+      manufactured: data.manufactured,
+      stockItems,
+      filename: `${
+        settings?.factory_name || "factory"
+      }-daily-report-${date}.xlsx`,
+    });
+  } catch (error) {
+    console.error(
+      "Unable to export daily report:",
+      error
+    );
+
+    alert(
+      error?.message ||
+        "Unable to export daily report."
+    );
+  }
+};
+
   if (loading) {
     return (
       <div className="page-shell">
@@ -270,6 +299,14 @@ export default function VieweditDailyReport({
   >
     Edit Report
   </button>
+
+  <button
+  type="button"
+  className="btn btn-outline-success ms-2"
+  onClick={exportExcel}
+>
+  Export Excel
+</button>
 
   <button
     type="button"

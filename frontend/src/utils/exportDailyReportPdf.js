@@ -1,453 +1,1006 @@
-const MIN_ROWS = 8;
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-const css = `
-<style>
+/* =========================================================
+   COLORS
+========================================================= */
 
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-    font-family:Arial, Helvetica, sans-serif;
-}
+const COLORS = {
+  purchase: {
+    header: [220, 235, 250],
+    total: [239, 246, 253],
+  },
 
-body{
-    padding:18px;
-    font-size:13px;
-    color:#222;
-}
+  dispatch: {
+    header: [252, 235, 215],
+    total: [253, 244, 232],
+  },
 
-/* =========================
-   HEADER
-========================= */
+  manufacturing: {
+    header: [221, 240, 225],
+    total: [238, 248, 240],
+  },
 
-.header{
-    text-align:center;
-    margin-bottom:12px;
-}
+  border: [185, 185, 185],
 
-.header h1{
-    font-size:28px;
-    font-weight:700;
-    text-transform:uppercase;
-    margin-bottom:2px;
-}
+  text: [35, 35, 35],
 
-.header h2{
-    font-size:18px;
-    margin-bottom:4px;
-}
+};
 
-.header p{
-    font-size:13px;
-    font-weight:bold;
-}
+/* =========================================================
+   HELPERS
+========================================================= */
 
-/* =========================
-   LAYOUT
-========================= */
+const getStockItem = (stockItems, itemId) => {
+  return stockItems.find(
+    (item) =>
+      String(item.id) === String(itemId)
+  );
+};
 
-.row{
-    display:flex;
-    gap:16px;
-    margin-bottom:18px;
-}
+const getItemName = (
+  stockItems,
+  itemId
+) => {
+  return (
+    getStockItem(
+      stockItems,
+      itemId
+    )?.item_name || ""
+  );
+};
 
-.card,
-.manufacturing{
-    border:1px solid #444;
-    border-radius:8px;
-    overflow:hidden;
-}
+const getItemUnit = (
+  stockItems,
+  itemId
+) => {
+  return (
+    getStockItem(
+      stockItems,
+      itemId
+    )?.unit || ""
+  );
+};
 
-.card{
-    flex:1;
-}
+const totalQty = (
+  items = []
+) => {
+  return items.reduce(
+    (sum, item) =>
+      sum +
+      (Number(item.qty) || 0),
+    0
+  );
+};
 
-/* =========================
-   CARD HEADER
-========================= */
+const formatQty = (
+  value
+) => {
+  if (
+    value === "" ||
+    value === null ||
+    value === undefined
+  ) {
+    return "";
+  }
 
-.card-title{
-    color:#fff;
-    text-align:center;
-    font-size:18px;
-    font-weight:700;
-    padding:10px 12px;
-}
-
-/* =========================
-   TABLE
-========================= */
-
-table{
-    width:100%;
-    border-collapse:collapse;
-}
-
-th{
-    background:#efefef;
-    font-weight:bold;
-}
-
-th,
-td{
-    border:1px solid #d6d6d6;
-    padding:8px 10px;
-    font-size:14px;
-    font-weight:600;
-    line-height:1.5;
-}
-
-thead th{
-    background:#efefef;
-    font-size:15px;
-    font-weight:700;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    page-break-inside:auto;
-}
-
-tr{
-    page-break-inside:avoid;
-    page-break-after:auto;
-}
-
-thead{
-    display:table-header-group;
-}
+  return Number(value).toString();
+};
 
 
 
-.card,
-.manufacturing{
-    page-break-inside:avoid;
-    break-inside:avoid;
-}
+/* =========================================================
+   REPORT HEADER
+========================================================= */
 
+const addReportHeader = (
+  doc,
+  company,
+  reportDate
+) => {
+  const pageWidth =
+    doc.internal.pageSize.getWidth();
 
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
 
-/* Right align quantity columns */
+  doc.setTextColor(
+    ...COLORS.text
+  );
 
-td:last-child,
-th:last-child{
-    text-align:right;
-}
+  /*
+   * Factory name
+   */
+  doc.setFontSize(16);
 
-/* Merge party cells */
+  doc.text(
+    company || "Factory",
+    pageWidth / 2,
+    13,
+    {
+      align: "center",
+    }
+  );
 
-td[rowspan]{
-    vertical-align:middle;
-    font-weight:bold;
-}
+  /*
+   * Daily Report
+   */
+  doc.setFontSize(12);
 
-/* Material padding */
+  doc.text(
+    "DAILY REPORT",
+    pageWidth / 2,
+    20,
+    {
+      align: "center",
+    }
+  );
 
-td:first-child{
-    padding-left:10px;
-}
+  /*
+   * Date
+   */
+  doc.setFont(
+    "helvetica",
+    "normal"
+  );
 
+  doc.setFontSize(9);
 
+  doc.text(
+    `Report Date : ${
+      reportDate || "-"
+    }`,
+    pageWidth / 2,
+    27,
+    {
+      align: "center",
+    }
+  );
+};
 
+/* =========================================================
+   SECTION HEADER
+========================================================= */
 
-/* Blank separator between groups */
+const addSectionHeader = (
+  doc,
+  title,
+  y
+) => {
+  doc.setFont(
+    "helvetica",
+    "bold"
+  );
 
-.separator td{
-    border:none !important;
-    background:#fff;
-    height:18px;
-    padding:0;
-}
+  doc.setFontSize(10.5);
 
-/* =========================
-   COLUMN WIDTHS
-========================= */
+  doc.setTextColor(
+    ...COLORS.text
+  );
 
-/* Received / Dispatch */
+  doc.text(
+    title,
+    14,
+    y
+  );
 
-.card table th:nth-child(1),
-.card table td:nth-child(1){
-    width:30%;
-}
+  return y + 5;
+};
 
-.card table th:nth-child(2),
-.card table td:nth-child(2){
-    width:50%;
-}
+/* =========================================================
+   PURCHASE / DISPATCH
+========================================================= */
 
-.card table th:nth-child(3),
-.card table td:nth-child(3){
-    width:20%;
-}
+const addTransactionSection = ({
+  doc,
+  title,
+  documents,
+  stockItems,
+  field,
+  numberHeader,
+  startY,
+  sectionColor,
+}) => {
+  let y = addSectionHeader(
+    doc,
+    title,
+    startY
+  );
 
-/* Manufacturing */
+  /*
+   * No entries
+   */
+  if (
+    documents.length === 0
+  ) {
+    autoTable(doc, {
+      startY: y,
 
-.manufacturing table th:nth-child(1),
-.manufacturing table td:nth-child(1),
-.manufacturing table th:nth-child(3),
-.manufacturing table td:nth-child(3){
-    width:40%;
-}
+      head: [
+        ["Message"],
+      ],
 
-.manufacturing table th:nth-child(2),
-.manufacturing table td:nth-child(2),
-.manufacturing table th:nth-child(4),
-.manufacturing table td:nth-child(4){
-    width:10%;
-}
+      body: [
+        ["No entries."],
+      ],
 
-/* Slightly taller manufacturing rows */
+      theme: "grid",
 
-.manufacturing td{
-    padding:10px 12px;
-    font-size:14px;
-}
+      styles: {
+        font:
+          "helvetica",
 
-.received-title{
-    background:#198754;
-}
+        fontSize: 8,
 
-.dispatch-title{
-    background:#dc3545;
-}
+        cellPadding: 2.2,
 
-.manufacturing-title{
-    background:#0d6efd;
-}
+        lineColor:
+          COLORS.border,
 
-</style>
-`;
+        lineWidth: 0.3,
 
-const totalQty = (rows) =>
-    rows.reduce((sum, row) => sum + (Number(row.qty) || 0), 0);
+        textColor:
+          COLORS.text,
+      },
 
-const rowCount = (...lists) =>
-    Math.max(
-        MIN_ROWS,
-        ...lists.map((list) => list.length)
-    );
+      headStyles: {
+        fillColor:
+          sectionColor.header,
 
-const empty = (value) => value ?? "";
+        textColor:
+          COLORS.text,
 
-const itemName = (id, stockItems) =>
-  stockItems.find((i) => String(i.id) === String(id))?.item_name || "";
+        fontStyle:
+          "bold",
+      },
 
-const header = (company, reportDate) => `
-<div class="header">
-    <h1>${empty(company)}</h1>
-    <h2>DAILY REPORT</h2>
-    <p>Report Date : ${empty(reportDate)}</p>
-</div>
-`;
+      tableWidth: 216,
 
-const simpleCard = (title, headers, documents, stockItems, field) => {
-  let total = 0;
+      margin: {
+        left: 14,
+        right: 14,
+      },
+    });
+
+   
+  }
+
+  /*
+   * Each document gets
+   * its own table.
+   */
+  documents.forEach(
+    (document) => {
+      const items =
+        document.items || [];
+
+      const body = [];
+
+      /*
+       * Item rows
+       */
+      items.forEach(
+        (item, index) => {
+          body.push([
+            index === 0
+              ? document[field] ||
+                ""
+              : "",
+
+            getItemName(
+              stockItems,
+              item.item
+            ),
+
+            getItemUnit(
+              stockItems,
+              item.item
+            ),
+
+            {
+              content:
+                formatQty(
+                  item.qty
+                ),
+
+              styles: {
+                halign:
+                  "right",
+              },
+            },
+          ]);
+        }
+      );
+
+      /*
+       * Total row
+       */
+      body.push([
+        "",
+        "",
+
+        {
+          content:
+            "Total Qty:",
+
+          styles: {
+            halign:
+              "right",
+
+            fontStyle:
+              "bold",
+          },
+        },
+
+        {
+          content:
+            String(
+              totalQty(items)
+            ),
+
+          styles: {
+            halign:
+              "right",
+
+            fontStyle:
+              "bold",
+          },
+        },
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+
+        head: [[
+          numberHeader,
+          "Stock Item",
+          "Unit",
+          "Quantity",
+        ]],
+
+        body,
+
+        theme: "grid",
+
+        styles: {
+          font:
+            "helvetica",
+
+          fontSize: 8,
+
+          cellPadding: 2.2,
+
+          lineColor:
+            COLORS.border,
+
+          lineWidth: 0.3,
+
+          textColor:
+            COLORS.text,
+
+          valign:
+            "middle",
+        },
+
+        headStyles: {
+          fillColor:
+            sectionColor.header,
+
+          textColor:
+            COLORS.text,
+
+          fontStyle:
+            "bold",
+
+          fontSize: 8.2,
+
+          halign:
+            "left",
+        },
+
+        tableWidth: 216,
+
+        columnStyles: {
+          0: {
+            cellWidth: 72,
+          },
+
+          1: {
+            cellWidth: 40,
+          },
+
+          2: {
+            cellWidth: 34,
+          },
+
+          3: {
+            cellWidth: 70,
+
+            halign:
+              "right",
+          },
+        },
+
+        didParseCell: (
+          data
+        ) => {
+          /*
+           * Total row
+           */
+          if (
+            data.row.index ===
+            body.length - 1
+          ) {
+            data.cell.styles.fillColor =
+              sectionColor.total;
+          }
+        },
+
+        margin: {
+          left: 14,
+          right: 14,
+        },
+      });
+
+      y =
+        doc.lastAutoTable.finalY +
+        8;
+    }
+  );
+
+ 
+ 
+
+  return y;
+};
+
+/* =========================================================
+   MANUFACTURING
+========================================================= */
+
+const addManufacturingSection = ({
+  doc,
+  manufactured,
+  stockItems,
+  startY,
+  sectionColor,
+}) => {
+  let y = addSectionHeader(
+    doc,
+    "MANUFACTURING ENTRIES",
+    startY
+  );
+
+  /*
+   * No manufacturing
+   */
+  if (
+    manufactured.length === 0
+  ) {
+    autoTable(doc, {
+      startY: y,
+
+      head: [
+        ["Message"],
+      ],
+
+      body: [[
+        "No manufacturing entries.",
+      ]],
+
+      theme: "grid",
+
+      styles: {
+        font:
+          "helvetica",
+
+        fontSize: 8,
+
+        cellPadding: 2.2,
+
+        lineColor:
+          COLORS.border,
+
+        lineWidth: 0.3,
+
+        textColor:
+          COLORS.text,
+      },
+
+      headStyles: {
+        fillColor:
+          sectionColor.header,
+
+        textColor:
+          COLORS.text,
+
+        fontStyle:
+          "bold",
+      },
+
+      margin: {
+        left: 14,
+        right: 14,
+      },
+    });
 
   
+  }
 
-  const body = documents
-    .map((doc) => {
-      const rows = doc.items
-        .map((item, index) => {
-          total += Number(item.qty) || 0;
+  /*
+   * Each manufacturing
+   * entry is a batch.
+   */
+  manufactured.forEach(
+    (batch, batchIndex) => {
+      
 
-          return `
-          <tr>
-            ${
-              index === 0
-                ? `<td rowspan="${doc.items.length}">${empty(doc[field])}</td>`
-                : ""
-            }
-            <td>${itemName(item.item, stockItems)}</td>
-            <td>${empty(item.qty)}</td>
-          </tr>
-          `;
-        })
-        .join("");
+      const consumption =
+        batch.consumption ||
+        [];
 
-      return (
-        rows +
-        `
-        <tr class="separator">
-          <td colspan="3"></td>
-        </tr>
-      `
-      );
-    })
-    .join("");
+      const production =
+        batch.production ||
+        [];
 
-const titleClass =
-  title.includes("RECEIVED")
-    ? "received-title"
-    : title.includes("DISPATCH")
-    ? "dispatch-title"
-    : "card-title";
+      const maxRows =
+        Math.max(
+          consumption.length,
+          production.length,
+          1
+        );
 
-  return `
-  <div class="card">
-    <div class="card-title  ${titleClass}">${title}</div>
+      const body = [];
 
-    <table>
+      /*
+       * Item rows
+       */
+      for (
+        let index = 0;
+        index < maxRows;
+        index++
+      ) {
+        const c =
+          consumption[index];
 
-      <thead>
-        <tr>
-          ${headers.map((h) => `<th>${h}</th>`).join("")}
-        </tr>
-      </thead>
+        const p =
+          production[index];
 
-      <tbody>
-        ${body}
-      </tbody>
+        body.push([
+          c
+            ? getItemName(
+                stockItems,
+                c.item
+              )
+            : "",
 
-     
+          c
+            ? getItemUnit(
+                stockItems,
+                c.item
+              )
+            : "",
 
-    </table>
-  </div>
-  `;
+          {
+            content: c
+              ? formatQty(
+                  c.qty
+                )
+              : "",
+
+            styles: {
+              halign:
+                "right",
+            },
+          },
+
+          p
+            ? getItemName(
+                stockItems,
+                p.item
+              )
+            : "",
+
+          p
+            ? getItemUnit(
+                stockItems,
+                p.item
+              )
+            : "",
+
+          {
+            content: p
+              ? formatQty(
+                  p.qty
+                )
+              : "",
+
+            styles: {
+              halign:
+                "right",
+            },
+          },
+        ]);
+      }
+
+      /*
+       * Totals
+       */
+      body.push([
+        {
+          content:
+            "Total Consumption:",
+
+          styles: {
+            fontStyle:
+              "bold",
+
+            halign:
+              "left",
+          },
+        },
+
+        "",
+
+        {
+          content:
+            String(
+              totalQty(
+                consumption
+              )
+            ),
+
+          styles: {
+            fontStyle:
+              "bold",
+
+            halign:
+              "right",
+          },
+        },
+
+        {
+          content:
+            "Total Production:",
+
+          styles: {
+            fontStyle:
+              "bold",
+
+            halign:
+              "left",
+          },
+        },
+
+        "",
+
+        {
+          content:
+            String(
+              totalQty(
+                production
+              )
+            ),
+
+          styles: {
+            fontStyle:
+              "bold",
+
+            halign:
+              "right",
+          },
+        },
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+
+        head: [
+  [
+    {
+      content: `Batch ${
+        batchIndex + 1
+      }`,
+
+      colSpan: 6,
+
+      styles: {
+        halign: "left",
+        fontStyle: "bold",
+        fontSize: 9,
+          fillColor: "bff5b3",
+      },
+    },
+  ],
+
+  [
+    {
+      content:
+        "CONSUMPTION",
+
+      colSpan: 3,
+
+      styles: {
+        halign: "center",
+      },
+    },
+
+    {
+      content:
+        "PRODUCTION / LOSS",
+
+      colSpan: 3,
+
+      styles: {
+        halign: "center",
+      },
+    },
+  ],
+
+  [
+    "Stock Item",
+    "Unit",
+    "Quantity",
+    "Stock Item",
+    "Unit",
+    "Quantity",
+  ],
+],
+
+        body,
+
+        theme: "grid",
+
+        styles: {
+          font:
+            "helvetica",
+
+          fontSize: 8,
+
+          cellPadding: 2.2,
+
+          lineColor:
+            COLORS.border,
+
+          lineWidth: 0.3,
+
+          textColor:
+            COLORS.text,
+
+          valign:
+            "middle",
+        },
+
+        headStyles: {
+          fillColor:
+            sectionColor.header,
+
+          textColor:
+            COLORS.text,
+
+          fontStyle:
+            "bold",
+
+          fontSize: 8,
+
+          halign:
+            "left",
+        },
+
+        tableWidth: 269,
+
+        columnStyles: {
+          0: {
+            cellWidth: 70,
+          },
+
+          1: {
+            cellWidth: 30,
+          },
+
+          2: {
+            cellWidth: 34,
+
+            halign:
+              "right",
+          },
+
+          3: {
+            cellWidth: 70,
+          },
+
+          4: {
+            cellWidth: 30,
+          },
+
+          5: {
+            cellWidth: 35,
+
+            halign:
+              "right",
+          },
+        },
+
+        didParseCell: (
+          data
+        ) => {
+          /*
+           * Total row
+           */
+          if (
+            data.row.index ===
+            body.length - 1
+          ) {
+            data.cell.styles.fillColor =
+              sectionColor.total;
+          }
+        },
+
+        margin: {
+          left: 14,
+          right: 14,
+        },
+      });
+
+      y =
+        doc.lastAutoTable.finalY +
+        8;
+    }
+  );
+
+ 
+  
+
+  return y;
 };
 
 
-const manufacturingCard = (manufactured, stockItems) => {
-  let consumptionTotal = 0;
-  let productionTotal = 0;
 
-  const body = manufactured
-    .map((batch) => {
-      const maxRows = Math.max(
-        batch.consumption.length,
-        batch.production.length,
-        1
-      );
+/* =========================================================
+   MAIN EXPORT
+========================================================= */
 
-      const rows = Array.from({ length: maxRows })
-        .map((_, i) => {
-          const c = batch.consumption[i];
-          const p = batch.production[i];
-
-          if (c) consumptionTotal += Number(c.qty) || 0;
-          if (p) productionTotal += Number(p.qty) || 0;
-
-          return `
-          <tr>
-              <td>${c ? itemName(c.item, stockItems) : ""}</td>
-              <td>${c ? c.qty : ""}</td>
-
-              <td>${p ? itemName(p.item, stockItems) : ""}</td>
-              <td>${p ? p.qty : ""}</td>
-          </tr>
-          `;
-        })
-        .join("");
-
-      return (
-        rows +
-        `
-        <tr class="separator">
-            <td colspan="4"></td>
-        </tr>
-      `
-      );
-    })
-    .join("");
-
-  return `
-  <div class="manufacturing">
-
-      <div class="card-title  manufacturing-title">
-          🏭 MANUFACTURING
-      </div>
-
-      <table>
-
-          <thead>
-
-              <tr>
-                  <th colspan="2">CONSUMPTION</th>
-                  <th colspan="2">PRODUCTION</th>
-              </tr>
-
-              <tr>
-                  <th>Material</th>
-                  <th>Qty</th>
-
-                  <th>Product</th>
-                  <th>Qty</th>
-              </tr>
-
-          </thead>
-
-          <tbody>
-
-              ${body}
-
-          </tbody>
-
-
-      </table>
-
-  </div>
-  `;
-};
-
-
-export const exportDailyReportPdf = async ({
-     company,
+export const exportDailyReportPdf =
+  async ({
+    company,
     reportDate,
     purchases = [],
     gatePasses = [],
     manufactured = [],
     stockItems = [],
     filename,
-}) => {
+  }) => {
+    /*
+     * A4 LANDSCAPE
+     */
+    const doc = new jsPDF({
+      orientation:
+        "landscape",
 
-    const html = `
-    <!DOCTYPE html>
-    <html>
+      unit: "mm",
 
-    <head>
-        <meta charset="UTF-8">
-        ${css}
-    </head>
-
-    <body>
-
-        ${header(company, reportDate)}
-
-        <div class="row">
-
-         ${simpleCard(
-    "📥 RECEIVED",
-    ["Party", "Material", "Qty"],
-    purchases,
-    stockItems,
-    "purchaseNo"
-)}
-
-${simpleCard(
-    "🚚 DISPATCH",
-    ["Party", "Material", "Qty"],
-    gatePasses,
-    stockItems,
-    "gatePassNo"
-)}
-
-        </div>
-
-       ${manufacturingCard(
-    manufactured,
-    stockItems
-)}
-
-    </body>
-
-    </html>
-    `;
-
-    return window.api.exportPdf({
-        title: "Daily Report",
-        html,
-        filename,
+      format: "a4",
     });
-};
+
+    /*
+     * Report header
+     */
+    addReportHeader(
+      doc,
+      company,
+      reportDate
+    );
+
+    /*
+     * Starting position
+     */
+    let y = 37;
+
+    /*
+     * ==========================
+     * PURCHASE
+     * ==========================
+     */
+
+    y =
+      addTransactionSection({
+        doc,
+
+        title:
+          "PURCHASE ENTRIES",
+
+        documents:
+          purchases,
+
+        stockItems,
+
+        field:
+          "purchaseNo",
+
+        numberHeader:
+          "Purchase No.",
+
+        startY:
+          y,
+
+        sectionColor:
+          COLORS.purchase,
+      });
+
+    /*
+     * ==========================
+     * DISPATCH
+     * ==========================
+     */
+
+    y =
+      addTransactionSection({
+        doc,
+
+        title:
+          "DISPATCH ENTRIES",
+
+        documents:
+          gatePasses,
+
+        stockItems,
+
+        field:
+          "gatePassNo",
+
+        numberHeader:
+          "Gate Pass No.",
+
+        startY:
+          y,
+
+        sectionColor:
+          COLORS.dispatch,
+      });
+
+    /*
+     * ==========================
+     * MANUFACTURING
+     * ==========================
+     */
+
+    addManufacturingSection({
+      doc,
+
+      manufactured,
+
+      stockItems,
+
+      startY:
+        y,
+
+      sectionColor:
+        COLORS.manufacturing,
+    });
+
+    /*
+     * ==========================
+     * PDF DATA
+     * ==========================
+     */
+
+    const pdfData =
+      doc.output(
+        "arraybuffer"
+      );
+
+    /*
+     * Existing Electron
+     * export mechanism.
+     */
+    return window.api.exportPdf({
+      title:
+        "Daily Report",
+
+      filename,
+
+      pdfData,
+    });
+  };

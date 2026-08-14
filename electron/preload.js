@@ -74,6 +74,8 @@ contextBridge.exposeInMainWorld("api", {
   restoreFirstInstallBackup: () =>
     ipcRenderer.invoke("backup:firstInstallRestore"),
   exportPdf: (data) => ipcRenderer.invoke("report:exportPdf", data),
+  exportExcel: (data) =>
+  ipcRenderer.invoke("report:exportExcel", data),
 
   // Database location / multi-company
   getDbLocation: () => ipcRenderer.invoke("dbLocation:get"),

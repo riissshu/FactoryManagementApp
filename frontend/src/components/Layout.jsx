@@ -13,7 +13,7 @@ import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
 import StockGroupsUnits from "../pages/StockUnitAndGroups";
-import ViewEditDailyreport from "../pages/ViewEditDailyReport";
+import ViewDailyreport from "../pages/ViewDailyReport";
 import ViewEditStock from "../pages/ViewEditStock";
 import MasterLock from "../components/MasterLock";
 import StockItemMaster from "../pages/StockItemMaster";
@@ -50,9 +50,9 @@ export default function Layout() {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
-      case "vieweditdailyreport":
+      case "viewdailyreport":
         return (
-          <ViewEditDailyreport
+          <ViewDailyreport
             reportId={selectedDailyReportId}
             mode={dailyReportMode}
             onClose={() => setActiveMenu("dailyreportregister")}
@@ -152,7 +152,7 @@ case "stockgroupsunits":
             openDailyReport={(id) => {
               setSelectedDailyReportId(id);
               setDailyReportMode("view");
-              setActiveMenu("vieweditdailyreport");
+              setActiveMenu("viewdailyreport");
             }}
           />
         );

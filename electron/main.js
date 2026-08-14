@@ -409,6 +409,62 @@ ipcMain.handle(
   }
 );
 
+ipcMain.handle(
+  "report:exportExcel",
+  async (
+    event,
+    {
+      filename,
+      excelData,
+    },
+  ) => {
+    const result = await dialog.showSaveDialog(
+      mainWindow,
+      {
+        title: "Export Excel",
+        defaultPath:
+          filename || "Daily Report.xlsx",
+        filters: [
+          {
+            name: "Excel Workbook",
+            extensions: ["xlsx"],
+          },
+        ],
+      }
+    );
+
+    if (
+      result.canceled ||
+      !result.filePath
+    ) {
+      return {
+        canceled: true,
+      };
+    }
+
+    try {
+      const excelBuffer =
+        Buffer.from(excelData);
+
+      fs.writeFileSync(
+        result.filePath,
+        excelBuffer
+      );
+
+      return {
+        path: result.filePath,
+      };
+    } catch (error) {
+      console.error(
+        "Excel export failed:",
+        error
+      );
+
+      throw error;
+    }
+  }
+);
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();

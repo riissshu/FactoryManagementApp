@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/riissshu/FACTORY-STOCK-APP#readme",
   "dependencies": {
-    "better-sqlite3": "^13.0.2"
+    "better-sqlite3": "^13.0.2",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "concurrently": "^10.0.4",
