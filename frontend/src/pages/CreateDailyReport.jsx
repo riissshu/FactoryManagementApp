@@ -449,7 +449,7 @@ export default function DailyReportForm({
       setValidated(false);
     } catch (error) {
       console.error("Save Error:", error);
-      alert(error.message);
+   
       checkDate(report.date);
     } finally {
       setSaving(false);

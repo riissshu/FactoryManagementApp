@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import ManufacturingSection from "../components/ManufacturingSection";
-import TransactionTable from "../components/TransactionTable";
+import PreviewDailyReportTables from "../components/PreviewDailyReportTables";
 import api from "../services/api";
 import { exportDailyReportPdf } from "../utils/exportDailyReportPdf";
 
-export default function ViewEditDailyReport({
+export default function VieweditDailyReport({
   reportId,
   mode = "view",
   onClose,
@@ -14,19 +13,16 @@ export default function ViewEditDailyReport({
 
   const [isExported, setIsExported] = useState(false);
 
-const [passwordModal, setPasswordModal] = useState({
-  show: false,
-  action: null,
-});
+  const [passwordModal, setPasswordModal] = useState({
+    show: false,
+    action: null,
+  });
 
-const [masterPassword, setMasterPassword] = useState("");
-const [passwordError, setPasswordError] = useState("");
-const [unlocking, setUnlocking] = useState(false);
+  const [masterPassword, setMasterPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
 
-const [editMasterPassword, setEditMasterPassword] = useState("");
-
-
-
+  const [editMasterPassword, setEditMasterPassword] = useState("");
 
   const [data, setData] = useState({
     purchases: [],
@@ -73,87 +69,73 @@ const [editMasterPassword, setEditMasterPassword] = useState("");
     }
   }, [reportId]);
 
-
   const openPasswordModal = (action) => {
-  setPasswordModal({
-    show: true,
-    action,
-  });
+    setPasswordModal({
+      show: true,
+      action,
+    });
 
-  setMasterPassword("");
-  setPasswordError("");
-};
-
-const closePasswordModal = () => {
-  if (unlocking) return;
-
-  setPasswordModal({
-    show: false,
-    action: null,
-  });
-
-  setMasterPassword("");
-  setPasswordError("");
-};
-
-const unlockWithMasterPassword = async () => {
-  if (unlocking) return;
-
-  if (!masterPassword) {
-    setPasswordError("Please enter Master Password.");
-    return;
-  }
-
-  try {
-    setUnlocking(true);
+    setMasterPassword("");
     setPasswordError("");
+  };
 
-    const valid = await api.verifyMasterPassword(
-      masterPassword
-    );
+  const closePasswordModal = () => {
+    if (unlocking) return;
 
-    if (!valid) {
-      setPasswordError("Incorrect Master Password.");
+    setPasswordModal({
+      show: false,
+      action: null,
+    });
+
+    setMasterPassword("");
+    setPasswordError("");
+  };
+
+  const unlockWithMasterPassword = async () => {
+    if (unlocking) return;
+
+    if (!masterPassword) {
+      setPasswordError("Please enter Master Password.");
       return;
     }
 
-    const action = passwordModal.action;
+    try {
+      setUnlocking(true);
+      setPasswordError("");
 
-    closePasswordModal();
+      const valid = await api.verifyMasterPassword(masterPassword);
 
-    if (action === "edit") {
-      // Keep the password temporarily so the backend can
-      // authorize the actual save operation.
-      setEditMasterPassword(masterPassword);
-      setCurrentMode("edit");
-    }
-
-    if (action === "delete") {
-      await api.deleteDailyReport(
-        reportId,
-        masterPassword
-      );
-
-      if (onClose) {
-        onClose();
+      if (!valid) {
+        setPasswordError("Incorrect Master Password.");
+        return;
       }
+
+      const action = passwordModal.action;
+
+      closePasswordModal();
+
+      if (action === "edit") {
+        // Keep the password temporarily so the backend can
+        // authorize the actual save operation.
+        setEditMasterPassword(masterPassword);
+        setCurrentMode("edit");
+      }
+
+      if (action === "delete") {
+        await api.deleteDailyReport(reportId, masterPassword);
+
+        if (onClose) {
+          onClose();
+        }
+      }
+    } catch (error) {
+      console.error("Unable to unlock daily report:", error);
+
+      setPasswordError(error?.message || "Unable to unlock daily report.");
+    } finally {
+      setUnlocking(false);
     }
-  } catch (error) {
-    console.error(
-      "Unable to unlock daily report:",
-      error
-    );
-
-    setPasswordError(
-      error?.message ||
-        "Unable to unlock daily report."
-    );
-  } finally {
-    setUnlocking(false);
-  }
-};
-
-
+  };
 
   const save = async () => {
     if (saving) return;
@@ -187,95 +169,82 @@ const unlockWithMasterPassword = async () => {
     try {
       setSaving(true);
 
-      await api.updateDailyReport(reportId, {
-        report_date: date,
-        ...data,
-      }, editMasterPassword
-    );
-       setEditMasterPassword("");
+      await api.updateDailyReport(
+        reportId,
+        {
+          report_date: date,
+          ...data,
+        },
+        editMasterPassword,
+      );
+      setEditMasterPassword("");
       setCurrentMode("view");
     } catch (error) {
       console.error("Unable to update daily report:", error);
 
-      alert(
-        error?.message || "Unable to update daily report.",
-      );
+      alert(error?.message || "Unable to update daily report.");
     } finally {
       setSaving(false);
     }
   };
 
   const deleteReport = async () => {
-  if (isExported) {
-    openPasswordModal("delete");
-    return;
-  }
-
-  if (!window.confirm("Delete this daily report?")) {
-    return;
-  }
-
-  try {
-    await api.deleteDailyReport(reportId);
-
-    if (onClose) {
-      onClose();
+    if (isExported) {
+      openPasswordModal("delete");
+      return;
     }
-  } catch (error) {
-    console.error(
-      "Unable to delete daily report:",
-      error
-    );
 
-    alert(
-      error?.message ||
-        "Unable to delete daily report."
-    );
-  }
-};
+    if (!window.confirm("Delete this daily report?")) {
+      return;
+    }
+
+    try {
+      await api.deleteDailyReport(reportId);
+
+      if (onClose) {
+        onClose();
+      }
+    } catch (error) {
+      console.error("Unable to delete daily report:", error);
+
+      alert(error?.message || "Unable to delete daily report.");
+    }
+  };
 
   const exportPdf = async () => {
-  try {
-    const settings = await api.getSettings();
+    try {
+      const settings = await api.getSettings();
 
-    await exportDailyReportPdf({
-      company: settings?.factory_name,
-      reportDate: date,
-      purchases: data.purchases,
-      gatePasses: data.gatePasses,
-      manufactured: data.manufactured,
-      stockItems,
-      filename: `${
-        settings?.factory_name || "factory"
-      }-daily-report-${date}.pdf`,
-    });
+      await exportDailyReportPdf({
+        company: settings?.factory_name,
+        reportDate: date,
+        purchases: data.purchases,
+        gatePasses: data.gatePasses,
+        manufactured: data.manufactured,
+        stockItems,
+        filename: `${
+          settings?.factory_name || "factory"
+        }-daily-report-${date}.pdf`,
+      });
 
-    // PDF was successfully exported.
-    // Now permanently lock the report.
-    if (!isExported) {
-      await api.markDailyReportExported(reportId);
-      setIsExported(true);
+      // PDF was successfully exported.
+      // Now permanently lock the report.
+      if (!isExported) {
+        await api.markDailyReportExported(reportId);
+        setIsExported(true);
+      }
+    } catch (error) {
+      console.error("Unable to export daily report:", error);
+
+      alert(error?.message || "Unable to export daily report.");
     }
-  } catch (error) {
-    console.error(
-      "Unable to export daily report:",
-      error
-    );
-
-    alert(
-      error?.message ||
-        "Unable to export daily report."
-    );
-  }
-};
+  };
 
   if (loading) {
     return (
       <div className="page-shell">
         <div className="content-card">
-          <p className="text-muted mb-0">
-            Loading daily report...
-          </p>
+          <p className="text-muted mb-0">Loading daily report...</p>
         </div>
       </div>
     );
@@ -284,239 +253,170 @@ const unlockWithMasterPassword = async () => {
   const isView = currentMode === "view";
 
   return (
-    <div className="page-shell">
-      <div className="d-flex align-items-center justify-content-between pt-2 pb-2">
-  <h2 className="fw-bold mb-0">
-    {isView ? "Daily Report" : "Edit Daily Report"}
-  </h2>
+    <div className="page-shell" >
 
-  {isExported && (
-    <span className="badge bg-secondary px-3 py-2">
-      🔒 Exported & Locked
-    </span>
-  )}
-</div>
+<div className="d-flex justify-content-end gap-2 mb-4">
+  <button
+    type="button"
+    className="btn btn-primary"
+    onClick={() => {
+      if (isExported) {
+        openPasswordModal("edit");
+        return;
+      }
 
-      <fieldset disabled={isView || saving}>
-        {/* Date */}
-        <div className="date-card">
-          <label>
-            Report date
-            <input
-              type="date"
-              className="form-control"
-              value={date}
-              onChange={(event) =>
-                setDate(event.target.value)
-              }
-            />
-          </label>
-        </div>
-
-        {/* Purchases */}
-        <TransactionTable
-          title="Purchases"
-          documents={data.purchases}
-          setDocuments={(purchases) =>
-            setData((current) => ({
-              ...current,
-              purchases,
-            }))
-          }
-          field="purchaseNo"
-          stockItems={stockItems}
-        />
-
-        {/* Gate Passes */}
-        <TransactionTable
-          title="Gate Passes"
-          documents={data.gatePasses}
-          setDocuments={(gatePasses) =>
-            setData((current) => ({
-              ...current,
-              gatePasses,
-            }))
-          }
-          field="gatePassNo"
-          stockItems={stockItems}
-        />
-
-        {/* Manufacturing */}
-        <ManufacturingSection
-          entries={data.manufactured}
-          setEntries={(manufactured) =>
-            setData((current) => ({
-              ...current,
-              manufactured,
-            }))
-          }
-          stockItems={stockItems}
-        />
-      </fieldset>
-
-      {/* Actions */}
-      <div className="sticky-actions">
-        {isView ? (
-          <>
-            <button
-  type="button"
-  className="btn btn-primary"
-  onClick={() => {
-    if (isExported) {
-      openPasswordModal("edit");
-      return;
-    }
-
-    setCurrentMode("edit");
-  }}
->
-  Edit Report
-</button>
-
-            <button
-              type="button"
-              className="btn btn-outline-primary ms-2"
-              onClick={exportPdf}
-            >
-              Export PDF
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-outline-danger ms-2"
-              onClick={deleteReport}
-            >
-              Delete
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary ms-2"
-              onClick={onClose}
-            >
-              Close
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={save}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary ms-2"
-              onClick={() => setCurrentMode("view")}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-          </>
-        )}
-      </div>
-
-        {passwordModal.show && (
-  <div
-    className="modal fade show d-block"
-    tabIndex="-1"
-    style={{
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      setCurrentMode("edit");
     }}
   >
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">
-            🔒 Daily Report Locked
-          </h5>
+    Edit Report
+  </button>
 
-          <button
-            type="button"
-            className="btn-close"
-            onClick={closePasswordModal}
-            disabled={unlocking}
-          />
+  <button
+    type="button"
+    className="btn btn-outline-primary"
+    onClick={exportPdf}
+  >
+    Export PDF
+  </button>
+
+  <button
+    type="button"
+    className="btn btn-outline-danger"
+    onClick={deleteReport}
+  >
+    Delete
+  </button>
+
+  <button
+    type="button"
+    className="btn btn-secondary"
+    onClick={onClose}
+  >
+    Close
+  </button>
+</div>
+
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        {/* LEFT */}
+        <div>
+          <h2 className="fw-bold mb-0">Daily Report</h2>
         </div>
 
-        <div className="modal-body">
-          <div className="alert alert-warning">
-            Unable to{" "}
-            {passwordModal.action === "edit"
-              ? "edit"
-              : "delete"}{" "}
-            after daily report exported.
-          </div>
+        {/* CENTER */}
+        <div className="text-center">
+          <span className="small text-muted me-2">Report Date:</span>
 
-          <p className="mb-3">
-            You can{" "}
-            {passwordModal.action === "edit"
-              ? "edit"
-              : "delete"}{" "}
-            this report with Master Password.
-          </p>
+          <span className="fw-semibold">{date || "-"}</span>
+        </div>
 
-          <label className="form-label fw-semibold">
-            Master Password
-          </label>
-
-          <input
-            type="password"
-            className={`form-control ${
-              passwordError ? "is-invalid" : ""
-            }`}
-            value={masterPassword}
-            onChange={(event) =>
-              setMasterPassword(event.target.value)
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                unlockWithMasterPassword();
-              }
-            }}
-            autoFocus
-            disabled={unlocking}
-          />
-
-          {passwordError && (
-            <div className="invalid-feedback">
-              {passwordError}
-            </div>
+        {/* RIGHT */}
+        <div>
+          {isExported && (
+            <span className="badge bg-secondary px-3 py-2">
+              🔒 Exported & Locked
+            </span>
           )}
         </div>
-
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={closePasswordModal}
-            disabled={unlocking}
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={unlockWithMasterPassword}
-            disabled={unlocking}
-          >
-            {unlocking
-              ? "Verifying..."
-              : passwordModal.action === "edit"
-                ? "Unlock & Edit"
-                : "Unlock & Delete"}
-          </button>
-        </div>
       </div>
-    </div>
-  </div>
-)}
 
+      <>
+        {/* READ-ONLY TABLES */}
+
+        <PreviewDailyReportTables
+          purchases={data.purchases}
+          gatePasses={data.gatePasses}
+          manufactured={data.manufactured}
+          stockItems={stockItems}
+        />
+      </>
+
+  
+
+      {passwordModal.show && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">🔒 Daily Report Locked</h5>
+
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={closePasswordModal}
+                  disabled={unlocking}
+                />
+              </div>
+
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  Unable to{" "}
+                  {passwordModal.action === "edit" ? "edit" : "delete"} after
+                  daily report exported.
+                </div>
+
+                <p className="mb-3">
+                  You can {passwordModal.action === "edit" ? "edit" : "delete"}{" "}
+                  this report with Master Password.
+                </p>
+
+                <label className="form-label fw-semibold">
+                  Master Password
+                </label>
+
+                <input
+                  type="password"
+                  className={`form-control ${
+                    passwordError ? "is-invalid" : ""
+                  }`}
+                  value={masterPassword}
+                  onChange={(event) => setMasterPassword(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      unlockWithMasterPassword();
+                    }
+                  }}
+                  autoFocus
+                  disabled={unlocking}
+                />
+
+                {passwordError && (
+                  <div className="invalid-feedback">{passwordError}</div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closePasswordModal}
+                  disabled={unlocking}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={unlockWithMasterPassword}
+                  disabled={unlocking}
+                >
+                  {unlocking
+                    ? "Verifying..."
+                    : passwordModal.action === "edit"
+                      ? "Unlock & Edit"
+                      : "Unlock & Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -153,16 +153,12 @@ export default function ManufacturingEntry({
       );
 
     if (!consumption.length) {
-      alert(
-        "Please add at least one consumption item with quantity.",
-      );
+      
       return;
     }
 
     if (!production.length) {
-      alert(
-        "Please add at least one production item with quantity.",
-      );
+    
       return;
     }
 

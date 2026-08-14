@@ -97,14 +97,12 @@ export default function DispatchEntry({
     );
 
     if (!form.gatePassNo.trim()) {
-      alert("Please enter Gate Pass No.");
+ 
       return;
     }
 
     if (!items.length) {
-      alert(
-        "Please add at least one item with quantity.",
-      );
+   
       return;
     }
 

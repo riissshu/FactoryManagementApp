@@ -96,14 +96,12 @@ export default function PurchaseEntry({
     );
 
     if (!form.purchaseNo.trim()) {
-      alert("Please enter Purchase No.");
+  
       return;
     }
 
     if (!items.length) {
-      alert(
-        "Please add at least one item with quantity.",
-      );
+     
       return;
     }
 
