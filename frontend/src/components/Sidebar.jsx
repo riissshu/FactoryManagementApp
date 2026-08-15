@@ -32,6 +32,13 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
 
     {
+  title: "Create Weekly Report",
+  icon: "bi-clipboard-check",
+  key: "createweeklyreport",
+  type: "menu",
+},
+
+    {
       title: "Reports",
       type: "heading",
     },

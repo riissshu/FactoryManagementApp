@@ -17,6 +17,7 @@ import ViewDailyreport from "../pages/ViewDailyReport";
 import ViewEditStock from "../pages/ViewEditStock";
 import MasterLock from "../components/MasterLock";
 import EditDailyReport from "../pages/EditDailyReport";
+import CreateWeeklyReport from "../pages/CreateWeeklyReport";
 import StockItemMaster from "../pages/StockItemMaster";
 import api from "../services/api";
 
@@ -172,6 +173,9 @@ case "stockgroupsunits":
         return (
           <StockSummary onStockReport={() => setActiveMenu("stockreport")} />
         );
+
+        case "createweeklyreport":
+  return <CreateWeeklyReport />;
 
       case "stockitemmaster":
         return (
