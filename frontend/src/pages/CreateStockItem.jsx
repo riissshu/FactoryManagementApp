@@ -3,8 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 import ImportStockItems from "../components/ImportStockItems";
 
-export default function CreateStockItem({onClose}) {
-  
+export default function CreateStockItem({ onClose }) {
   const emptyItem = {
     id: null,
     itemName: "",
@@ -19,8 +18,9 @@ export default function CreateStockItem({onClose}) {
   const [stockGroups, setStockGroups] = useState([]);
   const [units, setUnits] = useState([]);
 
-   const [showImport, setShowImport] = useState(false);
-   const [error, setError] = useState("");
+  const [showImport, setShowImport] = useState(false);
+  const [error, setError] = useState("");
+  const [showInstructions, setShowInstructions] = useState(true);
 
   const [validated, setValidated] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,7 +63,8 @@ export default function CreateStockItem({onClose}) {
 
     if (name === "stockGroup") {
       const enteringPackaging = value === "Packaging Material";
-      const leavingPackaging = item.stockGroup === "Packaging Material" && !enteringPackaging;
+      const leavingPackaging =
+        item.stockGroup === "Packaging Material" && !enteringPackaging;
 
       setItem((prev) => ({
         ...prev,
@@ -115,7 +116,7 @@ export default function CreateStockItem({onClose}) {
     setItem(emptyItem);
     setValidated(false);
     setAlternateEnabled(false);
-      setError("");
+    setError("");
   };
 
   const saveItem = async (e) => {
@@ -154,11 +155,9 @@ export default function CreateStockItem({onClose}) {
       }
 
       resetForm();
-      
     } catch (error) {
       console.error("Save Error:", error);
       setError(error?.message || "Unable to save stock item.");
-
     } finally {
       setSaving(false);
     }
@@ -182,36 +181,57 @@ export default function CreateStockItem({onClose}) {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h2 className="mb-0">Stock Item Master</h2>
 
-        {error && (
-  <div className="alert alert-danger mt-3">
-    {error}
-  </div>
-)}
+        {error && <div className="alert alert-danger mt-3">{error}</div>}
 
+        <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
+          <button onClick={onClose} className="btn btn-secondary me-2">
+            Close
+          </button>
 
- <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
-      
-        <button onClick={onClose} className="btn btn-secondary me-2">Close</button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setShowImport(true)}
+          >
+            Import Excel
+          </button>
 
-        <button
-  type="button"
-  className="btn btn-primary"
-  onClick={() => setShowImport(true)}
->
-  Import Excel
-</button>   
-
-{showImport && (
-  <ImportStockItems
-    onClose={() => setShowImport(false)}
-  />
-)}
-
-        
+          {showImport && (
+            <ImportStockItems onClose={() => setShowImport(false)} />
+          )}
+        </div>
       </div>
 
+      {showInstructions && (
+        <div className="alert alert-secondary mb-2">
+          <button
+            type="button"
+            className="btn-close position-absolute top-0 end-0 m-2"
+            aria-label="Close"
+            onClick={() => setShowInstructions(false)}
+          ></button>
 
-      </div>
+          <h5 className="mb-2">ℹ️ Instructions Before Creating Stock Item</h5>
+
+          <ul className="mb-0">
+            <li>
+              Every <strong>Raw Materials & Finished Goods</strong> Should Have
+              Unit As <strong>Kgs</strong>, Either As{" "}
+              <strong>Primary Unit</strong> Or <strong>Alternate Unit</strong>.
+            </li>
+            <li>
+              Each <strong> Packaging Material </strong>Should Have Unit As{" "}
+              <strong>Pcs</strong>, & Its Name Should Start With Its Type.
+              <p className="mb-0 mt-2 fw-bold badge text-bg-light">
+                {" "}
+                For Eg :- &nbsp;&nbsp; Rapper - Royal Custard, &nbsp;&nbsp; Bora
+                - Royal Baking, &nbsp;&nbsp; Carton - ButterScotch, &nbsp;&nbsp;
+                Bucket - Chocopaste
+              </p>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <form
         noValidate
@@ -434,12 +454,9 @@ export default function CreateStockItem({onClose}) {
         </div>
       </form>
 
-                  <button className="btn btn-secondary" onClick={onClose}>Close</button>
-
-
-
-           
-
+      <button className="btn btn-secondary" onClick={onClose}>
+        Close
+      </button>
     </div>
   );
 }

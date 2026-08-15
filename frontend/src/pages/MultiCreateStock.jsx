@@ -22,6 +22,7 @@ export default function MultiCreateStock({ onClose }) {
   const [loading, setLoading] = useState(true);
   const [validated, setValidated] = useState(false);
   const [error, setError] = useState("");
+  const [showInstructions, setShowInstructions] = useState(true);
 
   useEffect(() => {
     const loadMasters = async () => {
@@ -131,13 +132,13 @@ export default function MultiCreateStock({ onClose }) {
       (name, index) => names.indexOf(name) !== index,
     );
 
-   if (duplicateNames.length > 0) {
-  setValidated(true);
-  setError(
-    "Duplicate stock item names found. Each stock item name must be unique.",
-  );
-  return;
-}
+    if (duplicateNames.length > 0) {
+      setValidated(true);
+      setError(
+        "Duplicate stock item names found. Each stock item name must be unique.",
+      );
+      return;
+    }
 
     const stockItems = filledItems.map((item) => ({
       item_name: item.item_name.trim(),
@@ -150,7 +151,7 @@ export default function MultiCreateStock({ onClose }) {
 
     try {
       setSaving(true);
-        setError("");
+      setError("");
 
       await api.bulkCreateStockItems(stockItems);
 
@@ -158,13 +159,10 @@ export default function MultiCreateStock({ onClose }) {
       setValidated(false);
     } catch (error) {
       console.error("Unable to create stock items:", error);
-       setError(
-    error?.message || "Unable to create stock items."
-  );
+      setError(error?.message || "Unable to create stock items.");
     } finally {
       setSaving(false);
     }
-
   };
 
   if (loading) {
@@ -189,20 +187,46 @@ export default function MultiCreateStock({ onClose }) {
 
   return (
     <div className="page-shell">
-      
-     
       <h2 className="pt-2 fw-bold">Create Multiple Stock Items</h2>
 
-      {error && (
-  <div className="alert alert-danger">
-    {error}
-  </div>
-)}
+      {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="d-flex justify-content-end me-5 mb-2">
-      <button onClick={onClose} className="btn btn-secondary">Close</button>
+        <button onClick={onClose} className="btn btn-secondary">
+          Close
+        </button>
       </div>
-     
+
+      {showInstructions && (
+        <div className="alert alert-secondary mb-4 position-relative">
+          <button
+            type="button"
+            className="btn-close position-absolute top-0 end-0 m-2"
+            aria-label="Close"
+            onClick={() => setShowInstructions(false)}
+          ></button>
+
+          <h5 className="mb-2">ℹ️ Instructions Before Creating Stock Item</h5>
+
+          <ul className="mb-0">
+            <li>
+              Every <strong>Raw Materials & Finished Goods</strong> Should Have
+              Unit As <strong>Kgs</strong>, Either As{" "}
+              <strong>Primary Unit</strong> Or <strong>Alternate Unit</strong>.
+            </li>
+            <li>
+              Each <strong> Packaging Material </strong>Should Have Unit As{" "}
+              <strong>Pcs</strong>, & Its Name Should Start With Its Type.
+              <p className="mb-0 mt-2 fw-bold badge text-bg-light">
+                {" "}
+                For Eg :- &nbsp;&nbsp; Rapper - Royal Custard, &nbsp;&nbsp; Bora
+                - Royal Baking, &nbsp;&nbsp; Carton - ButterScotch, &nbsp;&nbsp;
+                Bucket - Chocopaste
+              </p>
+            </li>
+          </ul>
+        </div>
+      )}
 
       <form
         noValidate
@@ -213,8 +237,6 @@ export default function MultiCreateStock({ onClose }) {
           <p className="text-muted">
             Create multiple stock items at once. Leave unused rows blank.
           </p>
-
-          
 
           <div className="table-responsive">
             <table className="table app-table align-middle">
@@ -418,8 +440,6 @@ export default function MultiCreateStock({ onClose }) {
           {saving ? "Saving..." : "Save"}
         </button>
       </form>
-
-     
     </div>
   );
 }
