@@ -8,6 +8,7 @@ import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
+import StockAdjustment from "../pages/StockAdjustments";
 import MultiAlterStock from "../pages/MultiAlterStock";
 import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
@@ -95,6 +96,13 @@ export default function Layout() {
            setEditDailyReportMasterPassword("");
         setActiveMenu("viewdailyreport");
       }}
+    />
+  );
+
+case "stockadjustment":
+  return (
+    <StockAdjustment
+      onClose={() => setActiveMenu("dashboard")}
     />
   );
 

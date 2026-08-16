@@ -148,6 +148,19 @@ ipcMain.handle("stock:delete", (event, id) =>
 );
 
 ipcMain.handle("stock:report", () => database.getStockReport());
+ipcMain.handle("stockAdjustment:save", (event, adjustment) => {
+  try {
+    return {
+      success: true,
+      data: database.saveStockAdjustment(adjustment),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error?.message || "Unable to save stock adjustment.",
+    };
+  }
+});
 ipcMain.handle("stock:bulkUpdate", (event, items) => database.bulkUpdateStockItems(items));
 ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockItems(items));
 

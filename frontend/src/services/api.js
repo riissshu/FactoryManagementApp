@@ -80,6 +80,17 @@ saveStockItem(item) {
   getStockReport() {
     return window.api.getStockReport();
   },
+
+    saveStockAdjustment(adjustment) {
+    return window.api.saveStockAdjustment(adjustment).then((result) => {
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    });
+  },
+
   bulkUpdateStockItems(items) {
     return window.api.bulkUpdateStockItems(items);
   },

@@ -35,10 +35,10 @@ function createDatabase(dbPath) {
   } catch (_) {}
 
   try {
-  db.exec(
-    "ALTER TABLE settings ADD COLUMN open_pdf_after_export INTEGER NOT NULL DEFAULT 1"
-  );
-} catch (_) {}
+    db.exec(
+      "ALTER TABLE settings ADD COLUMN open_pdf_after_export INTEGER NOT NULL DEFAULT 1",
+    );
+  } catch (_) {}
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS stock_groups (
@@ -79,7 +79,7 @@ function createDatabase(dbPath) {
     db.exec("ALTER TABLE stock_items ADD COLUMN low_qty_alert REAL DEFAULT 0");
   } catch (_) {}
 
-    // Stock item names must be unique, ignoring case and surrounding spaces.
+  // Stock item names must be unique, ignoring case and surrounding spaces.
   // Example: "Cement", "cement", and " Cement " are considered duplicates.
   try {
     db.exec(`
@@ -89,8 +89,8 @@ function createDatabase(dbPath) {
   } catch (err) {
     console.error(
       "Could not enforce unique stock item names. " +
-      "Existing duplicate stock item names must be resolved first.",
-      err.message
+        "Existing duplicate stock item names must be resolved first.",
+      err.message,
     );
   }
 
@@ -103,12 +103,11 @@ function createDatabase(dbPath) {
     );
     `);
 
-    try {
-  db.exec(
-    "ALTER TABLE daily_reports ADD COLUMN is_exported INTEGER NOT NULL DEFAULT 0"
-  );
-} catch (_) {}
-
+  try {
+    db.exec(
+      "ALTER TABLE daily_reports ADD COLUMN is_exported INTEGER NOT NULL DEFAULT 0",
+    );
+  } catch (_) {}
 
   // One report per calendar date, enforced at the DB layer so concurrent
   // requests can't both slip past the application-level check below.
@@ -202,6 +201,66 @@ function createDatabase(dbPath) {
     );
     `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        adjustment_date TEXT NOT NULL,
+        adjustment_type TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        remarks TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS stock_adjustment_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stock_adjustment_id INTEGER NOT NULL,
+        stock_item_id INTEGER NOT NULL,
+        qty REAL NOT NULL,
+        unit TEXT NOT NULL,
+        remarks TEXT,
+        FOREIGN KEY (stock_adjustment_id) REFERENCES stock_adjustments(id),
+        FOREIGN KEY (stock_item_id) REFERENCES stock_items(id)
+    );
+  `);
+
+  // Add item-level adjustment type and reason to existing databases.
+  try {
+    db.exec(`
+      ALTER TABLE stock_adjustment_items
+      ADD COLUMN adjustment_type TEXT
+    `);
+  } catch (error) {
+    // Column already exists.
+  }
+
+  try {
+    db.exec(`
+      ALTER TABLE stock_adjustment_items
+      ADD COLUMN reason TEXT
+    `);
+  } catch (error) {
+    // Column already exists.
+  }
+
+  // Preserve adjustment data created with the previous structure.
+  db.exec(`
+    UPDATE stock_adjustment_items
+    SET
+      adjustment_type = (
+        SELECT adjustment_type
+        FROM stock_adjustments
+        WHERE stock_adjustments.id = stock_adjustment_items.stock_adjustment_id
+      ),
+      reason = (
+        SELECT reason
+        FROM stock_adjustments
+        WHERE stock_adjustments.id = stock_adjustment_items.stock_adjustment_id
+      )
+    WHERE adjustment_type IS NULL
+  `);
+
   // Seed default groups/units once, on first run of a fresh database.
   const seedLookup = (table, values) => {
     const count = db.prepare(`SELECT COUNT(*) AS c FROM ${table}`).get().c;
@@ -237,7 +296,12 @@ function createDatabase(dbPath) {
     );
   }
 
-  function saveSettings(factoryName, factoryLogo, masterPassword,  openPdfAfterExport = true) {
+  function saveSettings(
+    factoryName,
+    factoryLogo,
+    masterPassword,
+    openPdfAfterExport = true,
+  ) {
     const existing = getSettings();
 
     if (existing) {
@@ -250,7 +314,7 @@ function createDatabase(dbPath) {
       ).run(
         factoryName,
         factoryLogo,
-         openPdfAfterExport ? 1 : 0,
+        openPdfAfterExport ? 1 : 0,
         masterPassword ? hashPassword(masterPassword) : null,
         existing.id,
       );
@@ -261,13 +325,23 @@ function createDatabase(dbPath) {
                 (factory_name, factory_logo, master_password_hash,  open_pdf_after_export)
                 VALUES (?, ?, ?, ?)
             `,
-      ).run(factoryName, factoryLogo, hashPassword(masterPassword),    openPdfAfterExport ? 1 : 0, );
+      ).run(
+        factoryName,
+        factoryLogo,
+        hashPassword(masterPassword),
+        openPdfAfterExport ? 1 : 0,
+      );
     }
 
     return true;
   }
 
-  function updateFactoryProfile(factoryName, factoryLogo, password, openPdfAfterExport) {
+  function updateFactoryProfile(
+    factoryName,
+    factoryLogo,
+    password,
+    openPdfAfterExport,
+  ) {
     const existing = getSettings();
 
     if (!existing) {
@@ -292,7 +366,7 @@ function createDatabase(dbPath) {
     ).run(
       factoryName,
       factoryLogo,
-        openPdfAfterExport ? 1 : 0,
+      openPdfAfterExport ? 1 : 0,
       password,
       password ? hashPassword(password) : null,
       existing.id,
@@ -317,11 +391,11 @@ function createDatabase(dbPath) {
   }
 
   function renameStockGroup(id, name) {
-      if (hasStockGroupTransactions(id)) {
-    throw new Error(
-      "This stock group is used in a transaction and cannot be modified."
-    );
-  }
+    if (hasStockGroupTransactions(id)) {
+      throw new Error(
+        "This stock group is used in a transaction and cannot be modified.",
+      );
+    }
 
     db.prepare("UPDATE stock_groups SET name = ? WHERE id = ?").run(
       name.trim(),
@@ -331,23 +405,23 @@ function createDatabase(dbPath) {
   }
 
   function hasStockGroupTransactions(id) {
-  const group = db
-    .prepare(
-      `
+    const group = db
+      .prepare(
+        `
         SELECT name
         FROM stock_groups
         WHERE id = ?
-      `
-    )
-    .get(id);
+      `,
+      )
+      .get(id);
 
-  if (!group) {
-    return false;
-  }
+    if (!group) {
+      return false;
+    }
 
-  const result = db
-    .prepare(
-      `
+    const result = db
+      .prepare(
+        `
         SELECT 1
         FROM stock_items si
         WHERE si.stock_group = ?
@@ -377,12 +451,12 @@ function createDatabase(dbPath) {
           )
         )
         LIMIT 1
-      `
-    )
-    .get(group.name);
+      `,
+      )
+      .get(group.name);
 
-  return Boolean(result);
-}
+    return Boolean(result);
+  }
 
   function deactivateStockGroup(id) {
     db.prepare("UPDATE stock_groups SET is_active = 0 WHERE id = ?").run(id);
@@ -401,23 +475,23 @@ function createDatabase(dbPath) {
   }
 
   function hasStockUnitTransactions(id) {
-  const unit = db
-    .prepare(
-      `
+    const unit = db
+      .prepare(
+        `
         SELECT name
         FROM stock_units
         WHERE id = ?
-      `
-    )
-    .get(id);
+      `,
+      )
+      .get(id);
 
-  if (!unit) {
-    return false;
-  }
+    if (!unit) {
+      return false;
+    }
 
-  const result = db
-    .prepare(
-      `
+    const result = db
+      .prepare(
+        `
         SELECT 1
         FROM stock_items si
         WHERE
@@ -448,19 +522,19 @@ function createDatabase(dbPath) {
             )
           )
         LIMIT 1
-      `
-    )
-    .get(unit.name, unit.name);
+      `,
+      )
+      .get(unit.name, unit.name);
 
-  return Boolean(result);
-}
+    return Boolean(result);
+  }
 
   function renameStockUnit(id, name) {
-     if (hasStockUnitTransactions(id)) {
-    throw new Error(
-      "This stock unit is used in a transaction and cannot be modified."
-    );
-  }
+    if (hasStockUnitTransactions(id)) {
+      throw new Error(
+        "This stock unit is used in a transaction and cannot be modified.",
+      );
+    }
 
     db.prepare("UPDATE stock_units SET name = ? WHERE id = ?").run(
       name.trim(),
@@ -487,35 +561,39 @@ function createDatabase(dbPath) {
 
     const existing = excludeId
       ? db
-          .prepare(`
+          .prepare(
+            `
             SELECT id, item_name
             FROM stock_items
             WHERE LOWER(TRIM(item_name)) = LOWER(TRIM(?))
               AND id != ?
             LIMIT 1
-          `)
+          `,
+          )
           .get(name, excludeId)
       : db
-          .prepare(`
+          .prepare(
+            `
             SELECT id, item_name
             FROM stock_items
             WHERE LOWER(TRIM(item_name)) = LOWER(TRIM(?))
             LIMIT 1
-          `)
+          `,
+          )
           .get(name);
 
     if (existing) {
       throw new Error(
-        `Stock item "${existing.item_name}" already exists. Please use a different name.`
+        `Stock item "${existing.item_name}" already exists. Please use a different name.`,
       );
     }
 
     return false;
   }
 
- function bulkUpdateStockItems(items) {
-  const update = db.prepare(
-    `
+  function bulkUpdateStockItems(items) {
+    const update = db.prepare(
+      `
       UPDATE stock_items
       SET
         item_name = ?,
@@ -526,63 +604,63 @@ function createDatabase(dbPath) {
         opening_qty = ?
       WHERE id = ?
     `,
-  );
+    );
 
-  const transaction = db.transaction(() => {
-    const namesInUpdate = new Map();
+    const transaction = db.transaction(() => {
+      const namesInUpdate = new Map();
 
-    items.forEach((item) => {
-      const itemName = String(item.item_name || "").trim();
+      items.forEach((item) => {
+        const itemName = String(item.item_name || "").trim();
 
-      if (!itemName) {
-        throw new Error("Stock item name cannot be empty.");
-      }
+        if (!itemName) {
+          throw new Error("Stock item name cannot be empty.");
+        }
 
-      // Existing transaction protection
-      if (hasStockItemTransactions(item.id)) {
-        throw new Error(
-          `Stock item "${item.item_name}" has transactions and cannot be modified.`,
+        // Existing transaction protection
+        if (hasStockItemTransactions(item.id)) {
+          throw new Error(
+            `Stock item "${item.item_name}" has transactions and cannot be modified.`,
+          );
+        }
+
+        const normalizedName = itemName.toLowerCase();
+
+        // Detect duplicate names among rows being updated
+        if (
+          namesInUpdate.has(normalizedName) &&
+          namesInUpdate.get(normalizedName) !== item.id
+        ) {
+          throw new Error(
+            `Duplicate stock item "${itemName}" found. Please use a different name.`,
+          );
+        }
+
+        namesInUpdate.set(normalizedName, item.id);
+
+        // Detect duplicate against existing database items.
+        // Excludes the current item's own ID.
+        checkDuplicateStockItemName(itemName, item.id);
+
+        update.run(
+          itemName,
+          item.stock_group,
+          item.unit,
+          item.alternate_unit,
+          Number(item.conversion) || 0,
+          Number(item.opening_qty) || 0,
+          item.id,
         );
-      }
-
-      const normalizedName = itemName.toLowerCase();
-
-      // Detect duplicate names among rows being updated
-      if (
-        namesInUpdate.has(normalizedName) &&
-        namesInUpdate.get(normalizedName) !== item.id
-      ) {
-        throw new Error(
-          `Duplicate stock item "${itemName}" found. Please use a different name.`,
-        );
-      }
-
-      namesInUpdate.set(normalizedName, item.id);
-
-      // Detect duplicate against existing database items.
-      // Excludes the current item's own ID.
-      checkDuplicateStockItemName(itemName, item.id);
-
-      update.run(
-        itemName,
-        item.stock_group,
-        item.unit,
-        item.alternate_unit,
-        Number(item.conversion) || 0,
-        Number(item.opening_qty) || 0,
-        item.id,
-      );
+      });
     });
-  });
 
-  transaction();
+    transaction();
 
-  return true;
-}
+    return true;
+  }
 
   function bulkCreateStockItems(items) {
-  const insert = db.prepare(
-    `
+    const insert = db.prepare(
+      `
       INSERT INTO stock_items
       (
         item_name,
@@ -596,45 +674,45 @@ function createDatabase(dbPath) {
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, 1)
     `,
-  );
+    );
 
-  const transaction = db.transaction(() => {
-    const namesInCreate = new Set();
+    const transaction = db.transaction(() => {
+      const namesInCreate = new Set();
 
-    items
-      .filter((item) => (item.item_name || "").trim() !== "")
-      .forEach((item) => {
-        const itemName = String(item.item_name).trim();
-        const normalizedName = itemName.toLowerCase();
+      items
+        .filter((item) => (item.item_name || "").trim() !== "")
+        .forEach((item) => {
+          const itemName = String(item.item_name).trim();
+          const normalizedName = itemName.toLowerCase();
 
-        // Duplicate inside the current MultiCreate operation
-        if (namesInCreate.has(normalizedName)) {
-          throw new Error(
-            `Duplicate stock item "${itemName}" found. Please use a different name.`,
+          // Duplicate inside the current MultiCreate operation
+          if (namesInCreate.has(normalizedName)) {
+            throw new Error(
+              `Duplicate stock item "${itemName}" found. Please use a different name.`,
+            );
+          }
+
+          namesInCreate.add(normalizedName);
+
+          // Duplicate against existing stock items
+          checkDuplicateStockItemName(itemName);
+
+          insert.run(
+            itemName,
+            item.stock_group,
+            item.unit,
+            item.alternate_unit,
+            Number(item.conversion) || 0,
+            Number(item.opening_qty) || 0,
+            Number(item.low_qty_alert) || 0,
           );
-        }
+        });
+    });
 
-        namesInCreate.add(normalizedName);
+    transaction();
 
-        // Duplicate against existing stock items
-        checkDuplicateStockItemName(itemName);
-
-        insert.run(
-          itemName,
-          item.stock_group,
-          item.unit,
-          item.alternate_unit,
-          Number(item.conversion) || 0,
-          Number(item.opening_qty) || 0,
-          Number(item.low_qty_alert) || 0,
-        );
-      });
-  });
-
-  transaction();
-
-  return true;
-}
+    return true;
+  }
 
   function backupTo(destination) {
     db.pragma("wal_checkpoint(TRUNCATE)");
@@ -660,8 +738,7 @@ function createDatabase(dbPath) {
   }
 
   function saveStockItem(item) {
-
-       const itemName = String(item.item_name || "").trim();
+    const itemName = String(item.item_name || "").trim();
 
     checkDuplicateStockItemName(itemName);
 
@@ -757,15 +834,28 @@ function createDatabase(dbPath) {
       )
       .get(id);
 
-    return !!production;
+    if (production) return true;
+
+    const adjustment = db
+      .prepare(
+        `
+      SELECT 1
+      FROM stock_adjustment_items
+      WHERE stock_item_id = ?
+      LIMIT 1
+    `,
+      )
+      .get(id);
+
+    if (adjustment) return true;
+
+    return false;
   }
 
   function updateStockItem(item) {
-
-        const itemName = String(item.item_name || "").trim();
+    const itemName = String(item.item_name || "").trim();
 
     checkDuplicateStockItemName(itemName, item.id);
-
 
     db.prepare(
       `
@@ -818,21 +908,191 @@ function createDatabase(dbPath) {
   }
 
   function deleteStockItem(id) {
-  // Never physically delete an item that has been used
-  // in any transaction.
-  if (hasStockItemTransactions(id)) {
-    throw new Error(
-      "This stock item has transactions and cannot be deleted."
-    );
-  }
+    // Never physically delete an item that has been used
+    // in any transaction.
+    if (hasStockItemTransactions(id)) {
+      throw new Error(
+        "This stock item has transactions and cannot be deleted.",
+      );
+    }
 
-  db.prepare(`
+    db.prepare(
+      `
     DELETE FROM stock_items
     WHERE id = ?
-  `).run(id);
+  `,
+    ).run(id);
 
-  return true;
-}
+    return true;
+  }
+
+  function saveStockAdjustment(adjustment) {
+    if (!adjustment?.adjustment_date) {
+      throw new Error("Adjustment date is required.");
+    }
+
+    const items = Array.isArray(adjustment.items) ? adjustment.items : [];
+
+    const validItems = items.filter(
+      (item) => item.stock_item_id && Number(item.qty) > 0,
+    );
+
+    if (validItems.length === 0) {
+      throw new Error("At least one stock item is required.");
+    }
+
+    const seenItems = new Set();
+
+    validItems.forEach((item) => {
+      const itemId = Number(item.stock_item_id);
+
+      if (!["add", "subtract"].includes(item.adjustment_type)) {
+        throw new Error("Each stock item must have a valid adjustment type.");
+      }
+
+      if (seenItems.has(itemId)) {
+        throw new Error("The same stock item cannot be added more than once.");
+      }
+
+      seenItems.add(itemId);
+    });
+
+    const transaction = db.transaction(() => {
+      const getCurrentBalance = db.prepare(`
+        SELECT
+          si.id,
+          si.item_name,
+          si.unit,
+
+          (
+            CAST(si.opening_qty AS REAL)
+
+            + COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM purchase_items
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              )
+
+            + COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM manufacturing_production
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              )
+
+            - COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM gatepass_items
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              )
+
+            - COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM manufacturing_consumption
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              )
+
+            + COALESCE(
+                (
+                  SELECT SUM(
+                    CASE
+                      WHEN sai.adjustment_type = 'add'
+                        THEN sai.qty
+                      ELSE -sai.qty
+                    END
+                  )
+                  FROM stock_adjustment_items sai
+                  WHERE sai.stock_item_id = si.id
+                ),
+                0
+              )
+          ) AS balance_qty
+
+        FROM stock_items si
+
+        WHERE si.id = ?
+          AND si.is_active = 1
+      `);
+
+      const insertAdjustment = db.prepare(`
+        INSERT INTO stock_adjustments
+        (
+          adjustment_date,
+             adjustment_type,
+    reason,
+          remarks
+        )
+        VALUES (?, ?, ?, ?)
+      `);
+
+      const adjustmentResult = insertAdjustment.run(
+        adjustment.adjustment_date,
+        "mixed",
+        "",
+        adjustment.remarks || null,
+      );
+
+      const adjustmentId = adjustmentResult.lastInsertRowid;
+
+      const insertItem = db.prepare(`
+        INSERT INTO stock_adjustment_items
+        (
+          stock_adjustment_id,
+          stock_item_id,
+          adjustment_type,
+          reason,
+          qty,
+          unit
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      validItems.forEach((item) => {
+        const stockItemId = Number(item.stock_item_id);
+        const qty = Number(item.qty);
+
+        const stockItem = getCurrentBalance.get(stockItemId);
+
+        if (!stockItem) {
+          throw new Error("Stock item not found.");
+        }
+
+        if (
+          item.adjustment_type === "subtract" &&
+          qty > Number(stockItem.balance_qty)
+        ) {
+          throw new Error(
+            `Cannot subtract ${qty} ${stockItem.unit} from ${stockItem.item_name}. ` +
+              `Available balance is ${Number(stockItem.balance_qty)} ${stockItem.unit}.`,
+          );
+        }
+
+        insertItem.run(
+          adjustmentId,
+          stockItemId,
+          item.adjustment_type,
+          item.reason?.trim() || null,
+          qty,
+          item.unit || stockItem.unit,
+        );
+      });
+    });
+
+    transaction();
+
+    return true;
+  }
 
   function getDailyReports() {
     return db
@@ -864,7 +1124,9 @@ function createDatabase(dbPath) {
 
   function getDailyReportById(id) {
     const report = db
-      .prepare("SELECT id, report_date, is_exported FROM daily_reports WHERE id = ?")
+      .prepare(
+        "SELECT id, report_date, is_exported FROM daily_reports WHERE id = ?",
+      )
       .get(id);
     if (!report) return null;
 
@@ -941,7 +1203,7 @@ function createDatabase(dbPath) {
     return {
       id: report.id,
       date: report.report_date,
-       is_exported: Boolean(report.is_exported),
+      is_exported: Boolean(report.is_exported),
       purchases: report.purchases,
       gatePasses: report.gatePasses.map((entry) => ({
         gatePassNo: entry.gatepass_no,
@@ -1062,280 +1324,263 @@ function createDatabase(dbPath) {
   }
 
   function markDailyReportExported(id) {
-  const result = db
-    .prepare(
-      `
+    const result = db
+      .prepare(
+        `
         UPDATE daily_reports
         SET is_exported = 1
         WHERE id = ?
       `,
-    )
-    .run(id);
+      )
+      .run(id);
 
-  if (result.changes === 0) {
-    throw new Error("Daily report not found.");
+    if (result.changes === 0) {
+      throw new Error("Daily report not found.");
+    }
+
+    return true;
   }
 
-  return true;
-}
-
-
   function deleteDailyReport(id, masterPassword = null) {
-  const report = db
-    .prepare(
-      `
+    const report = db
+      .prepare(
+        `
         SELECT is_exported
         FROM daily_reports
         WHERE id = ?
       `,
-    )
-    .get(id);
+      )
+      .get(id);
 
-  if (!report) {
-    throw new Error("Daily report not found.");
-  }
-
-  // Exported reports require master password
-  if (report.is_exported) {
-    if (!masterPassword || !verifyMasterPassword(masterPassword)) {
-      throw new Error(
-        "Unable to delete after daily report exported. You can delete it with Master Password."
-      );
+    if (!report) {
+      throw new Error("Daily report not found.");
     }
-  }
 
-  const remove = db.transaction(() => {
-    const purchaseIds = db
-      .prepare(
-        "SELECT id FROM purchase_entries WHERE daily_report_id = ?",
-      )
-      .all(id)
-      .map((row) => row.id);
+    // Exported reports require master password
+    if (report.is_exported) {
+      if (!masterPassword || !verifyMasterPassword(masterPassword)) {
+        throw new Error(
+          "Unable to delete after daily report exported. You can delete it with Master Password.",
+        );
+      }
+    }
 
-    const gatePassIds = db
-      .prepare(
-        "SELECT id FROM gatepass_entries WHERE daily_report_id = ?",
-      )
-      .all(id)
-      .map((row) => row.id);
+    const remove = db.transaction(() => {
+      const purchaseIds = db
+        .prepare("SELECT id FROM purchase_entries WHERE daily_report_id = ?")
+        .all(id)
+        .map((row) => row.id);
 
-    const manufacturingIds = db
-      .prepare(
-        "SELECT id FROM manufacturing_entries WHERE daily_report_id = ?",
-      )
-      .all(id)
-      .map((row) => row.id);
+      const gatePassIds = db
+        .prepare("SELECT id FROM gatepass_entries WHERE daily_report_id = ?")
+        .all(id)
+        .map((row) => row.id);
 
-    const deleteChildren = (table, column, ids) =>
-      ids.forEach((entryId) =>
-        db
-          .prepare(`DELETE FROM ${table} WHERE ${column} = ?`)
-          .run(entryId),
+      const manufacturingIds = db
+        .prepare(
+          "SELECT id FROM manufacturing_entries WHERE daily_report_id = ?",
+        )
+        .all(id)
+        .map((row) => row.id);
+
+      const deleteChildren = (table, column, ids) =>
+        ids.forEach((entryId) =>
+          db.prepare(`DELETE FROM ${table} WHERE ${column} = ?`).run(entryId),
+        );
+
+      deleteChildren("purchase_items", "purchase_entry_id", purchaseIds);
+
+      deleteChildren("gatepass_items", "gatepass_entry_id", gatePassIds);
+
+      deleteChildren(
+        "manufacturing_consumption",
+        "manufacturing_entry_id",
+        manufacturingIds,
       );
 
-    deleteChildren(
-      "purchase_items",
-      "purchase_entry_id",
-      purchaseIds,
-    );
+      deleteChildren(
+        "manufacturing_production",
+        "manufacturing_entry_id",
+        manufacturingIds,
+      );
 
-    deleteChildren(
-      "gatepass_items",
-      "gatepass_entry_id",
-      gatePassIds,
-    );
+      db.prepare("DELETE FROM purchase_entries WHERE daily_report_id = ?").run(
+        id,
+      );
 
-    deleteChildren(
-      "manufacturing_consumption",
-      "manufacturing_entry_id",
-      manufacturingIds,
-    );
+      db.prepare("DELETE FROM gatepass_entries WHERE daily_report_id = ?").run(
+        id,
+      );
 
-    deleteChildren(
-      "manufacturing_production",
-      "manufacturing_entry_id",
-      manufacturingIds,
-    );
+      db.prepare(
+        "DELETE FROM manufacturing_entries WHERE daily_report_id = ?",
+      ).run(id);
 
-    db.prepare(
-      "DELETE FROM purchase_entries WHERE daily_report_id = ?",
-    ).run(id);
+      db.prepare("DELETE FROM daily_reports WHERE id = ?").run(id);
+    });
 
-    db.prepare(
-      "DELETE FROM gatepass_entries WHERE daily_report_id = ?",
-    ).run(id);
+    remove();
 
-    db.prepare(
-      "DELETE FROM manufacturing_entries WHERE daily_report_id = ?",
-    ).run(id);
-
-    db.prepare(
-      "DELETE FROM daily_reports WHERE id = ?",
-    ).run(id);
-  });
-
-  remove();
-
-  return true;
-}
+    return true;
+  }
 
   // Replaces an existing daily report's contents (and possibly its date)
   // in a single transaction. If report.report_date has been changed to a
   // date that belongs to a *different* existing report, this rolls back
   // and throws instead of silently creating a duplicate.
   function updateDailyReport(id, report, masterPassword = null) {
-  const existing = db
-    .prepare(
-      `
+    const existing = db
+      .prepare(
+        `
         SELECT
           id,
           is_exported
         FROM daily_reports
         WHERE id = ?
       `,
-    )
-    .get(id);
+      )
+      .get(id);
 
-  if (!existing) {
-    throw new Error("Daily report not found.");
-  }
+    if (!existing) {
+      throw new Error("Daily report not found.");
+    }
 
-  // Exported reports require master password
-  if (existing.is_exported) {
-    if (!masterPassword || !verifyMasterPassword(masterPassword)) {
+    // Exported reports require master password
+    if (existing.is_exported) {
+      if (!masterPassword || !verifyMasterPassword(masterPassword)) {
+        throw new Error(
+          "Unable to edit after daily report exported. You can edit it with Master Password.",
+        );
+      }
+    }
+
+    const collision = getDailyReportByDate(report.report_date);
+
+    if (collision && collision.id !== id) {
       throw new Error(
-        "Unable to edit after daily report exported. You can edit it with Master Password."
+        `A daily report for ${report.report_date} already exists.`,
       );
     }
-  }
 
-  const collision = getDailyReportByDate(report.report_date);
-
-  if (collision && collision.id !== id) {
-    throw new Error(
-      `A daily report for ${report.report_date} already exists.`,
-    );
-  }
-
-  const replace = db.transaction(() => {
-    // Update date only.
-    // Keep is_exported unchanged.
-    db.prepare(
-      `
+    const replace = db.transaction(() => {
+      // Update date only.
+      // Keep is_exported unchanged.
+      db.prepare(
+        `
         UPDATE daily_reports
         SET report_date = ?
         WHERE id = ?
       `,
-    ).run(report.report_date, id);
+      ).run(report.report_date, id);
 
-    // --------------------------------
-    // Purchase entries
-    // --------------------------------
+      // --------------------------------
+      // Purchase entries
+      // --------------------------------
 
-    const purchaseIds = db
-      .prepare(
-        `
+      const purchaseIds = db
+        .prepare(
+          `
           SELECT id
           FROM purchase_entries
           WHERE daily_report_id = ?
         `,
-      )
-      .all(id)
-      .map((row) => row.id);
+        )
+        .all(id)
+        .map((row) => row.id);
 
-    purchaseIds.forEach((purchaseId) => {
-      db.prepare(
-        `
+      purchaseIds.forEach((purchaseId) => {
+        db.prepare(
+          `
           DELETE FROM purchase_items
           WHERE purchase_entry_id = ?
         `,
-      ).run(purchaseId);
-    });
+        ).run(purchaseId);
+      });
 
-    db.prepare(
-      `
+      db.prepare(
+        `
         DELETE FROM purchase_entries
         WHERE daily_report_id = ?
       `,
-    ).run(id);
+      ).run(id);
 
-    // --------------------------------
-    // Gate pass entries
-    // --------------------------------
+      // --------------------------------
+      // Gate pass entries
+      // --------------------------------
 
-    const gatePassIds = db
-      .prepare(
-        `
+      const gatePassIds = db
+        .prepare(
+          `
           SELECT id
           FROM gatepass_entries
           WHERE daily_report_id = ?
         `,
-      )
-      .all(id)
-      .map((row) => row.id);
+        )
+        .all(id)
+        .map((row) => row.id);
 
-    gatePassIds.forEach((gatePassId) => {
-      db.prepare(
-        `
+      gatePassIds.forEach((gatePassId) => {
+        db.prepare(
+          `
           DELETE FROM gatepass_items
           WHERE gatepass_entry_id = ?
         `,
-      ).run(gatePassId);
-    });
+        ).run(gatePassId);
+      });
 
-    db.prepare(
-      `
+      db.prepare(
+        `
         DELETE FROM gatepass_entries
         WHERE daily_report_id = ?
       `,
-    ).run(id);
+      ).run(id);
 
-    // --------------------------------
-    // Manufacturing entries
-    // --------------------------------
+      // --------------------------------
+      // Manufacturing entries
+      // --------------------------------
 
-    const manufacturingIds = db
-      .prepare(
-        `
+      const manufacturingIds = db
+        .prepare(
+          `
           SELECT id
           FROM manufacturing_entries
           WHERE daily_report_id = ?
         `,
-      )
-      .all(id)
-      .map((row) => row.id);
+        )
+        .all(id)
+        .map((row) => row.id);
 
-    manufacturingIds.forEach((manufacturingId) => {
-      db.prepare(
-        `
+      manufacturingIds.forEach((manufacturingId) => {
+        db.prepare(
+          `
           DELETE FROM manufacturing_consumption
           WHERE manufacturing_entry_id = ?
         `,
-      ).run(manufacturingId);
+        ).run(manufacturingId);
 
-      db.prepare(
-        `
+        db.prepare(
+          `
           DELETE FROM manufacturing_production
           WHERE manufacturing_entry_id = ?
         `,
-      ).run(manufacturingId);
-    });
+        ).run(manufacturingId);
+      });
 
-    db.prepare(
-      `
+      db.prepare(
+        `
         DELETE FROM manufacturing_entries
         WHERE daily_report_id = ?
       `,
-    ).run(id);
+      ).run(id);
 
-    // --------------------------------
-    // Re-insert purchases
-    // --------------------------------
+      // --------------------------------
+      // Re-insert purchases
+      // --------------------------------
 
-    (report.purchases || []).forEach((purchase) => {
-      const purchaseEntry = db
-        .prepare(
-          `
+      (report.purchases || []).forEach((purchase) => {
+        const purchaseEntry = db
+          .prepare(
+            `
             INSERT INTO purchase_entries
             (
               daily_report_id,
@@ -1343,16 +1588,16 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?)
           `,
-        )
-        .run(id, purchase.purchaseNo);
+          )
+          .run(id, purchase.purchaseNo);
 
-      const purchaseEntryId = purchaseEntry.lastInsertRowid;
+        const purchaseEntryId = purchaseEntry.lastInsertRowid;
 
-      (purchase.items || []).forEach((item) => {
-        if (!item.item || !item.qty) return;
+        (purchase.items || []).forEach((item) => {
+          if (!item.item || !item.qty) return;
 
-        db.prepare(
-          `
+          db.prepare(
+            `
             INSERT INTO purchase_items
             (
               purchase_entry_id,
@@ -1362,23 +1607,23 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?, ?, ?)
           `,
-        ).run(
-          purchaseEntryId,
-          Number(item.item),
-          Number(item.qty),
-          item.unit,
-        );
+          ).run(
+            purchaseEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
+        });
       });
-    });
 
-    // --------------------------------
-    // Re-insert gate passes
-    // --------------------------------
+      // --------------------------------
+      // Re-insert gate passes
+      // --------------------------------
 
-    (report.gatePasses || []).forEach((gatePass) => {
-      const gatePassEntry = db
-        .prepare(
-          `
+      (report.gatePasses || []).forEach((gatePass) => {
+        const gatePassEntry = db
+          .prepare(
+            `
             INSERT INTO gatepass_entries
             (
               daily_report_id,
@@ -1386,16 +1631,16 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?)
           `,
-        )
-        .run(id, gatePass.gatePassNo);
+          )
+          .run(id, gatePass.gatePassNo);
 
-      const gatePassEntryId = gatePassEntry.lastInsertRowid;
+        const gatePassEntryId = gatePassEntry.lastInsertRowid;
 
-      (gatePass.items || []).forEach((item) => {
-        if (!item.item || !item.qty) return;
+        (gatePass.items || []).forEach((item) => {
+          if (!item.item || !item.qty) return;
 
-        db.prepare(
-          `
+          db.prepare(
+            `
             INSERT INTO gatepass_items
             (
               gatepass_entry_id,
@@ -1405,40 +1650,39 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?, ?, ?)
           `,
-        ).run(
-          gatePassEntryId,
-          Number(item.item),
-          Number(item.qty),
-          item.unit,
-        );
+          ).run(
+            gatePassEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
+        });
       });
-    });
 
-    // --------------------------------
-    // Re-insert manufacturing
-    // --------------------------------
+      // --------------------------------
+      // Re-insert manufacturing
+      // --------------------------------
 
-    (report.manufactured || []).forEach((manufacturing) => {
-      const manufacturingEntry = db
-        .prepare(
-          `
+      (report.manufactured || []).forEach((manufacturing) => {
+        const manufacturingEntry = db
+          .prepare(
+            `
             INSERT INTO manufacturing_entries
             (
               daily_report_id
             )
             VALUES (?)
           `,
-        )
-        .run(id);
+          )
+          .run(id);
 
-      const manufacturingEntryId =
-        manufacturingEntry.lastInsertRowid;
+        const manufacturingEntryId = manufacturingEntry.lastInsertRowid;
 
-      (manufacturing.consumption || []).forEach((item) => {
-        if (!item.item || !item.qty) return;
+        (manufacturing.consumption || []).forEach((item) => {
+          if (!item.item || !item.qty) return;
 
-        db.prepare(
-          `
+          db.prepare(
+            `
             INSERT INTO manufacturing_consumption
             (
               manufacturing_entry_id,
@@ -1448,19 +1692,19 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?, ?, ?)
           `,
-        ).run(
-          manufacturingEntryId,
-          Number(item.item),
-          Number(item.qty),
-          item.unit,
-        );
-      });
+          ).run(
+            manufacturingEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
+        });
 
-      (manufacturing.production || []).forEach((item) => {
-        if (!item.item || !item.qty) return;
+        (manufacturing.production || []).forEach((item) => {
+          if (!item.item || !item.qty) return;
 
-        db.prepare(
-          `
+          db.prepare(
+            `
             INSERT INTO manufacturing_production
             (
               manufacturing_entry_id,
@@ -1470,43 +1714,110 @@ function createDatabase(dbPath) {
             )
             VALUES (?, ?, ?, ?)
           `,
-        ).run(
-          manufacturingEntryId,
-          Number(item.item),
-          Number(item.qty),
-          item.unit,
-        );
+          ).run(
+            manufacturingEntryId,
+            Number(item.item),
+            Number(item.qty),
+            item.unit,
+          );
+        });
       });
     });
-  });
 
-  replace();
+    replace();
 
-  return true;
-}
+    return true;
+  }
 
   function getStockReport() {
     return db
       .prepare(
         `
-            SELECT si.id, si.item_name, si.stock_group, si.unit, si.alternate_unit, si.conversion,
-              si.opening_qty, si.low_qty_alert,
-              COALESCE((SELECT SUM(qty) FROM purchase_items WHERE stock_item_id = si.id), 0) AS purchased_qty,
-              COALESCE((SELECT SUM(qty) FROM gatepass_items WHERE stock_item_id = si.id), 0) AS dispatched_qty,
-              COALESCE((SELECT SUM(qty) FROM manufacturing_consumption WHERE stock_item_id = si.id), 0) AS consumed_qty,
-              COALESCE((SELECT SUM(qty) FROM manufacturing_production WHERE stock_item_id = si.id), 0) AS produced_qty
-            FROM stock_items si WHERE si.is_active = 1 ORDER BY si.stock_group, si.item_name
+            SELECT
+              si.id,
+              si.item_name,
+              si.stock_group,
+              si.unit,
+              si.alternate_unit,
+              si.conversion,
+              si.opening_qty,
+              si.low_qty_alert,
+
+              COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM purchase_items
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              ) AS purchased_qty,
+
+              COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM gatepass_items
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              ) AS dispatched_qty,
+
+              COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM manufacturing_consumption
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              ) AS consumed_qty,
+
+              COALESCE(
+                (
+                  SELECT SUM(qty)
+                  FROM manufacturing_production
+                  WHERE stock_item_id = si.id
+                ),
+                0
+              ) AS produced_qty,
+
+              COALESCE(
+  (
+    SELECT SUM(sai.qty)
+    FROM stock_adjustment_items sai
+    WHERE sai.stock_item_id = si.id
+      AND sai.adjustment_type = 'add'
+  ),
+  0
+) AS adjustment_add_qty,
+
+              COALESCE(
+  (
+    SELECT SUM(sai.qty)
+    FROM stock_adjustment_items sai
+    WHERE sai.stock_item_id = si.id
+      AND sai.adjustment_type = 'subtract'
+  ),
+  0
+) AS adjustment_subtract_qty
+
+            FROM stock_items si
+
+            WHERE si.is_active = 1
+
+            ORDER BY si.stock_group, si.item_name
         `,
       )
       .all()
       .map((row) => ({
         ...row,
+
         balance_qty:
           Number(row.opening_qty) +
           Number(row.purchased_qty) +
-          Number(row.produced_qty) -
+          Number(row.produced_qty) +
+          Number(row.adjustment_add_qty) -
           Number(row.dispatched_qty) -
-          Number(row.consumed_qty),
+          Number(row.consumed_qty) -
+          Number(row.adjustment_subtract_qty),
       }));
   }
 
@@ -1518,12 +1829,12 @@ function createDatabase(dbPath) {
 
     getStockGroups,
     addStockGroup,
-     hasStockGroupTransactions,
+    hasStockGroupTransactions,
     renameStockGroup,
     deactivateStockGroup,
     getStockUnits,
     addStockUnit,
-     hasStockUnitTransactions,
+    hasStockUnitTransactions,
     renameStockUnit,
     deactivateStockUnit,
     getStockItemById,
@@ -1544,6 +1855,7 @@ function createDatabase(dbPath) {
     updateDailyReport,
     deleteDailyReport,
     getStockReport,
+    saveStockAdjustment,
     bulkUpdateStockItems,
     bulkCreateStockItems,
     backupTo,

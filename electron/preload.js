@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld("api", {
   inactivateStockItem: (id) => ipcRenderer.invoke("stock:inactivate", id),
   deleteStockItem: (id) => ipcRenderer.invoke("stock:delete", id),
   getStockReport: () => ipcRenderer.invoke("stock:report"),
+  saveStockAdjustment: (adjustment) =>
+  ipcRenderer.invoke("stockAdjustment:save", adjustment),
   bulkUpdateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkUpdate", items),
   bulkCreateStockItems: (items) =>

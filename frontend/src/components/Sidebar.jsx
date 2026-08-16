@@ -17,7 +17,12 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
     },
 
     { title: "Stock Item", icon: "bi-box-seam", key: "stockitemmaster", type: "menu" },
-
+    {
+  title: "Stock Adjustment",
+  icon: "bi-sliders",
+  key: "stockadjustment",
+  type: "menu",
+},
 
     {
       title: "Transactions",
