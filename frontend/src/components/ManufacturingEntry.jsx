@@ -11,12 +11,32 @@ const blankEntry = () => ({
   production: [blankRow()],
 });
 
-const sum = (rows) =>
-  rows.reduce(
-    (total, row) =>
-      total + (Number(row.qty) || 0),
-    0,
+const getQtyInKgs = (row, stockItems) => {
+  const item = stockItems.find(
+    (stockItem) => stockItem.id === Number(row.item),
   );
+
+  if (!item || item.stock_group === "Packaging Material") {
+    return 0;
+  }
+
+  const qty = Number(row.qty) || 0;
+
+  // Primary unit is Kgs
+  if (item.unit === "Kgs") {
+    return qty;
+  }
+
+  // Alternate unit is Kgs
+  if (item.alternate_unit === "Kgs") {
+    return qty * (Number(item.conversion) || 0);
+  }
+
+  return 0;
+};
+
+const sumInKgs = (rows, stockItems) =>
+  rows.reduce((total, row) => total + getQtyInKgs(row, stockItems), 0);
 
 export default function ManufacturingEntry({
   stockItems,
@@ -24,62 +44,45 @@ export default function ManufacturingEntry({
   onSave,
   onClose,
 }) {
-  const [form, setForm] = useState(
-    blankEntry(),
-  );
+  const [form, setForm] = useState(blankEntry());
 
   useEffect(() => {
     if (entry) {
       setForm({
-        consumption:
-          entry.consumption?.length
-            ? entry.consumption.map(
-                (row) => ({
-                  ...row,
-                }),
-              )
-            : [blankRow()],
+        consumption: entry.consumption?.length
+          ? entry.consumption.map((row) => ({
+              ...row,
+            }))
+          : [blankRow()],
 
-        production:
-          entry.production?.length
-            ? entry.production.map(
-                (row) => ({
-                  ...row,
-                }),
-              )
-            : [blankRow()],
+        production: entry.production?.length
+          ? entry.production.map((row) => ({
+              ...row,
+            }))
+          : [blankRow()],
       });
     } else {
       setForm(blankEntry());
     }
   }, [entry]);
 
-  const updateItem = (
-    side,
-    index,
-    field,
-    value,
-  ) => {
+  const updateItem = (side, index, field, value) => {
     setForm((prev) => ({
       ...prev,
-      [side]: prev[side].map(
-        (row, i) =>
-          i === index
-            ? {
-                ...row,
-                [field]: value,
-                ...(field === "item"
-                  ? {
-                      unit:
-                        stockItems.find(
-                          (item) =>
-                            item.id ===
-                            Number(value),
-                        )?.unit || "",
-                    }
-                  : {}),
-              }
-            : row,
+      [side]: prev[side].map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              [field]: value,
+              ...(field === "item"
+                ? {
+                    unit:
+                      stockItems.find((item) => item.id === Number(value))
+                        ?.unit || "",
+                  }
+                : {}),
+            }
+          : row,
       ),
     }));
   };
@@ -87,78 +90,34 @@ export default function ManufacturingEntry({
   const addRow = (side) => {
     setForm((prev) => ({
       ...prev,
-      [side]: [
-        ...prev[side],
-        blankRow(),
-      ],
+      [side]: [...prev[side], blankRow()],
     }));
   };
 
-  const removeRow = (
-    side,
-    index,
-  ) => {
+  const removeRow = (side, index) => {
     setForm((prev) => ({
       ...prev,
       [side]:
         prev[side].length > 1
-          ? prev[side].filter(
-              (_, i) => i !== index,
-            )
+          ? prev[side].filter((_, i) => i !== index)
           : prev[side],
     }));
   };
 
-  const addLossRow = () => {
-    const consumption = sum(
-      form.consumption,
-    );
-
-    const production = sum(
-      form.production,
-    );
-
-    const difference =
-      consumption - production;
-
-    if (difference <= 0) return;
-
-    setForm((prev) => ({
-      ...prev,
-      production: [
-        ...prev.production,
-        {
-          item: "",
-          qty: difference.toFixed(2),
-          unit: "",
-          isLoss: true,
-        },
-      ],
-    }));
-  };
-
   const save = () => {
-    const consumption =
-      form.consumption.filter(
-        (row) =>
-          row.item &&
-          Number(row.qty) > 0,
-      );
+    const consumption = form.consumption.filter(
+      (row) => row.item && Number(row.qty) > 0,
+    );
 
-    const production =
-      form.production.filter(
-        (row) =>
-          row.item &&
-          Number(row.qty) > 0,
-      );
+    const production = form.production.filter(
+      (row) => row.item && Number(row.qty) > 0,
+    );
 
     if (!consumption.length) {
-      
       return;
     }
 
     if (!production.length) {
-    
       return;
     }
 
@@ -168,40 +127,27 @@ export default function ManufacturingEntry({
     });
   };
 
-  const consumptionTotal = sum(
-    form.consumption,
-  );
+  const consumptionTotal = sumInKgs(form.consumption, stockItems);
 
-  const productionTotal = sum(
-    form.production,
-  );
+  const productionTotal = sumInKgs(form.production, stockItems);
 
-  const difference =
-    consumptionTotal -
-    productionTotal;
+  const difference = consumptionTotal - productionTotal;
 
   return (
     <div
       className="modal fade show d-block"
       style={{
-        backgroundColor:
-          "rgba(0,0,0,.5)",
+        backgroundColor: "rgba(0,0,0,.5)",
       }}
     >
       <div className="modal-dialog modal-xl modal-dialog-centered">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title fw-bold">
-              {entry
-                ? "Edit Manufacturing"
-                : "Add Manufacturing"}
+              {entry ? "Edit Manufacturing" : "Add Manufacturing"}
             </h5>
 
-            <button
-              type="button"
-              className="btn-close"
-              onClick={onClose}
-            />
+            <button type="button" className="btn-close" onClick={onClose} />
           </div>
 
           <div className="modal-body">
@@ -210,34 +156,17 @@ export default function ManufacturingEntry({
                 <strong>Production Status: </strong>
 
                 {difference === 0 ? (
-                  <span className="badge text-bg-success">
-                    Balanced
-                  </span>
+                  <span className="badge text-bg-success">Balanced</span>
                 ) : difference > 0 ? (
                   <span className="badge text-bg-warning">
-                    {difference.toFixed(
-                      2,
-                    )} loss to record
+                    {difference.toFixed(2)} loss to record
                   </span>
                 ) : (
                   <span className="badge text-bg-danger">
-                    {Math.abs(
-                      difference,
-                    ).toFixed(2)}{" "}
-                    over production
+                    {Math.abs(difference).toFixed(2)} over production
                   </span>
                 )}
               </div>
-
-              {difference > 0 && (
-                <button
-                  type="button"
-                  className="btn btn-warning btn-sm"
-                  onClick={addLossRow}
-                >
-                  Add Loss Row
-                </button>
-              )}
             </div>
 
             <div className="row g-4">
@@ -247,26 +176,17 @@ export default function ManufacturingEntry({
                 <div className="border rounded-3 p-3 h-100">
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                      <h5 className="fw-bold mb-0">
-                        Consumption
-                      </h5>
+                      <h5 className="fw-bold mb-0">Consumption</h5>
 
                       <small className="text-muted">
-                        Total:{" "}
-                        {consumptionTotal.toFixed(
-                          2,
-                        )}
+                        Total: {consumptionTotal.toFixed(2)}
                       </small>
                     </div>
 
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-primary"
-                      onClick={() =>
-                        addRow(
-                          "consumption",
-                        )
-                      }
+                      onClick={() => addRow("consumption")}
                     >
                       + Add Item
                     </button>
@@ -283,98 +203,65 @@ export default function ManufacturingEntry({
                     </thead>
 
                     <tbody>
-                      {form.consumption.map(
-                        (row, index) => (
-                          <tr key={index}>
-                            <td>
-                              <select
-                                className="form-select"
-                                value={
-                                  row.item
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateItem(
-                                    "consumption",
-                                    index,
-                                    "item",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                              >
-                                <option value="">
-                                  Select item
-                                </option>
-
-                                {stockItems.map(
-                                  (item) => (
-                                    <option
-                                      key={
-                                        item.id
-                                      }
-                                      value={
-                                        item.id
-                                      }
-                                    >
-                                      {
-                                        item.item_name
-                                      }
-                                    </option>
-                                  ),
-                                )}
-                              </select>
-                            </td>
-
-                            <td
-                              style={{
-                                width: 120,
-                              }}
+                      {form.consumption.map((row, index) => (
+                        <tr key={index}>
+                          <td>
+                            <select
+                              className="form-select"
+                              value={row.item}
+                              onChange={(e) =>
+                                updateItem(
+                                  "consumption",
+                                  index,
+                                  "item",
+                                  e.target.value,
+                                )
+                              }
                             >
-                              <input
-                                type="number"
-                                min="0"
-                                className="form-control"
-                                value={
-                                  row.qty
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateItem(
-                                    "consumption",
-                                    index,
-                                    "qty",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                              />
-                            </td>
+                              <option value="">Select item</option>
 
-                            <td>
-                              {row.unit ||
-                                "-"}
-                            </td>
+                              {stockItems.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.item_name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
 
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() =>
-                                  removeRow(
-                                    "consumption",
-                                    index,
-                                  )
-                                }
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ),
-                      )}
+                          <td
+                            style={{
+                              width: 120,
+                            }}
+                          >
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-control"
+                              value={row.qty}
+                              onChange={(e) =>
+                                updateItem(
+                                  "consumption",
+                                  index,
+                                  "qty",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </td>
+
+                          <td>{row.unit || "-"}</td>
+
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeRow("consumption", index)}
+                            >
+                              −
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -386,26 +273,17 @@ export default function ManufacturingEntry({
                 <div className="border rounded-3 p-3 h-100">
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                      <h5 className="fw-bold mb-0">
-                        Production / Loss
-                      </h5>
+                      <h5 className="fw-bold mb-0">Production</h5>
 
                       <small className="text-muted">
-                        Total:{" "}
-                        {productionTotal.toFixed(
-                          2,
-                        )}
+                        Total: {productionTotal.toFixed(2)}
                       </small>
                     </div>
 
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-primary"
-                      onClick={() =>
-                        addRow(
-                          "production",
-                        )
-                      }
+                      onClick={() => addRow("production")}
                     >
                       + Add Item
                     </button>
@@ -422,106 +300,65 @@ export default function ManufacturingEntry({
                     </thead>
 
                     <tbody>
-                      {form.production.map(
-                        (row, index) => (
-                          <tr key={index}>
-                            <td>
-                              <select
-                                className="form-select"
-                                value={
-                                  row.item
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateItem(
-                                    "production",
-                                    index,
-                                    "item",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                              >
-                                <option value="">
-                                  {row.isLoss
-                                    ? "Select loss / waste item"
-                                    : "Select item"}
-                                </option>
-
-                                {stockItems.map(
-                                  (item) => (
-                                    <option
-                                      key={
-                                        item.id
-                                      }
-                                      value={
-                                        item.id
-                                      }
-                                    >
-                                      {
-                                        item.item_name
-                                      }
-                                    </option>
-                                  ),
-                                )}
-                              </select>
-
-                              {row.isLoss && (
-                                <small className="text-warning-emphasis">
-                                  Material loss
-                                </small>
-                              )}
-                            </td>
-
-                            <td
-                              style={{
-                                width: 120,
-                              }}
+                      {form.production.map((row, index) => (
+                        <tr key={index}>
+                          <td>
+                            <select
+                              className="form-select"
+                              value={row.item}
+                              onChange={(e) =>
+                                updateItem(
+                                  "production",
+                                  index,
+                                  "item",
+                                  e.target.value,
+                                )
+                              }
                             >
-                              <input
-                                type="number"
-                                min="0"
-                                className="form-control"
-                                value={
-                                  row.qty
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  updateItem(
-                                    "production",
-                                    index,
-                                    "qty",
-                                    e.target
-                                      .value,
-                                  )
-                                }
-                              />
-                            </td>
+                              <option value="">Select item</option>
 
-                            <td>
-                              {row.unit ||
-                                "-"}
-                            </td>
+                              {stockItems.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.item_name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
 
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() =>
-                                  removeRow(
-                                    "production",
-                                    index,
-                                  )
-                                }
-                              >
-                                −
-                              </button>
-                            </td>
-                          </tr>
-                        ),
-                      )}
+                          <td
+                            style={{
+                              width: 120,
+                            }}
+                          >
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-control"
+                              value={row.qty}
+                              onChange={(e) =>
+                                updateItem(
+                                  "production",
+                                  index,
+                                  "qty",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </td>
+
+                          <td>{row.unit || "-"}</td>
+
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeRow("production", index)}
+                            >
+                              −
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -530,19 +367,11 @@ export default function ManufacturingEntry({
           </div>
 
           <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-light"
-              onClick={onClose}
-            >
+            <button type="button" className="btn btn-light" onClick={onClose}>
               Cancel
             </button>
 
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={save}
-            >
+            <button type="button" className="btn btn-primary" onClick={save}>
               Save Manufacturing
             </button>
           </div>

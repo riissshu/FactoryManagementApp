@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { exportWeeklyReportPdf } from "../utils/exportWeeklyReportPdf";
 
 export default function WeeklyReport() {
   const [date, setDate] = useState("");
@@ -85,6 +86,21 @@ export default function WeeklyReport() {
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
+
+         <button
+    type="button"
+    className="btn btn-sm btn-outline-secondary"
+    onClick={() =>
+      exportWeeklyReportPdf({
+        date,
+        rows,
+        physicalStock,
+      })
+    }
+  >
+    Export PDF
+  </button>
+
       </div>
 
       {/* Stock Tabs */}
