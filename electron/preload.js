@@ -50,6 +50,8 @@ contextBridge.exposeInMainWorld("api", {
   getStockReport: () => ipcRenderer.invoke("stock:report"),
   saveStockAdjustment: (adjustment) =>
   ipcRenderer.invoke("stockAdjustment:save", adjustment),
+  getStockAdjustments: () =>
+  ipcRenderer.invoke("get-stock-adjustments"),
   bulkUpdateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkUpdate", items),
   bulkCreateStockItems: (items) =>

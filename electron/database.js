@@ -1094,6 +1094,40 @@ function createDatabase(dbPath) {
     return true;
   }
 
+  function getStockAdjustments() {
+  return db
+    .prepare(
+      `
+      SELECT
+        sa.id AS adjustment_id,
+        sa.adjustment_date,
+        sa.remarks,
+
+        sai.id AS item_id,
+        sai.stock_item_id,
+        si.item_name,
+        sai.adjustment_type,
+        sai.reason,
+        sai.qty,
+        sai.unit
+
+      FROM stock_adjustments sa
+
+      INNER JOIN stock_adjustment_items sai
+        ON sai.stock_adjustment_id = sa.id
+
+      INNER JOIN stock_items si
+        ON si.id = sai.stock_item_id
+
+      ORDER BY
+        sa.adjustment_date DESC,
+        sa.id DESC,
+        sai.id ASC
+      `,
+    )
+    .all();
+}
+
   function getDailyReports() {
     return db
       .prepare(
@@ -1856,6 +1890,7 @@ function createDatabase(dbPath) {
     deleteDailyReport,
     getStockReport,
     saveStockAdjustment,
+    getStockAdjustments,
     bulkUpdateStockItems,
     bulkCreateStockItems,
     backupTo,

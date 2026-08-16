@@ -91,6 +91,9 @@ saveStockItem(item) {
     });
   },
 
+  getStockAdjustments: () =>
+  window.api.getStockAdjustments(),
+
   bulkUpdateStockItems(items) {
     return window.api.bulkUpdateStockItems(items);
   },

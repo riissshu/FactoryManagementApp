@@ -42,6 +42,7 @@ export default function StockReport({ onClose } = {}) {
         "Produced",
         "Dispatched",
         "Consumed",
+        "Adjustment",
         "Balance",
       ],
       rows: rows.map((item) => [
@@ -53,9 +54,11 @@ export default function StockReport({ onClose } = {}) {
         item.produced_qty,
         item.dispatched_qty,
         item.consumed_qty,
+        Number(item.adjustment_add_qty) -
+  Number(item.adjustment_subtract_qty),
         item.balance_qty,
       ]),
-      numericCols: [3, 4, 5, 6, 7, 8],
+      numericCols: [3, 4, 5, 6, 7, 8, 9],
     });
   
   };
@@ -74,6 +77,7 @@ export default function StockReport({ onClose } = {}) {
         "Produced",
         "Dispatched",
         "Consumed",
+        "Adjustment",
         "Balance",
       ],
       rows: rows.map((item) => [
@@ -85,6 +89,8 @@ export default function StockReport({ onClose } = {}) {
         item.produced_qty,
         item.dispatched_qty,
         item.consumed_qty,
+        Number(item.adjustment_add_qty) -
+  Number(item.adjustment_subtract_qty),
         item.balance_qty,
       ]),
     });
@@ -131,6 +137,7 @@ export default function StockReport({ onClose } = {}) {
                     <th className="text-end">Produced</th>
                     <th className="text-end">Dispatched</th>
                     <th className="text-end">Consumed</th>
+                    <th className="text-end">Adjustment</th>
                     <th className="text-end">Balance</th>
                   </tr>
                 </thead>
@@ -146,6 +153,10 @@ export default function StockReport({ onClose } = {}) {
                         <td className="text-end">{item.produced_qty}</td>
                         <td className="text-end">{item.dispatched_qty}</td>
                         <td className="text-end">{item.consumed_qty}</td>
+                        <td className="text-end">
+  {Number(item.adjustment_add_qty) -
+    Number(item.adjustment_subtract_qty)}
+</td>
                         <td className="text-end fw-bold">{item.balance_qty}</td>
                       </tr>
                     ))}

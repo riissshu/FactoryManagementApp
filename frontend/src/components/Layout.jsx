@@ -9,6 +9,7 @@ import StockReport from "../pages/StockReport";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
 import StockAdjustment from "../pages/StockAdjustments";
+import StockAdjustmentRegister from "../pages/StockAdjustmentRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
 import MultiCreateStock from "../pages/MultiCreateStock";
 import FactoryProfile from "../pages/FactoryProfile";
@@ -103,6 +104,16 @@ case "stockadjustment":
   return (
     <StockAdjustment
       onClose={() => setActiveMenu("dashboard")}
+        onViewAdjustments={() =>
+    setActiveMenu("stockadjustmentregister")
+  }
+    />
+  );
+
+  case "stockadjustmentregister":
+  return (
+    <StockAdjustmentRegister
+      onClose={() => setActiveMenu("stockadjustment")}
     />
   );
 

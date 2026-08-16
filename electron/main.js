@@ -161,6 +161,11 @@ ipcMain.handle("stockAdjustment:save", (event, adjustment) => {
     };
   }
 });
+
+ipcMain.handle("get-stock-adjustments", () => {
+  return database.getStockAdjustments();
+});
+
 ipcMain.handle("stock:bulkUpdate", (event, items) => database.bulkUpdateStockItems(items));
 ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockItems(items));
 
