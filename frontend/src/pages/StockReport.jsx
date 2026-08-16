@@ -3,7 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
 import { exportTablePdf, exportTableExcel } from "../utils/exportUtils";
 
-export default function StockReport({ onClose } = {}) {
+export default function StockReport({ onClose, onStockItemClick } = {}) {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
 
@@ -54,17 +54,14 @@ export default function StockReport({ onClose } = {}) {
         item.produced_qty,
         item.dispatched_qty,
         item.consumed_qty,
-        Number(item.adjustment_add_qty) -
-  Number(item.adjustment_subtract_qty),
+        Number(item.adjustment_add_qty) - Number(item.adjustment_subtract_qty),
         item.balance_qty,
       ]),
       numericCols: [3, 4, 5, 6, 7, 8, 9],
     });
-  
   };
 
   const exportExcel = () => {
-    
     exportTableExcel({
       filename: "stock-report.xlsx",
       sheetName: "Stock Report",
@@ -89,8 +86,7 @@ export default function StockReport({ onClose } = {}) {
         item.produced_qty,
         item.dispatched_qty,
         item.consumed_qty,
-        Number(item.adjustment_add_qty) -
-  Number(item.adjustment_subtract_qty),
+        Number(item.adjustment_add_qty) - Number(item.adjustment_subtract_qty),
         item.balance_qty,
       ]),
     });
@@ -127,7 +123,7 @@ export default function StockReport({ onClose } = {}) {
               <strong>{group}</strong>
             </div>
             <div className="table-responsive">
-              <table className="table table-bordered mb-0">
+              <table className="table table-bordered table-hover mb-0">
                 <thead className="table-light">
                   <tr>
                     <th>Item</th>
@@ -145,7 +141,11 @@ export default function StockReport({ onClose } = {}) {
                   {rows
                     .filter((item) => item.stock_group === group)
                     .map((item) => (
-                      <tr key={item.id}>
+                      <tr
+                        key={item.id}
+                        onClick={() => onStockItemClick?.(item.id)}
+                        style={{ cursor: "pointer" }}
+                      >
                         <td>{item.item_name}</td>
                         <td>{item.unit}</td>
                         <td className="text-end">{item.opening_qty}</td>
@@ -154,9 +154,9 @@ export default function StockReport({ onClose } = {}) {
                         <td className="text-end">{item.dispatched_qty}</td>
                         <td className="text-end">{item.consumed_qty}</td>
                         <td className="text-end">
-  {Number(item.adjustment_add_qty) -
-    Number(item.adjustment_subtract_qty)}
-</td>
+                          {Number(item.adjustment_add_qty) -
+                            Number(item.adjustment_subtract_qty)}
+                        </td>
                         <td className="text-end fw-bold">{item.balance_qty}</td>
                       </tr>
                     ))}

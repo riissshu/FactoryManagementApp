@@ -6,6 +6,7 @@ import CreateStockItem from "../pages/CreateStockItem";
 import StockItemList from "../pages/StockItemList";
 import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
+import DetailedStockReport from "../pages/DetailedStockReport";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
 import StockAdjustment from "../pages/StockAdjustments";
@@ -186,7 +187,21 @@ case "stockgroupsunits":
         );
 
       case "stockreport":
-        return <StockReport onClose={() => setActiveMenu("stocksummary")} />;
+        return <StockReport onClose={() => setActiveMenu("stocksummary")} onStockItemClick={(id) => {
+        setSelectedStockItemId(id);
+        setActiveMenu("detailedstockreport");
+      }} />;
+
+      case "detailedstockreport":
+  return (
+    <DetailedStockReport
+      stockItemId={selectedStockItemId}
+      onClose={() => {
+        setSelectedStockItemId(null);
+        setActiveMenu("stockreport");
+      }}
+    />
+  );
 
       case "stocksummary":
         return (

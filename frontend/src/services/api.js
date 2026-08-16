@@ -81,6 +81,10 @@ saveStockItem(item) {
     return window.api.getStockReport();
   },
 
+  getStockItemTransactions(stockItemId) {
+  return window.api.getStockItemTransactions(stockItemId);
+},
+
     saveStockAdjustment(adjustment) {
     return window.api.saveStockAdjustment(adjustment).then((result) => {
       if (!result.success) {

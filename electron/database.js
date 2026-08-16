@@ -1763,6 +1763,198 @@ function createDatabase(dbPath) {
     return true;
   }
 
+
+  function getStockItemTransactions(stockItemId) {
+  return db
+    .prepare(
+      `
+      WITH transactions AS (
+
+        -- PURCHASE
+        SELECT
+          dr.report_date AS transaction_date,
+          1 AS sort_order,
+          pe.id AS transaction_id,
+          'Purchase' AS transaction_type,
+          pe.purchase_no AS reference_no,
+          pi.qty AS inward_qty,
+          0 AS outward_qty,
+          pi.unit AS unit,
+          NULL AS reason,
+          NULL AS remarks
+        FROM purchase_items pi
+        INNER JOIN purchase_entries pe
+          ON pe.id = pi.purchase_entry_id
+        INNER JOIN daily_reports dr
+          ON dr.id = pe.daily_report_id
+        WHERE pi.stock_item_id = ?
+
+        UNION ALL
+
+        -- MANUFACTURING PRODUCTION
+        SELECT
+          dr.report_date AS transaction_date,
+          2 AS sort_order,
+          mp.id AS transaction_id,
+          'Production' AS transaction_type,
+          NULL AS reference_no,
+          mp.qty AS inward_qty,
+          0 AS outward_qty,
+          mp.unit AS unit,
+          NULL AS reason,
+          NULL AS remarks
+        FROM manufacturing_production mp
+        INNER JOIN manufacturing_entries me
+          ON me.id = mp.manufacturing_entry_id
+        INNER JOIN daily_reports dr
+          ON dr.id = me.daily_report_id
+        WHERE mp.stock_item_id = ?
+
+        UNION ALL
+
+        -- MANUFACTURING CONSUMPTION
+        SELECT
+          dr.report_date AS transaction_date,
+          3 AS sort_order,
+          mc.id AS transaction_id,
+          'Consumption' AS transaction_type,
+          NULL AS reference_no,
+          0 AS inward_qty,
+          mc.qty AS outward_qty,
+          mc.unit AS unit,
+          NULL AS reason,
+          NULL AS remarks
+        FROM manufacturing_consumption mc
+        INNER JOIN manufacturing_entries me
+          ON me.id = mc.manufacturing_entry_id
+        INNER JOIN daily_reports dr
+          ON dr.id = me.daily_report_id
+        WHERE mc.stock_item_id = ?
+
+        UNION ALL
+
+        -- DISPATCH / GATE PASS
+        SELECT
+          dr.report_date AS transaction_date,
+          4 AS sort_order,
+          gi.id AS transaction_id,
+          'Dispatch' AS transaction_type,
+          ge.gatepass_no AS reference_no,
+          0 AS inward_qty,
+          gi.qty AS outward_qty,
+          gi.unit AS unit,
+          NULL AS reason,
+          NULL AS remarks
+        FROM gatepass_items gi
+        INNER JOIN gatepass_entries ge
+          ON ge.id = gi.gatepass_entry_id
+        INNER JOIN daily_reports dr
+          ON dr.id = ge.daily_report_id
+        WHERE gi.stock_item_id = ?
+
+        UNION ALL
+
+        -- STOCK ADJUSTMENT
+        SELECT
+          sa.adjustment_date AS transaction_date,
+          5 AS sort_order,
+          sai.id AS transaction_id,
+
+          CASE
+            WHEN sai.adjustment_type = 'add'
+              THEN 'Adjustment - Add'
+            ELSE 'Adjustment - Subtract'
+          END AS transaction_type,
+
+          NULL AS reference_no,
+
+          CASE
+            WHEN sai.adjustment_type = 'add'
+              THEN sai.qty
+            ELSE 0
+          END AS inward_qty,
+
+          CASE
+            WHEN sai.adjustment_type = 'subtract'
+              THEN sai.qty
+            ELSE 0
+          END AS outward_qty,
+
+          sai.unit AS unit,
+          sai.reason AS reason,
+          sa.remarks AS remarks
+
+        FROM stock_adjustment_items sai
+        INNER JOIN stock_adjustments sa
+          ON sa.id = sai.stock_adjustment_id
+        WHERE sai.stock_item_id = ?
+      ),
+
+      ordered_transactions AS (
+        SELECT
+          transaction_date,
+          sort_order,
+          transaction_id,
+          transaction_type,
+          reference_no,
+          inward_qty,
+          outward_qty,
+          unit,
+          reason,
+          remarks
+        FROM transactions
+
+        ORDER BY
+          transaction_date ASC,
+          sort_order ASC,
+          transaction_id ASC
+      )
+
+      SELECT
+        transaction_date,
+        transaction_type,
+        reference_no,
+        inward_qty,
+        outward_qty,
+        unit,
+        reason,
+        remarks,
+
+        (
+          SELECT opening_qty
+          FROM stock_items
+          WHERE id = ?
+        )
+        +
+        SUM(inward_qty - outward_qty) OVER (
+          ORDER BY
+            transaction_date ASC,
+            sort_order ASC,
+            transaction_id ASC
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS balance_qty
+
+      FROM ordered_transactions
+
+      ORDER BY
+        transaction_date ASC,
+        sort_order ASC,
+        transaction_id ASC
+      `,
+    )
+    .all(
+      stockItemId,
+      stockItemId,
+      stockItemId,
+      stockItemId,
+      stockItemId,
+      stockItemId,
+    );
+}
+
+
+
+
   function getStockReport() {
     return db
       .prepare(
@@ -1889,6 +2081,7 @@ function createDatabase(dbPath) {
     updateDailyReport,
     deleteDailyReport,
     getStockReport,
+    getStockItemTransactions,
     saveStockAdjustment,
     getStockAdjustments,
     bulkUpdateStockItems,

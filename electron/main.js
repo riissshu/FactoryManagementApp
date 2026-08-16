@@ -148,6 +148,10 @@ ipcMain.handle("stock:delete", (event, id) =>
 );
 
 ipcMain.handle("stock:report", () => database.getStockReport());
+ipcMain.handle(
+  "stock:itemTransactions",
+  (event, stockItemId) => database.getStockItemTransactions(stockItemId)
+);
 ipcMain.handle("stockAdjustment:save", (event, adjustment) => {
   try {
     return {
