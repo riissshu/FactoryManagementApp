@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import api from "../services/api";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPenToSquare,
+  faTrash,
+  faFloppyDisk,
+  faXmark,
+  faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 
 function LookupPanel({
   title,
@@ -16,12 +28,16 @@ function LookupPanel({
   const [editingName, setEditingName] = useState("");
 
   const [processing, setProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [modal, setModal] = useState({
     show: false,
     type: "",
     row: null,
   });
+
+  // Prevent rapid multiple clicks
+  const actionLock = useRef(false);
 
   const refresh = async () => {
     try {
@@ -37,19 +53,48 @@ function LookupPanel({
   }, []);
 
   // -----------------------------------------
+  // START ACTION
+  // -----------------------------------------
+
+  const startAction = () => {
+    if (actionLock.current) {
+      return false;
+    }
+
+    actionLock.current = true;
+    setProcessing(true);
+
+    return true;
+  };
+
+  // -----------------------------------------
+  // END ACTION
+  // -----------------------------------------
+
+  const endAction = () => {
+    actionLock.current = false;
+    setProcessing(false);
+  };
+
+  // -----------------------------------------
   // ADD
   // -----------------------------------------
 
   const handleAdd = async () => {
-    if (processing) return;
+    // Immediate multiple-click protection
+    if (!startAction()) return;
 
     const name = newName.trim();
 
-    if (!name) return;
+    // Do not process empty input
+    if (!name) {
+      endAction();
+      return;
+    }
+
+    setErrorMessage("");
 
     try {
-      setProcessing(true);
-
       await add(name);
 
       setNewName("");
@@ -58,11 +103,11 @@ function LookupPanel({
     } catch (error) {
       console.error(error);
 
-      alert(
+      setErrorMessage(
         `Unable to add "${name}". It may already exist.`
       );
     } finally {
-      setProcessing(false);
+      endAction();
     }
   };
 
@@ -71,11 +116,11 @@ function LookupPanel({
   // -----------------------------------------
 
   const startEdit = async (row) => {
-    if (processing) return;
+    if (!startAction()) return;
+
+    setErrorMessage("");
 
     try {
-      setProcessing(true);
-
       const used = await hasTransactions(row.id);
 
       if (used) {
@@ -93,12 +138,12 @@ function LookupPanel({
     } catch (error) {
       console.error(error);
 
-      alert(
+      setErrorMessage(
         error?.message ||
-          "Unable to check transaction usage."
+          "Unable to check this item."
       );
     } finally {
-      setProcessing(false);
+      endAction();
     }
   };
 
@@ -107,15 +152,18 @@ function LookupPanel({
   // -----------------------------------------
 
   const saveEdit = async () => {
-    if (processing) return;
+    if (!startAction()) return;
 
     const name = editingName.trim();
 
-    if (!name) return;
+    if (!name) {
+      endAction();
+      return;
+    }
+
+    setErrorMessage("");
 
     try {
-      setProcessing(true);
-
       await rename(editingId, name);
 
       setEditingId(null);
@@ -125,12 +173,12 @@ function LookupPanel({
     } catch (error) {
       console.error(error);
 
-      alert(
+      setErrorMessage(
         error?.message ||
           "Unable to rename."
       );
     } finally {
-      setProcessing(false);
+      endAction();
     }
   };
 
@@ -139,17 +187,12 @@ function LookupPanel({
   // -----------------------------------------
 
   const handleDeactivate = async (row) => {
-    if (processing) return;
+    if (!startAction()) return;
+
+    setErrorMessage("");
 
     try {
-      setProcessing(true);
-
-      const used =
-        await hasTransactions(row.id);
-
-      // ---------------------------------------
-      // TRANSACTION EXISTS
-      // ---------------------------------------
+      const used = await hasTransactions(row.id);
 
       if (used) {
         setModal({
@@ -161,45 +204,40 @@ function LookupPanel({
         return;
       }
 
-      // ---------------------------------------
-      // NO TRANSACTION
-      // ---------------------------------------
-
-      const confirmed = window.confirm(
-        `Remove "${row.name}" from the list?`
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
-      await deactivate(row.id);
-
-      await refresh();
+      setModal({
+        show: true,
+        type: "confirmRemove",
+        row,
+      });
     } catch (error) {
       console.error(error);
 
-      alert(
+      setErrorMessage(
         error?.message ||
-          "Unable to remove."
+          "Unable to check this item."
       );
     } finally {
-      setProcessing(false);
+      endAction();
     }
   };
 
   // -----------------------------------------
-  // MAKE INACTIVE FROM MODAL
+  // CONFIRM REMOVE
   // -----------------------------------------
 
-  const makeInactive = async () => {
+  const confirmRemove = async () => {
+    if (!startAction()) return;
+
     const row = modal.row;
 
-    if (!row || processing) return;
+    if (!row) {
+      endAction();
+      return;
+    }
+
+    setErrorMessage("");
 
     try {
-      setProcessing(true);
-
       await deactivate(row.id);
 
       setModal({
@@ -212,12 +250,50 @@ function LookupPanel({
     } catch (error) {
       console.error(error);
 
-      alert(
+      setErrorMessage(
+        error?.message ||
+          "Unable to remove."
+      );
+    } finally {
+      endAction();
+    }
+  };
+
+  // -----------------------------------------
+  // MAKE INACTIVE
+  // -----------------------------------------
+
+  const makeInactive = async () => {
+    if (!startAction()) return;
+
+    const row = modal.row;
+
+    if (!row) {
+      endAction();
+      return;
+    }
+
+    setErrorMessage("");
+
+    try {
+      await deactivate(row.id);
+
+      setModal({
+        show: false,
+        type: "",
+        row: null,
+      });
+
+      await refresh();
+    } catch (error) {
+      console.error(error);
+
+      setErrorMessage(
         error?.message ||
           "Unable to make item inactive."
       );
     } finally {
-      setProcessing(false);
+      endAction();
     }
   };
 
@@ -235,160 +311,294 @@ function LookupPanel({
     });
   };
 
+  // -----------------------------------------
+  // MODAL TITLE
+  // -----------------------------------------
+
+  const getModalTitle = () => {
+    switch (modal.type) {
+      case "confirmRemove":
+        return "Confirm Removal";
+
+      case "rename":
+        return "Cannot Modify";
+
+      case "remove":
+        return "Cannot Remove";
+
+      default:
+        return "";
+    }
+  };
+
   return (
     <>
-      <div className="card shadow-sm mb-4">
+      <div className="container-fluid px-0">
 
-        <div className="card-header">
-          <strong>{title}</strong>
+        {/* SECTION HEADER */}
+
+        <div className="d-flex align-items-center justify-content-between border-bottom px-3 py-3">
+
+          <div>
+            <h5 className="mb-1 fw-semibold">
+              {title}
+            </h5>
+
+            <div className="text-muted small">
+              Manage {title.toLowerCase()}.
+            </div>
+          </div>
+
+          <span className="badge bg-secondary">
+            {rows.length}{" "}
+            {rows.length === 1
+              ? "item"
+              : "items"}
+          </span>
+
         </div>
 
-        <div className="card-body">
+        <div className="p-3">
+
+          {/* ERROR */}
+
+          {errorMessage && (
+            <div
+              className="alert alert-danger alert-dismissible fade show mb-3"
+              role="alert"
+            >
+              {errorMessage}
+
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Close"
+                onClick={() =>
+                  setErrorMessage("")
+                }
+              />
+            </div>
+          )}
 
           {/* ADD */}
 
-          <div
-            className="input-group mb-3"
-            style={{ maxWidth: 400 }}
-          >
-            <input
-              className="form-control"
-              placeholder={`New ${title.toLowerCase()} name`}
-              value={newName}
-              disabled={processing}
-              onChange={(e) =>
-                setNewName(e.target.value)
-              }
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Enter" &&
-                  !processing
-                ) {
-                  handleAdd();
-                }
-              }}
-            />
+          <div className="card border-0 bg-light mb-3">
+            <div className="card-body">
 
-            <button
-              className="btn btn-primary"
-              onClick={handleAdd}
-              disabled={processing}
-            >
-              {processing ? "Processing..." : "Add"}
-            </button>
+              <div className="row align-items-end g-2">
+
+                <div className="col-12 col-md-8 col-lg-6">
+
+                  <label className="form-label fw-semibold mb-1">
+                    Add New
+                  </label>
+
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder={`Enter ${title
+                      .toLowerCase()
+                      .replace(/s$/, "")} name`}
+                    value={newName}
+                    disabled={processing}
+                    onChange={(e) =>
+                      setNewName(e.target.value)
+                    }
+                    onKeyDown={(e) => {
+                      if (
+                        e.key === "Enter" &&
+                        newName.trim() &&
+                        !processing
+                      ) {
+                        handleAdd();
+                      }
+                    }}
+                  />
+
+                </div>
+
+                <div className="col-auto">
+
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleAdd}
+                    disabled={
+                      processing ||
+                      !newName.trim()
+                    }
+                  >
+                    {processing
+                      ? "Processing..."
+                      : "Add"}
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
           </div>
 
           {/* TABLE */}
 
-          <table className="table table-bordered mb-0">
+          <div className="card border">
 
-            <tbody>
+            <div className="table-responsive">
 
-              {rows.map((row) => (
-                <tr key={row.id}>
+              <table className="table table-hover table-bordered align-middle mb-0">
 
-                  <td>
+                <thead className="table-light">
+                  <tr>
 
-                    {editingId === row.id ? (
-                      <input
-                        className="form-control"
-                        value={editingName}
-                        disabled={processing}
-                        onChange={(e) =>
-                          setEditingName(
-                            e.target.value
-                          )
-                        }
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            !processing
-                          ) {
-                            saveEdit();
-                          }
-                        }}
-                        autoFocus
-                      />
-                    ) : (
-                      row.name
-                    )}
+                    <th className="fw-semibold">
+                      Name
+                    </th>
 
-                  </td>
+                    <th
+                      className="text-end fw-semibold"
+                      style={{ width: "190px" }}
+                    >
+                      Actions
+                    </th>
 
-                  <td
-                    style={{ width: 160 }}
-                    className="text-end"
-                  >
+                  </tr>
+                </thead>
 
-                    {editingId === row.id ? (
-                      <>
-                        <button
-                          className="btn btn-sm btn-success me-2"
-                          onClick={saveEdit}
-                          disabled={processing}
-                        >
-                          {processing
-                            ? "Saving..."
-                            : "Save"}
-                        </button>
+                <tbody>
 
-                        <button
-                          className="btn btn-sm btn-outline-secondary"
-                          onClick={() => {
-                            if (!processing) {
-                              setEditingId(null);
-                              setEditingName("");
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+
+                      <td>
+
+                        {editingId === row.id ? (
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={editingName}
+                            disabled={processing}
+                            onChange={(e) =>
+                              setEditingName(
+                                e.target.value
+                              )
                             }
-                          }}
-                          disabled={processing}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="btn btn-sm btn-outline-secondary me-2"
-                          onClick={() =>
-                            startEdit(row)
-                          }
-                          disabled={processing}
-                        >
-                          {processing
-                            ? "Checking..."
-                            : "Rename"}
-                        </button>
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "Enter" &&
+                                editingName.trim() &&
+                                !processing
+                              ) {
+                                saveEdit();
+                              }
 
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() =>
-                            handleDeactivate(row)
-                          }
-                          disabled={processing}
-                        >
-                          {processing
-                            ? "Processing..."
-                            : "Remove"}
-                        </button>
-                      </>
-                    )}
+                              if (
+                                e.key === "Escape" &&
+                                !processing
+                              ) {
+                                setEditingId(null);
+                                setEditingName("");
+                              }
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span className="fw-medium">
+                            {row.name}
+                          </span>
+                        )}
 
-                  </td>
+                      </td>
 
-                </tr>
-              ))}
+                      <td className="text-end">
 
-              {!rows.length && (
-                <tr>
-                  <td className="text-muted text-center">
-                    None yet.
-                  </td>
-                </tr>
-              )}
+                        {editingId === row.id ? (
+                          <div className="d-flex justify-content-end gap-2">
 
-            </tbody>
+                            <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={saveEdit}
+                              disabled={
+                                processing ||
+                                !editingName.trim()
+                              }
+                            >
+                              {processing
+                                ? "Saving..."
+                                : "Save"}
+                            </button>
 
-          </table>
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              onClick={() => {
+                                if (!processing) {
+                                  setEditingId(null);
+                                  setEditingName("");
+                                }
+                              }}
+                              disabled={processing}
+                            >
+                              Cancel
+                            </button>
+
+                          </div>
+                        ) : (
+                          <div className="d-flex justify-content-end gap-2">
+
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary  d-inline-flex align-items-center gap-2"
+                              onClick={() =>
+                                startEdit(row)
+                              }
+                              disabled={processing}
+                            > 
+  <FontAwesomeIcon icon={faPenToSquare} />
+                              {processing
+                                ? "Checking..."
+                                : "Rename"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger d-inline-flex align-items-center gap-2"
+                              onClick={() =>
+                                handleDeactivate(row)
+                              }
+                              disabled={processing}
+                            >   <FontAwesomeIcon icon={faTrash} />
+                              {processing
+                                ? "Processing..."
+                                : "Remove"}
+                            </button>
+
+                          </div>
+                        )}
+
+                      </td>
+
+                    </tr>
+                  ))}
+
+                  {!rows.length && (
+                    <tr>
+                      <td
+                        colSpan="2"
+                        className="text-center text-muted py-4"
+                      >
+                        No {title.toLowerCase()} available.
+                      </td>
+                    </tr>
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+          </div>
 
         </div>
       </div>
@@ -401,10 +611,7 @@ function LookupPanel({
             className="modal fade show d-block"
             tabIndex="-1"
             role="dialog"
-            style={{
-              backgroundColor:
-                "rgba(0, 0, 0, 0.5)",
-            }}
+            aria-modal="true"
           >
             <div
               className="modal-dialog modal-dialog-centered"
@@ -414,59 +621,87 @@ function LookupPanel({
 
                 <div className="modal-header">
 
-                  <h5 className="modal-title">
-                    {modal.type === "rename"
-                      ? "Cannot Modify"
-                      : "Cannot Remove"}
-                  </h5>
+                  <div>
+                    <h5 className="modal-title mb-1">
+                      {getModalTitle()}
+                    </h5>
+
+                    <div className="text-muted small">
+                      {title === "Units"
+                        ? "Stock Unit"
+                        : "Stock Group"}
+                    </div>
+                  </div>
 
                   <button
                     type="button"
                     className="btn-close"
                     onClick={closeModal}
                     disabled={processing}
+                    aria-label="Close"
                   />
 
                 </div>
 
                 <div className="modal-body">
 
-                  {modal.type === "rename" ? (
+                  {modal.type === "confirmRemove" && (
                     <>
                       <p className="mb-2">
-                        This {title === "Units"
+                        Are you sure you want to remove
+                        <strong>
+                          {" "}
+                          "{modal.row?.name}"
+                        </strong>
+                        ?
+                      </p>
+
+                      <p className="text-muted mb-0">
+                        This item is not currently being
+                        used in any transaction.
+                      </p>
+                    </>
+                  )}
+
+                  {modal.type === "rename" && (
+                    <>
+                      <p className="mb-2">
+                        This{" "}
+                        {title === "Units"
                           ? "stock unit"
                           : "stock group"}{" "}
                         cannot be modified.
                       </p>
 
                       <p className="text-muted mb-0">
-                        It is already being used
-                        in an existing transaction.
+                        It is already being used in an
+                        existing transaction.
                       </p>
                     </>
-                  ) : (
+                  )}
+
+                  {modal.type === "remove" && (
                     <>
                       <p className="mb-2">
-                        This {title === "Units"
+                        This{" "}
+                        {title === "Units"
                           ? "stock unit"
                           : "stock group"}{" "}
                         cannot be removed.
                       </p>
 
-                      <p className="text-muted">
-                        It is already being used
-                        in an existing transaction.
+                      <p className="text-muted mb-3">
+                        It is already being used in an
+                        existing transaction.
                       </p>
 
-                      <p className="mb-0">
-                        Would you like to make
+                      <div className="alert alert-warning mb-0">
+                        You can make{" "}
                         <strong>
-                          {" "}
                           "{modal.row?.name}"
                         </strong>{" "}
-                        inactive instead?
-                      </p>
+                        inactive instead.
+                      </div>
                     </>
                   )}
 
@@ -474,26 +709,63 @@ function LookupPanel({
 
                 <div className="modal-footer">
 
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={closeModal}
-                    disabled={processing}
-                  >
-                    Close
-                  </button>
+                  {modal.type === "confirmRemove" && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={closeModal}
+                        disabled={processing}
+                      >
+                        Cancel
+                      </button>
 
-                  {modal.type === "remove" && (
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={confirmRemove}
+                        disabled={processing}
+                      >
+                        {processing
+                          ? "Removing..."
+                          : "Remove"}
+                      </button>
+                    </>
+                  )}
+
+                  {modal.type === "rename" && (
                     <button
                       type="button"
-                      className="btn btn-warning"
-                      onClick={makeInactive}
+                      className="btn btn-secondary"
+                      onClick={closeModal}
                       disabled={processing}
                     >
-                      {processing
-                        ? "Processing..."
-                        : "Make Inactive"}
+                      Close
                     </button>
+                  )}
+
+                  {modal.type === "remove" && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={closeModal}
+                        disabled={processing}
+                      >
+                        Close
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-warning"
+                        onClick={makeInactive}
+                        disabled={processing}
+                      >
+                        {processing
+                          ? "Processing..."
+                          : "Make Inactive"}
+                      </button>
+                    </>
                   )}
 
                 </div>
@@ -505,6 +777,7 @@ function LookupPanel({
           <div className="modal-backdrop fade show" />
         </>
       )}
+
     </>
   );
 }
@@ -515,12 +788,31 @@ export default function StockGroupsUnits({
   return (
     <div className="page-shell">
 
-      <button
-        className="btn btn-secondary"
-        onClick={onClose}
-      >
-        Close
-      </button>
+      {/* PAGE HEADER */}
+
+      <div className="d-flex align-items-center justify-content-between mb-4">
+
+        <div>
+          <h4 className="mb-1 fw-semibold">
+            Stock Groups & Units
+          </h4>
+
+          <p className="text-muted mb-0">
+            Manage stock groups and measurement units.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={onClose}
+        >
+          Close
+        </button>
+
+      </div>
+
+      {/* CONTENT */}
 
       <div className="content-card">
 
@@ -536,6 +828,8 @@ export default function StockGroupsUnits({
             api.hasStockGroupTransactions
           }
         />
+
+        <div className="border-top my-4" />
 
         <LookupPanel
           title="Units"

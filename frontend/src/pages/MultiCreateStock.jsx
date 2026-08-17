@@ -389,17 +389,33 @@ export default function MultiCreateStock({ onClose }) {
                     </td>
 
                     <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="form-control"
-                        value={item.opening_qty}
-                        onChange={(event) =>
-                          updateItem(index, "opening_qty", event.target.value)
-                        }
-                        disabled={saving}
-                      />
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="form-control"
+                          value={item.opening_qty || ""}
+                          onChange={(event) =>
+                            updateItem(index, "opening_qty", event.target.value)
+                          }
+                          disabled={saving}
+                        />
+                        <span className="input-group-text">
+                          {item.unit || "Unit"}
+                        </span>
+                      </div>
+
+                           {item.unit && item.alternate_unit && item.conversion > 0 && (
+                        <small className="text-muted d-flex justify-content-center">
+                          
+                          {item.conversion
+                            ? item.opening_qty * item.conversion
+                            : "?"}{" "}
+                          {item.alternate_unit}
+                        </small>
+                      )}
+
                     </td>
 
                     <td className="text-center">
