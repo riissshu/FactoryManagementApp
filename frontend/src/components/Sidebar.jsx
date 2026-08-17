@@ -6,7 +6,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
   const menuItems = [
     {
       title: "Dashboard",
-      icon: "bi-speedometer2",
+      icon: "bi-columns-gap",
       key: "dashboard",
       type: "menu",
     },
@@ -50,7 +50,7 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
 
     {
       title: "Stock Report Register",
-      icon: "bi-bar-chart",
+      icon: "bi-book",
       key: "stocksummary",
       type: "menu",
     },
