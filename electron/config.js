@@ -46,12 +46,14 @@ function setBackupDir(dir) {
 }
 
 function getRestoreDir() {
-  const cfg = readConfig();
-  return cfg.restoreDir || app.getPath("documents");
+  // Restore uses the same folder as Backup.
+  // There is one clear storage location for backup files.
+  return getBackupDir();
 }
 
 function setRestoreDir(dir) {
-  writeConfig({ restoreDir: dir });
+  // Kept for compatibility with older callers; restore now follows backupDir.
+  setBackupDir(dir);
 }
 
 module.exports = {

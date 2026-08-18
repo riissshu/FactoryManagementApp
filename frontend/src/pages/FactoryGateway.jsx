@@ -8,7 +8,6 @@ export default function FactoryGateway({ onSetupComplete }) {
   const [masterPassword, setMasterPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [dbPath, setDbPath] = useState("");
-  const [chosenFolder, setChosenFolder] = useState(""); // display only
 
   const fileInputRef = useRef(null);
 
@@ -17,7 +16,7 @@ export default function FactoryGateway({ onSetupComplete }) {
     api
       .getDbLocation()
       .then((loc) => setDbPath(loc?.dbPath || ""))
-      .catch(console.error);
+      .catch(() => setDbPath(""));
   }, []);
 
   const restoreBackup = async () => {
@@ -29,6 +28,10 @@ export default function FactoryGateway({ onSetupComplete }) {
       return;
     }
     const result = await api.restoreFirstInstallBackup();
+    if (result?.error) {
+      alert(result.error);
+      return;
+    }
     if (result?.restored) return;
   };
 
@@ -37,7 +40,7 @@ export default function FactoryGateway({ onSetupComplete }) {
   const selectExistingDatabase = async () => {
     if (
       !window.confirm(
-        "Switch to an existing factory database?\n\nThe app will restart and load that database.",
+        "Open an existing Factory Book database?\n\nThe app will restart and load the database you select.",
       )
     ) {
       return;
@@ -46,20 +49,22 @@ export default function FactoryGateway({ onSetupComplete }) {
     if (result?.error) alert(result.error);
   };
 
-  // "Choose a different folder for a brand new database" — before saving,
-  // lets the user override the default (userData) location.
+  // Create the new company database in the selected folder.
+  // If no folder is selected, the app's default location is used at Save.
   const chooseNewDatabaseFolder = async () => {
     const result = await api.createNewDatabase({
-      folder: chosenFolder || "pick",
+      folder: "pick",
       fileName: factoryName || "factory",
     });
+
     if (result?.canceled) return;
+
     if (result?.error) {
       alert(result.error);
       return;
     }
+
     if (result?.path) {
-      setChosenFolder(result.path);
       setDbPath(result.path);
     }
   };
@@ -87,15 +92,43 @@ export default function FactoryGateway({ onSetupComplete }) {
 
   const handleSave = async () => {
     try {
+      if (!factoryName.trim()) {
+        alert("Enter Factory Name.");
+        return;
+      }
+
       if (!masterPassword || masterPassword !== confirmPassword) {
         alert("Enter and confirm a master password. It protects stock master changes.");
         return;
       }
-      await api.saveSettings(factoryName, logo, masterPassword);
+
+      // On first launch there may be no database yet. Create it only when
+      // the user actually completes setup.
+      if (!dbPath) {
+        const result = await api.createNewDatabase({
+          fileName: factoryName,
+        });
+
+        if (result?.canceled) return;
+
+        if (result?.error) {
+          alert(result.error);
+          return;
+        }
+
+        if (!result?.path) {
+          alert("Unable to create the company database.");
+          return;
+        }
+
+        setDbPath(result.path);
+      }
+
+      await api.saveSettings(factoryName.trim(), logo, masterPassword);
       onSetupComplete();
     } catch (error) {
       console.error(error);
-      alert("Unable to Create New factory.");
+      alert(error?.message || "Unable to create the new factory.");
     }
   };
 
@@ -195,21 +228,27 @@ export default function FactoryGateway({ onSetupComplete }) {
           <div className="border rounded p-4 mb-4 bg-light">
             <h5 className="fw-bold">
               <i className="bi bi-hdd-stack me-2"></i>
-              Database location
+              Company Data Location
             </h5>
             <p className="text-muted mb-2">
-              This new factory's data will be saved here:
+              Your company's live database will be stored here:
             </p>
             <code className="d-block mb-3" style={{ wordBreak: "break-all" }}>
-              {dbPath || "Default app data folder"}
+              {dbPath || "App default database location"}
             </code>
-            <button className="btn btn-outline-secondary" onClick={chooseNewDatabaseFolder}>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={chooseNewDatabaseFolder}
+              disabled={!factoryName.trim()}
+            >
               <i className="bi bi-folder2-open me-2"></i>
               Choose a different folder
             </button>
             <div className="form-text mt-2">
-              You can change this later from Factory Profile. Leave it as-is
-              to use the default location.
+              If you do not choose a different folder, the company database
+              will be created in the app's default database location when you
+              click Save &amp; Continue.
             </div>
           </div>
 
@@ -219,9 +258,8 @@ export default function FactoryGateway({ onSetupComplete }) {
               Already have a factory?
             </h5>
             <p className="text-muted mb-3">
-              Restore a backup file into the default location, or point the
-              app directly at an existing database file elsewhere on this
-              computer.
+              Restore a previous Factory Book backup, or open an existing
+              Factory Book database from elsewhere on this computer.
             </p>
             <ul className="small text-muted">
               <li>Factory Name</li>

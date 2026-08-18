@@ -118,11 +118,6 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
     if (!result?.canceled) loadFolders();
   };
 
-  const setRestoreDir = async () => {
-    const result = await api.setDefaultRestoreDir();
-    if (!result?.canceled) loadFolders();
-  };
-
   return (
     <div className="container-fluid">
       <div className="d-flex align-items-between justify-content-between">
@@ -259,7 +254,7 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
           </h5>
           <p className="text-muted mb-4">
             Manage where this factory's data lives, switch between company
-            databases, and set default folders for backup and restore.
+            databases, and choose where automatic backups are stored.
           </p>
 
           <div className="row g-4">
@@ -292,21 +287,15 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
             </div>
 
             <div className="col-md-6">
-              <label className="form-label fw-bold">Default backup folder</label>
+              <label className="form-label fw-bold">Backup folder</label>
+              <p className="text-muted small mb-2">
+                Backup files are saved here automatically. Restore also opens
+                in this folder by default.
+              </p>
               <code className="d-block mb-2" style={{ wordBreak: "break-all" }}>
                 {folders?.backupDir || "Loading..."}
               </code>
               <button className="btn btn-sm btn-outline-secondary" onClick={setBackupDir}>
-                Change
-              </button>
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label fw-bold">Default restore folder</label>
-              <code className="d-block mb-2" style={{ wordBreak: "break-all" }}>
-                {folders?.restoreDir || "Loading..."}
-              </code>
-              <button className="btn btn-sm btn-outline-secondary" onClick={setRestoreDir}>
                 Change
               </button>
             </div>
