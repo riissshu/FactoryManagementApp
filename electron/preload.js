@@ -74,11 +74,20 @@ contextBridge.exposeInMainWorld("api", {
     id
 ),
 
+  // Application / Company Gateway
+  getStartupState: () => ipcRenderer.invoke("app:startupState"),
+  getCompanies: () => ipcRenderer.invoke("company:list"),
+  chooseCompanyDirectory: () => ipcRenderer.invoke("company:chooseDirectory"),
+  createCompany: (options) => ipcRenderer.invoke("company:create", options),
+  openCompany: (dbPath) => ipcRenderer.invoke("company:open", dbPath),
+  restoreCompany: () => ipcRenderer.invoke("company:restore"),
+  setStartupCompany: (data) => ipcRenderer.invoke("company:setStartup", data),
+  selectDefaultCompany: (dbPath) => ipcRenderer.invoke("company:selectDefault", dbPath),
+
   // Backup / Restore
   createBackup: () => ipcRenderer.invoke("backup:create"),
   restoreBackup: () => ipcRenderer.invoke("backup:restore"),
-  restoreFirstInstallBackup: () =>
-    ipcRenderer.invoke("backup:firstInstallRestore"),
+  restoreFirstInstallBackup: () => ipcRenderer.invoke("backup:restore"),
   exportPdf: (data) => ipcRenderer.invoke("report:exportPdf", data),
   exportExcel: (data) =>
   ipcRenderer.invoke("report:exportExcel", data),

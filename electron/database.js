@@ -22,6 +22,29 @@ function createDatabase(dbPath) {
   // Create Tables
   // =======================
 
+  // =======================
+  // Factory Book database identity
+  // =======================
+
+  // This table identifies databases created/managed by this application.
+  // It lets Factory Gateway ignore arbitrary .db files in the company folder.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_metadata (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        database_type TEXT NOT NULL,
+        database_version INTEGER NOT NULL DEFAULT 1,
+        database_id TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  db.prepare(`
+    INSERT OR IGNORE INTO app_metadata
+      (id, database_type, database_version, database_id)
+    VALUES (1, 'factory_book', 1, ?)
+  `).run(crypto.randomUUID());
+
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

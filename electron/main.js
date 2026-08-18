@@ -10,28 +10,164 @@ const isDev = process.env.NODE_ENV === "development";
 let mainWindow;
 let database = null; // bound functions for the currently open db file
 
-function resolveDbPathOnStartup() {
-  const configured = config.getDbPath();
-
-  // A configured database is the only database we automatically open.
-  // If it is missing, do NOT silently switch to another database.
-  if (configured && fs.existsSync(configured)) return configured;
-
-  return null;
-}
-
-function requireDatabase() {
-  if (!database) {
-    throw new Error("No company database is currently configured.");
-  }
-  return database;
-}
-
 function openDatabaseAt(dbPath) {
+  if (!dbPath) throw new Error("Company database path is required.");
   if (database) database.close();
   database = createDatabase(dbPath);
   config.setDbPath(dbPath);
   return database;
+}
+
+function requireDatabase() {
+  if (!database) {
+    throw new Error("No company is currently open.");
+  }
+  return database;
+}
+
+function hasFactoryTables(dbPath) {
+  if (!dbPath || !fs.existsSync(dbPath)) return false;
+  let probe;
+  try {
+    const Database = require("better-sqlite3");
+    probe = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const requiredTables = [
+      "settings",
+      "stock_groups",
+      "stock_units",
+      "stock_items",
+      "daily_reports",
+    ];
+    const names = probe
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .all()
+      .map((row) => row.name);
+    return requiredTables.every((table) => names.includes(table));
+  } catch (_) {
+    return false;
+  } finally {
+    if (probe) probe.close();
+  }
+}
+
+function validateFactoryDatabase(dbPath) {
+  if (!hasFactoryTables(dbPath)) return false;
+  let probe;
+  try {
+    const Database = require("better-sqlite3");
+    probe = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const row = probe
+      .prepare("SELECT database_type FROM app_metadata WHERE id = 1")
+      .get();
+    return row?.database_type === "factory_book";
+  } catch (_) {
+    return false;
+  } finally {
+    if (probe) probe.close();
+  }
+}
+
+function ensureFactoryMetadata(dbPath) {
+  if (!hasFactoryTables(dbPath)) return false;
+  if (validateFactoryDatabase(dbPath)) return true;
+  return migrateConfiguredLegacyDatabase(dbPath);
+}
+
+// Existing versions of the app did not have app_metadata. If the currently
+// configured database has the known Factory Book schema, add the identity
+// marker once so existing user data remains usable. Arbitrary .db files are
+// never auto-migrated; they must be explicitly opened/imported first.
+function migrateConfiguredLegacyDatabase(dbPath) {
+  if (!hasFactoryTables(dbPath) || validateFactoryDatabase(dbPath)) return false;
+
+  let probe;
+  try {
+    const Database = require("better-sqlite3");
+    probe = new Database(dbPath);
+    probe.exec(`
+      CREATE TABLE IF NOT EXISTS app_metadata (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        database_type TEXT NOT NULL,
+        database_version INTEGER NOT NULL DEFAULT 1,
+        database_id TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    const existing = probe
+      .prepare("SELECT database_type FROM app_metadata WHERE id = 1")
+      .get();
+
+    if (existing && existing.database_type !== "factory_book") {
+      return false;
+    }
+
+    probe.prepare(`
+      INSERT OR IGNORE INTO app_metadata
+        (id, database_type, database_version, database_id)
+      VALUES (1, 'factory_book', 1, ?)
+    `).run(require("crypto").randomUUID());
+    return true;
+  } catch (error) {
+    console.error("Legacy database migration failed:", error);
+    return false;
+  } finally {
+    if (probe) probe.close();
+  }
+}
+
+function getCompanyInfo(dbPath, requireMetadata = true) {
+  if (!hasFactoryTables(dbPath)) return null;
+  let probe;
+  try {
+    const Database = require("better-sqlite3");
+    probe = new Database(dbPath, { readonly: true, fileMustExist: true });
+    const settings = probe.prepare("SELECT * FROM settings LIMIT 1").get();
+    let metadata = null;
+    try {
+      metadata = probe
+        .prepare("SELECT database_id, database_version, database_type FROM app_metadata WHERE id = 1")
+        .get();
+    } catch (_) {}
+
+    if (requireMetadata && metadata?.database_type !== "factory_book") return null;
+
+    return {
+      path: dbPath,
+      name: settings?.factory_name || path.basename(dbPath, path.extname(dbPath)),
+      logo: settings?.factory_logo || null,
+      setupComplete: Boolean(settings?.master_password_hash),
+      databaseId: metadata?.database_id || null,
+      databaseVersion: metadata?.database_version || 1,
+    };
+  } catch (_) {
+    return null;
+  } finally {
+    if (probe) probe.close();
+  }
+}
+
+function scanCompanies() {
+  const dir = config.getCompanyDir();
+  if (!fs.existsSync(dir)) return [];
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (_) {
+    return [];
+  }
+
+  return entries
+    .filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".db")
+    .map((entry) => getCompanyInfo(path.join(dir, entry.name)))
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function resolveStartupCompany() {
+  const configured = config.getDefaultCompany();
+  if (!configured || !fs.existsSync(configured)) return null;
+  if (!validateFactoryDatabase(configured)) return null;
+  return configured;
 }
 
 function createWindow() {
@@ -57,10 +193,29 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const startupDbPath = resolveDbPathOnStartup();
-  if (startupDbPath) {
-    openDatabaseAt(startupDbPath);
+  const legacy = config.getDbPath();
+  if (legacy && fs.existsSync(legacy) && hasFactoryTables(legacy)) {
+    migrateConfiguredLegacyDatabase(legacy);
+    if (!config.getDefaultCompany()) {
+      config.setDefaultCompany(legacy);
+    }
+    if (config.getCompanyDir() === config.defaultCompanyDir()) {
+      config.setCompanyDir(path.dirname(legacy));
+    }
   }
+
+  const startupCompany = config.getAutoOpenDefaultCompany()
+    ? resolveStartupCompany()
+    : null;
+
+  if (startupCompany) {
+    openDatabaseAt(startupCompany);
+  } else {
+    // Do not create/open a hidden default database. Factory Gateway is the
+    // company-selection screen when no company is opened automatically.
+    database = null;
+  }
+
   createWindow();
 
   app.on("activate", () => {
@@ -79,15 +234,10 @@ const relaunch = () => {
 // Settings
 // =======================
 
-ipcMain.handle("settings:get", () => database ? database.getSettings() : null);
+ipcMain.handle("settings:get", () => database.getSettings());
 
 ipcMain.handle("settings:save", (event, data) => {
-  return requireDatabase().saveSettings(
-    data.factoryName,
-    data.factoryLogo,
-    data.masterPassword,
-    data.openPdfAfterExport,
-  );
+  return database.saveSettings(data.factoryName, data.factoryLogo, data.masterPassword,  data.openPdfAfterExport);
 });
 
 ipcMain.handle("settings:updateProfile", (event, data) => {
@@ -208,43 +358,152 @@ ipcMain.handle(
 );
 
 // =======================
-// Backup / Restore (copies files, current db stays active)
+// Company / Backup / Restore
 // =======================
 
 const safeName = (value) =>
-  (value || "factory").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "factory";
+  (value || "factory")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-|-$/g, "") || "factory";
 
-function validateFactoryDatabase(dbPath) {
-  if (!dbPath || !fs.existsSync(dbPath)) return false;
+ipcMain.handle("app:startupState", () => {
+  const currentPath = config.getDbPath();
+  const active = Boolean(database && currentPath && fs.existsSync(currentPath));
+  const defaultPath = config.getDefaultCompany();
+  const defaultAvailable = Boolean(defaultPath && validateFactoryDatabase(defaultPath));
 
-  let probe;
-  try {
-    const Database = require("better-sqlite3");
-    probe = new Database(dbPath, { readonly: true, fileMustExist: true });
-    const requiredTables = [
-      "settings",
-      "stock_groups",
-      "stock_units",
-      "stock_items",
-      "daily_reports",
-    ];
-    const rows = probe
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
-      .all()
-      .map((row) => row.name);
-    return requiredTables.every((table) => rows.includes(table));
-  } catch (_) {
-    return false;
-  } finally {
-    if (probe) probe.close();
+  return {
+    active,
+    setupComplete: active ? Boolean(database.getSettings()?.master_password_hash) : false,
+    currentPath: active ? currentPath : null,
+    defaultCompanyPath: defaultPath,
+    defaultAvailable,
+    autoOpenDefaultCompany: config.getAutoOpenDefaultCompany(),
+    companyDir: config.getCompanyDir(),
+  };
+});
+
+ipcMain.handle("company:list", () => ({
+  directory: config.getCompanyDir(),
+  companies: scanCompanies(),
+  defaultCompanyPath: config.getDefaultCompany(),
+  autoOpenDefaultCompany: config.getAutoOpenDefaultCompany(),
+}));
+
+ipcMain.handle("company:chooseDirectory", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Choose Company Directory",
+    defaultPath: config.getCompanyDir(),
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (result.canceled || !result.filePaths[0]) return { canceled: true };
+
+  const dir = result.filePaths[0];
+  config.setCompanyDir(dir);
+  return {
+    directory: dir,
+    companies: scanCompanies(),
+  };
+});
+
+ipcMain.handle("company:create", async (event, { folder, fileName } = {}) => {
+  const targetDir = folder || config.getCompanyDir();
+  fs.mkdirSync(targetDir, { recursive: true });
+
+  const cleanName = safeName(fileName);
+  const newPath = path.join(targetDir, `${cleanName}.db`);
+
+  if (fs.existsSync(newPath)) {
+    return { error: `A company database already exists at ${newPath}.` };
   }
-}
+
+  openDatabaseAt(newPath);
+  config.setCompanyDir(targetDir);
+  config.setDefaultCompany(newPath);
+
+  return { created: true, path: newPath };
+});
+
+ipcMain.handle("company:open", async (event, dbPath) => {
+  if (!ensureFactoryMetadata(dbPath)) {
+    return { error: "The selected file is not a valid Factory Book company database." };
+  }
+
+  config.setDbPath(dbPath);
+  relaunch();
+  return { opened: true, path: dbPath };
+});
+
+ipcMain.handle("company:setStartup", (event, { path: dbPath, enabled }) => {
+  if (enabled) {
+    if (!dbPath || !validateFactoryDatabase(dbPath)) {
+      return { error: "The selected default company is not available." };
+    }
+    config.setDefaultCompany(dbPath);
+  }
+  config.setAutoOpenDefaultCompany(Boolean(enabled));
+  return {
+    enabled: Boolean(enabled),
+    path: enabled ? dbPath : config.getDefaultCompany(),
+  };
+});
+
+ipcMain.handle("company:selectDefault", (event, dbPath) => {
+  if (!dbPath || !validateFactoryDatabase(dbPath)) {
+    return { error: "The selected company is not available." };
+  }
+  config.setDefaultCompany(dbPath);
+  return { path: dbPath };
+});
+
+ipcMain.handle("company:restore", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Restore Factory Book Backup",
+    defaultPath: config.getBackupDir(),
+    properties: ["openFile"],
+    filters: [{ name: "Factory Book Backup", extensions: ["db"] }],
+  });
+
+  if (result.canceled || !result.filePaths[0]) return { canceled: true };
+
+  const backupPath = result.filePaths[0];
+  if (!hasFactoryTables(backupPath)) {
+    return { error: "The selected file is not a valid Factory Book backup." };
+  }
+
+  let info = getCompanyInfo(backupPath, false);
+  if (!info) return { error: "Unable to read the company information from this backup." };
+
+  const companyDir = config.getCompanyDir();
+  fs.mkdirSync(companyDir, { recursive: true });
+  let target = path.join(companyDir, `${safeName(info.name)}.db`);
+
+  if (fs.existsSync(target)) {
+    const overwrite = await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      buttons: ["Replace Company", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      title: "Company Already Exists",
+      message: `${info.name} already exists in the Company Directory.`,
+      detail: "Do you want to replace the existing company with this backup?",
+    });
+    if (overwrite.response !== 0) return { canceled: true };
+  }
+
+  if (database) database.close();
+  fs.copyFileSync(backupPath, target);
+  config.setDbPath(target);
+  config.setDefaultCompany(target);
+
+  relaunch();
+  return { restored: true, path: target, name: info.name };
+});
 
 ipcMain.handle("backup:create", async () => {
   const db = requireDatabase();
   const settings = db.getSettings();
   const backupDir = config.getBackupDir();
-
   fs.mkdirSync(backupDir, { recursive: true });
 
   const date = new Date();
@@ -255,146 +514,135 @@ ipcMain.handle("backup:create", async () => {
     String(date.getHours()).padStart(2, "0"),
     String(date.getMinutes()).padStart(2, "0"),
     String(date.getSeconds()).padStart(2, "0"),
+    String(date.getMilliseconds()).padStart(3, "0"),
   ].join("-");
 
   const fileName = `${safeName(settings?.factory_name)}-backup-${stamp}.db`;
   const backupPath = path.join(backupDir, fileName);
-
   db.backupTo(backupPath);
   return { path: backupPath };
 });
 
 ipcMain.handle("backup:restore", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select factory backup to restore",
-    defaultPath: config.getRestoreDir(),
+    title: "Restore Factory Book Backup",
+    defaultPath: config.getBackupDir(),
     properties: ["openFile"],
-    filters: [{ name: "Factory Backup", extensions: ["db"] }],
+    filters: [{ name: "Factory Book Backup", extensions: ["db"] }],
   });
 
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
 
   const backupPath = result.filePaths[0];
-  if (!validateFactoryDatabase(backupPath)) {
-    return {
-      error: "The selected file is not a valid Factory database backup.",
-    };
+  if (!hasFactoryTables(backupPath)) {
+    return { error: "The selected file is not a valid Factory Book backup." };
   }
 
-  const active = config.getDbPath();
-  if (!active || !fs.existsSync(active)) {
-    return {
-      error: "The current company database could not be found. Use Factory Gateway to create, locate, or restore a company database.",
-    };
-  }
+  const info = getCompanyInfo(backupPath, false);
+  if (!info) return { error: "Unable to read the company information from this backup." };
 
-  const target = active;
+  const companyDir = config.getCompanyDir();
+  fs.mkdirSync(companyDir, { recursive: true });
+  const target = path.join(companyDir, `${safeName(info.name)}.db`);
+
+  if (fs.existsSync(target)) {
+    const overwrite = await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      buttons: ["Replace Company", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      title: "Company Already Exists",
+      message: `${info.name} already exists in the Company Directory.`,
+      detail: "Do you want to replace the existing company with this backup?",
+    });
+    if (overwrite.response !== 0) return { canceled: true };
+  }
 
   if (database) database.close();
-  fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(backupPath, target);
   config.setDbPath(target);
+  config.setDefaultCompany(target);
 
   relaunch();
-  return { restored: true, path: target };
+  return { restored: true, path: target, name: info.name };
 });
-
-// =======================
-// Database location: create-new / select-existing / move (item #4)
-// =======================
 
 ipcMain.handle("dbLocation:get", () => {
   const dbPath = config.getDbPath();
   return {
     dbPath: dbPath && fs.existsSync(dbPath) ? dbPath : null,
-    defaultDir: config.defaultDbDir(),
+    defaultDir: config.getCompanyDir(),
     databaseMissing: Boolean(dbPath && !fs.existsSync(dbPath)),
   };
 });
 
-// Used from Factory Gateway (first-run) and Factory Profile: create a brand
-// new database file, in a user-chosen folder or the app default, then
-// switch the app to point at it.
+// Legacy APIs retained for existing Factory Profile UI.
 ipcMain.handle("dbLocation:createNew", async (event, { folder, fileName } = {}) => {
   let targetDir = folder;
-
-  // Passing folder:"pick" means the caller wants the user to choose the
-  // database folder. The database is still created only after that choice.
-  if (folder === "pick") {
+  if (targetDir === "pick") {
     const picked = await dialog.showOpenDialog(mainWindow, {
-      title: "Choose a folder for the new factory database",
-      defaultPath: config.defaultDbDir(),
+      title: "Choose a folder for the new company",
+      defaultPath: config.getCompanyDir(),
       properties: ["openDirectory", "createDirectory"],
     });
     if (picked.canceled || !picked.filePaths[0]) return { canceled: true };
     targetDir = picked.filePaths[0];
-  } else if (!targetDir) {
-    targetDir = config.defaultDbDir();
   }
-
-  const name = safeName(fileName) + ".db";
-  const newPath = path.join(targetDir, name);
-
-  if (fs.existsSync(newPath)) {
-    return { error: `A database already exists at ${newPath}. Choose a different folder or name.` };
-  }
-
-  openDatabaseAt(newPath); // creates the file (tables are created on open)
+  targetDir = targetDir || config.getCompanyDir();
+  const cleanName = safeName(fileName);
+  const newPath = path.join(targetDir, `${cleanName}.db`);
+  if (fs.existsSync(newPath)) return { error: `A company database already exists at ${newPath}.` };
+  openDatabaseAt(newPath);
+  config.setCompanyDir(targetDir);
+  config.setDefaultCompany(newPath);
   return { path: newPath };
 });
 
-// Pick an existing .db file anywhere on disk and switch the app to use it.
 ipcMain.handle("dbLocation:selectExisting", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Select an existing factory database",
-    defaultPath: config.getDbPath() || config.defaultDbDir(),
+    title: "Select an existing Factory Book company",
+    defaultPath: config.getCompanyDir(),
     properties: ["openFile"],
-    filters: [{ name: "Factory Database", extensions: ["db"] }],
+    filters: [{ name: "Factory Book Company", extensions: ["db"] }],
   });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
-
   const selectedPath = result.filePaths[0];
-  if (!validateFactoryDatabase(selectedPath)) {
-    return {
-      error: "The selected file is not a valid Factory database.",
-    };
+  if (!ensureFactoryMetadata(selectedPath)) {
+    return { error: "The selected file is not a valid Factory Book company database." };
   }
-
+  config.setCompanyDir(path.dirname(selectedPath));
   config.setDbPath(selectedPath);
   relaunch();
   return { switched: true, path: selectedPath };
 });
 
-// Move the current database file to a new folder, then switch to it there.
 ipcMain.handle("dbLocation:move", async () => {
   const current = config.getDbPath();
-  if (!current || !fs.existsSync(current)) {
+  if (!current || !fs.existsSync(current) || !validateFactoryDatabase(current)) {
     return { error: "The current company database could not be found." };
   }
-
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Choose a new folder for this factory database",
+    title: "Choose a new Company Directory",
     properties: ["openDirectory", "createDirectory"],
   });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
-
-  const newPath = path.join(result.filePaths[0], path.basename(current));
-  if (fs.existsSync(newPath)) {
-    return { error: `A database already exists at ${newPath}.` };
-  }
-
-  database.close();
-  fs.mkdirSync(path.dirname(newPath), { recursive: true });
+  const targetDir = result.filePaths[0];
+  const newPath = path.join(targetDir, path.basename(current));
+  if (fs.existsSync(newPath)) return { error: `A database already exists at ${newPath}.` };
+  if (database) database.close();
+  fs.mkdirSync(targetDir, { recursive: true });
   fs.copyFileSync(current, newPath);
   fs.unlinkSync(current);
+  config.setCompanyDir(targetDir);
   config.setDbPath(newPath);
+  if (config.getDefaultCompany() === current) config.setDefaultCompany(newPath);
   relaunch();
   return { moved: true, path: newPath };
 });
 
 ipcMain.handle("dbLocation:setDefaultBackupDir", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Choose default backup folder",
+    title: "Choose Backup Folder",
     defaultPath: config.getBackupDir(),
     properties: ["openDirectory", "createDirectory"],
   });
@@ -404,59 +652,21 @@ ipcMain.handle("dbLocation:setDefaultBackupDir", async () => {
 });
 
 ipcMain.handle("dbLocation:setDefaultRestoreDir", async () => {
-  // Backwards-compatible alias: Restore uses the Backup Folder.
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Choose backup folder",
-    defaultPath: config.getBackupDir(),
-    properties: ["openDirectory", "createDirectory"],
-  });
-  if (result.canceled || !result.filePaths[0]) return { canceled: true };
-  config.setBackupDir(result.filePaths[0]);
-  return { path: result.filePaths[0] };
+  // Kept as a compatibility alias. Restore now uses the Backup Folder.
+  return { path: config.getBackupDir(), compatibilityAlias: true };
 });
 
 ipcMain.handle("dbLocation:getFolders", () => {
   const dbPath = config.getDbPath();
   return {
     dbPath: dbPath && fs.existsSync(dbPath) ? dbPath : null,
-    dbDir: dbPath ? path.dirname(dbPath) : null,
-    defaultDbDir: config.defaultDbDir(),
+    dbDir: dbPath && fs.existsSync(dbPath) ? path.dirname(dbPath) : null,
+    companyDir: config.getCompanyDir(),
+    defaultCompany: config.getDefaultCompany(),
+    autoOpenDefaultCompany: config.getAutoOpenDefaultCompany(),
     backupDir: config.getBackupDir(),
-    restoreDir: config.getRestoreDir(),
+    restoreDir: config.getBackupDir(),
   };
-});
-
-// =======================
-// First-run restore: restore a valid Factory Book backup into the app's
-// default database location, then remember that database as the active one.
-// =======================
-
-ipcMain.handle("backup:firstInstallRestore", async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: "Restore Factory Backup",
-    defaultPath: config.getBackupDir(),
-    properties: ["openFile"],
-    filters: [{ name: "Factory Backup", extensions: ["db"] }],
-  });
-
-  if (result.canceled || !result.filePaths[0]) {
-    return { canceled: true };
-  }
-
-  const backupPath = result.filePaths[0];
-  if (!validateFactoryDatabase(backupPath)) {
-    return {
-      error: "The selected file is not a valid Factory database backup.",
-    };
-  }
-
-  const target = config.defaultDbPath();
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.copyFileSync(backupPath, target);
-  config.setDbPath(target);
-
-  relaunch();
-  return { restored: true, path: target };
 });
 
 ipcMain.handle(

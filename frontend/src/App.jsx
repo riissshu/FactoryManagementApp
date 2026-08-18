@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import FactorySetup from "./pages/FactoryGateway";
+import FactoryGateway from "./pages/FactoryGateway";
 import Layout from "./components/Layout";
 import api from "./services/api";
 
@@ -7,22 +7,17 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [factorySetupDone, setFactorySetupDone] = useState(false);
 
-  const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
-  const [dailyReportMode, setDailyReportMode] = useState("new");
-
   useEffect(() => {
-    checkFactorySetup();
+    checkStartup();
   }, []);
 
-  const checkFactorySetup = async () => {
+  const checkStartup = async () => {
     try {
-      const settings = await api.getSettings();
-
-      if (settings?.master_password_hash) {
-        setFactorySetupDone(true);
-      }
+      const state = await api.getStartupState();
+      setFactorySetupDone(Boolean(state?.active && state?.setupComplete));
     } catch (error) {
       console.error(error);
+      setFactorySetupDone(false);
     } finally {
       setLoading(false);
     }
@@ -39,7 +34,7 @@ function App() {
   return factorySetupDone ? (
     <Layout />
   ) : (
-    <FactorySetup onSetupComplete={() => setFactorySetupDone(true)} />
+    <FactoryGateway onSetupComplete={checkStartup} />
   );
 }
 

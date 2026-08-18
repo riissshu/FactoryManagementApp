@@ -2,18 +2,18 @@ const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
-// Config lives in the OS-standard userData folder (e.g. %APPDATA%/FactoryBook
-// on Windows, ~/Library/Application Support/FactoryBook on macOS) — separate
-// from the app's own installed files, and separate from any factory database.
+// Application-level configuration only. Company data lives in separate SQLite files.
 const configPath = () => path.join(app.getPath("userData"), "app-config.json");
 
-const defaultDbDir = () => path.join(app.getPath("userData"), "databases");
-const defaultDbPath = () => path.join(defaultDbDir(), "factory_stock.db");
+const defaultCompanyDir = () =>
+  path.join(app.getPath("documents"), "FactoryBook", "Companies");
+
+const defaultBackupDir = () =>
+  path.join(app.getPath("documents"), "FactoryBook", "Backups");
 
 function readConfig() {
   try {
-    const raw = fs.readFileSync(configPath(), "utf-8");
-    return JSON.parse(raw);
+    return JSON.parse(fs.readFileSync(configPath(), "utf-8"));
   } catch (_) {
     return {};
   }
@@ -28,41 +28,67 @@ function writeConfig(partial) {
 }
 
 function getDbPath() {
-  const cfg = readConfig();
-  return cfg.dbPath || null;
+  return readConfig().dbPath || null;
 }
 
 function setDbPath(dbPath) {
-  writeConfig({ dbPath });
+  writeConfig({ dbPath: dbPath || null });
+}
+
+function getCompanyDir() {
+  const cfg = readConfig();
+  if (cfg.companyDir) return cfg.companyDir;
+  if (cfg.dbPath) return path.dirname(cfg.dbPath);
+  return defaultCompanyDir();
+}
+
+function setCompanyDir(dir) {
+  writeConfig({ companyDir: dir });
+}
+
+function getDefaultCompany() {
+  return readConfig().defaultCompanyPath || null;
+}
+
+function setDefaultCompany(dbPath) {
+  writeConfig({ defaultCompanyPath: dbPath || null });
+}
+
+function getAutoOpenDefaultCompany() {
+  const cfg = readConfig();
+  return cfg.autoOpenDefaultCompany === true;
+}
+
+function setAutoOpenDefaultCompany(value) {
+  writeConfig({ autoOpenDefaultCompany: Boolean(value) });
 }
 
 function getBackupDir() {
-  const cfg = readConfig();
-  return cfg.backupDir || app.getPath("documents");
+  return readConfig().backupDir || defaultBackupDir();
 }
 
 function setBackupDir(dir) {
   writeConfig({ backupDir: dir });
 }
 
+// Restore uses the backup directory by default. A separate restore directory is
+// intentionally no longer part of the application settings.
 function getRestoreDir() {
-  // Restore uses the same folder as Backup.
-  // There is one clear storage location for backup files.
   return getBackupDir();
 }
 
-function setRestoreDir(dir) {
-  // Kept for compatibility with older callers; restore now follows backupDir.
-  setBackupDir(dir);
-}
-
 module.exports = {
-  defaultDbDir,
-  defaultDbPath,
+  defaultCompanyDir,
+  defaultBackupDir,
   getDbPath,
   setDbPath,
+  getCompanyDir,
+  setCompanyDir,
+  getDefaultCompany,
+  setDefaultCompany,
+  getAutoOpenDefaultCompany,
+  setAutoOpenDefaultCompany,
   getBackupDir,
   setBackupDir,
   getRestoreDir,
-  setRestoreDir,
 };

@@ -129,6 +129,32 @@ saveStockItem(item) {
   return window.api.markDailyReportExported(id);
 },
 
+  // Application / Company Gateway
+  getStartupState() {
+    return window.api.getStartupState();
+  },
+  getCompanies() {
+    return window.api.getCompanies();
+  },
+  chooseCompanyDirectory() {
+    return window.api.chooseCompanyDirectory();
+  },
+  createCompany(options) {
+    return window.api.createCompany(options);
+  },
+  openCompany(dbPath) {
+    return window.api.openCompany(dbPath);
+  },
+  restoreCompany() {
+    return window.api.restoreCompany();
+  },
+  setStartupCompany(data) {
+    return window.api.setStartupCompany(data);
+  },
+  selectDefaultCompany(dbPath) {
+    return window.api.selectDefaultCompany(dbPath);
+  },
+
   // Backup / Restore
   createBackup() {
     return window.api.createBackup();

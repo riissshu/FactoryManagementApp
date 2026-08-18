@@ -95,28 +95,11 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
     if (result?.error) alert(result.error);
   };
 
-  const createNewCompany = async () => {
-    const name = window.prompt(
-      "Name for the new factory database file (you'll pick the folder next):",
-      "factory",
-    );
-    if (!name) return;
-    const result = await api.createNewDatabase({ folder: "pick", fileName: name });
-    if (result?.canceled) return;
-    if (result?.error) {
-      alert(result.error);
-      return;
-    }
-    alert(
-      `New database created at:\n${result.path}\n\nThe app now points at it. Fill in factory details from the setup screen if this is a brand-new company.`,
-    );
-    loadFolders();
-  };
-
   const setBackupDir = async () => {
     const result = await api.setDefaultBackupDir();
     if (!result?.canceled) loadFolders();
   };
+
 
   return (
     <div className="container-fluid">
@@ -253,8 +236,7 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
             Database &amp; Storage
           </h5>
           <p className="text-muted mb-4">
-            Manage where this factory's data lives, switch between company
-            databases, and choose where automatic backups are stored.
+            Manage the current company location, company directory, startup company, and backup folder.
           </p>
 
           <div className="row g-4">
@@ -276,28 +258,51 @@ export default function FactoryProfile({ onClose, onProfileUpdated, onMultiAlter
             </div>
 
             <div className="col-md-6">
-              <label className="form-label fw-bold">New company</label>
-              <p className="text-muted small mb-2">
-                Create a fresh, empty factory database and switch to it.
-              </p>
-              <button className="btn btn-sm btn-outline-success" onClick={createNewCompany}>
-                <i className="bi bi-plus-circle me-1"></i>
-                Create new company database
+              <label className="form-label fw-bold">Company Directory</label>
+              <code className="d-block mb-2" style={{ wordBreak: "break-all" }}>
+                {folders?.companyDir || "Loading..."}
+              </code>
+              <p className="text-muted small mb-2">This is the folder Factory Gateway scans for your company databases.</p>
+              <button className="btn btn-sm btn-outline-secondary" onClick={async () => {
+                const result = await api.chooseCompanyDirectory();
+                if (!result?.canceled) loadFolders();
+              }}>
+                Change Company Directory
               </button>
             </div>
 
             <div className="col-md-6">
-              <label className="form-label fw-bold">Backup folder</label>
-              <p className="text-muted small mb-2">
-                Backup files are saved here automatically. Restore also opens
-                in this folder by default.
-              </p>
+              <label className="form-label fw-bold">Backup Folder</label>
               <code className="d-block mb-2" style={{ wordBreak: "break-all" }}>
                 {folders?.backupDir || "Loading..."}
               </code>
+              <p className="text-muted small mb-2">Create Backup saves directly here. Restore opens this folder.</p>
               <button className="btn btn-sm btn-outline-secondary" onClick={setBackupDir}>
-                Change
+                Change Backup Folder
               </button>
+            </div>
+
+            <div className="col-md-6">
+              <label className="form-label fw-bold">Default Company</label>
+              <code className="d-block mb-2" style={{ wordBreak: "break-all" }}>
+                {folders?.defaultCompany || "Not selected"}
+              </code>
+              <div className="form-check form-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  checked={Boolean(folders?.autoOpenDefaultCompany)}
+                  onChange={async (e) => {
+                    const result = await api.setStartupCompany({
+                      path: folders?.defaultCompany,
+                      enabled: e.target.checked,
+                    });
+                    if (result?.error) alert(result.error);
+                    else loadFolders();
+                  }}
+                />
+                <label className="form-check-label">Open default company automatically on startup</label>
+              </div>
             </div>
           </div>
         </div>
