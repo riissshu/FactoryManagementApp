@@ -133,7 +133,11 @@ export default function StockItemMaster({ onAddNew, onViewStock }) {
                       <td>{item.stock_group}</td>
                       <td>{item.unit}</td>
                       <td>{item.alternate_unit || "-"}</td>
-                      <td>{item.opening_qty ?? 0}</td>
+                      <td>{item.opening_qty ?? 0} {item.unit} 
+                        <span>
+                          <small>***</small>
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -17,7 +17,6 @@ import FactoryProfile from "../pages/FactoryProfile";
 import BackupRestore from "../pages/BackupRestore";
 import StockGroupsUnits from "../pages/StockUnitAndGroups";
 import ViewDailyreport from "../pages/ViewDailyReport";
-import ViewEditStock from "../pages/ViewEditStock";
 import MasterLock from "../components/MasterLock";
 import EditDailyReport from "../pages/EditDailyReport";
 import CreateWeeklyReport from "../pages/CreateWeeklyReport";
@@ -33,12 +32,10 @@ export default function Layout() {
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
   const [selectedEditDailyReportId, setSelectedEditDailyReportId] =
-  useState(null);
+    useState(null);
 
-  const [
-  editDailyReportMasterPassword,
-  setEditDailyReportMasterPassword,
-] = useState("");
+  const [editDailyReportMasterPassword, setEditDailyReportMasterPassword] =
+    useState("");
   const [factoryProfilePage, setFactoryProfilePage] = useState("profile");
   const [showMasterLock, setShowMasterLock] = useState(false);
 
@@ -62,61 +59,52 @@ export default function Layout() {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
-
-
-
-
       case "viewdailyreport":
         return (
           <ViewDailyreport
             reportId={selectedDailyReportId}
             mode={dailyReportMode}
-             onEdit={(id,  masterPassword = "") => {
-        setSelectedEditDailyReportId(id);
-         setEditDailyReportMasterPassword(masterPassword);
-        setActiveMenu("editdailyreport");
-      }}
+            onEdit={(id, masterPassword = "") => {
+              setSelectedEditDailyReportId(id);
+              setEditDailyReportMasterPassword(masterPassword);
+              setActiveMenu("editdailyreport");
+            }}
             onClose={() => setActiveMenu("dailyreportregister")}
           />
         );
 
+      case "editdailyreport":
+        return (
+          <EditDailyReport
+            reportId={selectedEditDailyReportId}
+            masterPassword={editDailyReportMasterPassword}
+            onClose={() => {
+              setSelectedEditDailyReportId(null);
+              setEditDailyReportMasterPassword("");
+              setActiveMenu("viewdailyreport");
+            }}
+            onSaved={() => {
+              setSelectedEditDailyReportId(null);
+              setEditDailyReportMasterPassword("");
+              setActiveMenu("viewdailyreport");
+            }}
+          />
+        );
 
-        case "editdailyreport":
-  return (
-    <EditDailyReport
-      reportId={selectedEditDailyReportId}
-       masterPassword={
-        editDailyReportMasterPassword
-      }
-      onClose={() => {
-        setSelectedEditDailyReportId(null);
-         setEditDailyReportMasterPassword("");
-        setActiveMenu("viewdailyreport");
-      }}
-      onSaved={() => {
-        setSelectedEditDailyReportId(null);
-           setEditDailyReportMasterPassword("");
-        setActiveMenu("viewdailyreport");
-      }}
-    />
-  );
+      case "stockadjustment":
+        return (
+          <StockAdjustment
+            onClose={() => setActiveMenu("dashboard")}
+            onViewAdjustments={() => setActiveMenu("stockadjustmentregister")}
+          />
+        );
 
-case "stockadjustment":
-  return (
-    <StockAdjustment
-      onClose={() => setActiveMenu("dashboard")}
-        onViewAdjustments={() =>
-    setActiveMenu("stockadjustmentregister")
-  }
-    />
-  );
-
-  case "stockadjustmentregister":
-  return (
-    <StockAdjustmentRegister
-      onClose={() => setActiveMenu("stockadjustment")}
-    />
-  );
+      case "stockadjustmentregister":
+        return (
+          <StockAdjustmentRegister
+            onClose={() => setActiveMenu("stockadjustment")}
+          />
+        );
 
       case "createstockitem":
         return (
@@ -129,53 +117,35 @@ case "stockadjustment":
             onClose={() => setActiveMenu("stockitemmaster")}
             onEditItem={(id) => {
               setSelectedStockItemId(id);
-              setActiveMenu("vieweditstock");
             }}
           />
         );
 
-      case "vieweditstock":
+      case "factoryprofile":
         return (
-          <ViewEditStock
-            itemId={selectedStockItemId}
-            onClose={() => {
-              setSelectedStockItemId(null);
-              setActiveMenu("stockitemlist");
-            }}
+          <FactoryProfile
+            onProfileUpdated={reloadSettings}
+            onMultiAlter={() => setActiveMenu("multialterstock")}
+            onMultiCreate={() => setActiveMenu("multicreatestock")}
+            onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
+            onClose={() => setActiveMenu("dashboard")}
           />
         );
 
-        case "factoryprofile":
-  return (
-    <FactoryProfile
-      onProfileUpdated={reloadSettings}
-      onMultiAlter={() => setActiveMenu("multialterstock")}
-      onMultiCreate={() => setActiveMenu("multicreatestock")}
-      onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
-      onClose={() => setActiveMenu("dashboard")}
-    />
-  );
+      case "multialterstock":
+        return (
+          <MultiAlterStock onClose={() => setActiveMenu("factoryprofile")} />
+        );
 
-case "multialterstock":
-  return (
-    <MultiAlterStock
-      onClose={() => setActiveMenu("factoryprofile")}
-    />
-  );
+      case "multicreatestock":
+        return (
+          <MultiCreateStock onClose={() => setActiveMenu("factoryprofile")} />
+        );
 
-case "multicreatestock":
-  return (
-    <MultiCreateStock
-      onClose={() => setActiveMenu("factoryprofile")}
-    />
-  );
-
-case "stockgroupsunits":
-  return (
-    <StockGroupsUnits
-      onClose={() => setActiveMenu("factoryprofile")}
-    />
-  );
+      case "stockgroupsunits":
+        return (
+          <StockGroupsUnits onClose={() => setActiveMenu("factoryprofile")} />
+        );
 
       case "dailyreport":
         return (
@@ -187,29 +157,34 @@ case "stockgroupsunits":
         );
 
       case "stockreport":
-        return <StockReport onClose={() => setActiveMenu("stocksummary")} onStockItemClick={(id) => {
-        setSelectedStockItemId(id);
-        setActiveMenu("detailedstockreport");
-      }} />;
+        return (
+          <StockReport
+            onClose={() => setActiveMenu("stocksummary")}
+            onStockItemClick={(id) => {
+              setSelectedStockItemId(id);
+              setActiveMenu("detailedstockreport");
+            }}
+          />
+        );
 
       case "detailedstockreport":
-  return (
-    <DetailedStockReport
-      stockItemId={selectedStockItemId}
-      onClose={() => {
-        setSelectedStockItemId(null);
-        setActiveMenu("stockreport");
-      }}
-    />
-  );
+        return (
+          <DetailedStockReport
+            stockItemId={selectedStockItemId}
+            onClose={() => {
+              setSelectedStockItemId(null);
+              setActiveMenu("stockreport");
+            }}
+          />
+        );
 
       case "stocksummary":
         return (
           <StockSummary onStockReport={() => setActiveMenu("stockreport")} />
         );
 
-        case "createweeklyreport":
-  return <CreateWeeklyReport />;
+      case "createweeklyreport":
+        return <CreateWeeklyReport />;
 
       case "stockitemmaster":
         return (
@@ -239,10 +214,10 @@ case "stockgroupsunits":
   };
 
   const selectMenu = (key) => {
-      if (key === "factoryprofile") {
-    setShowMasterLock(true);
-    return;
-  }
+    if (key === "factoryprofile") {
+      setShowMasterLock(true);
+      return;
+    }
 
     if (key === "dailyreport") {
       setSelectedDailyReportId(null);
@@ -284,18 +259,17 @@ case "stockgroupsunits":
           {renderPage()}
         </main>
 
-          {showMasterLock && (
-  <MasterLock
-    onClose={() => {
-      setShowMasterLock(false);
-    }}
-    onUnlock={() => {
-      setShowMasterLock(false);
-      setActiveMenu("factoryprofile");
-    }}
-  />
-)}
-
+        {showMasterLock && (
+          <MasterLock
+            onClose={() => {
+              setShowMasterLock(false);
+            }}
+            onUnlock={() => {
+              setShowMasterLock(false);
+              setActiveMenu("factoryprofile");
+            }}
+          />
+        )}
       </div>
     </>
   );

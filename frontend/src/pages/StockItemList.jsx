@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import { exportTablePdf, exportTableExcel } from "../utils/exportUtils";
 
-export default function StockItemList({onClose, onEditItem}) {
+export default function StockItemList({ onClose, onEditItem }) {
   const [items, setItems] = useState([]);
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState("All");
@@ -38,8 +38,7 @@ export default function StockItemList({onClose, onEditItem}) {
   // still show up under "Other", so nothing silently disappears.
   const sections = useMemo(() => {
     const groupNames = groups.map((g) => g.name);
-    const visibleGroups =
-      activeGroup === "All" ? groupNames : [activeGroup];
+    const visibleGroups = activeGroup === "All" ? groupNames : [activeGroup];
 
     const byGroup = visibleGroups
       .map((name) => ({
@@ -60,52 +59,74 @@ export default function StockItemList({onClose, onEditItem}) {
     return byGroup;
   }, [items, groups, activeGroup]);
 
-
   const buildExportRows = () =>
-  sections.flatMap((section) =>
-    section.rows.map((row) => [
-      row.item_name,
-      row.stock_group,
-      row.unit,
-      row.alternate_unit || "-",
-      row.alternate_unit ? `1 ${row.unit} = ${row.conversion} Kgs` : "-",
-      row.opening_qty,
-      row.low_qty_alert || "-",
-    ])
-  );
+    sections.flatMap((section) =>
+      section.rows.map((row) => [
+        row.item_name,
+        row.stock_group,
+        row.unit,
+        row.alternate_unit || "-",
+        row.alternate_unit ? `1 ${row.unit} = ${row.conversion} Kgs` : "-",
+        row.opening_qty,
+        row.low_qty_alert || "-",
+      ]),
+    );
 
-const exportPdf = () =>
-  exportTablePdf({
-    title: "Stock Item List",
-    subtitle: new Date().toLocaleDateString("en-IN"),
-    filename: "stock-item-list.pdf",
-    headers: ["Item", "Group", "Unit", "Alt Unit", "Conversion", "Opening Qty", "Low Qty Alert"],
-    rows: buildExportRows(),
-    numericCols: [2],
-  });
+  const exportPdf = () =>
+    exportTablePdf({
+      title: "Stock Item List",
+      subtitle: new Date().toLocaleDateString("en-IN"),
+      filename: "stock-item-list.pdf",
+      headers: [
+        "Item",
+        "Group",
+        "Unit",
+        "Alt Unit",
+        "Conversion",
+        "Opening Qty",
+        "Low Qty Alert",
+      ],
+      rows: buildExportRows(),
+      numericCols: [2],
+    });
 
-const exportExcel = () =>
-  exportTableExcel({
-    filename: "stock-item-list.xlsx",
-    sheetName: "Stock Items",
-    headers: ["Item", "Group", "Unit", "Alt Unit", "Conversion", "Opening Qty", "Low Qty Alert"],
-    rows: buildExportRows(),
-  });
-
-
+  const exportExcel = () =>
+    exportTableExcel({
+      filename: "stock-item-list.xlsx",
+      sheetName: "Stock Items",
+      headers: [
+        "Item",
+        "Group",
+        "Unit",
+        "Alt Unit",
+        "Conversion",
+        "Opening Qty",
+        "Low Qty Alert",
+      ],
+      rows: buildExportRows(),
+    });
 
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
         <h2 className="mb-0">Stock Item List</h2>
-        <button onClick={onClose} className="btn btn-secondary">Close</button>
+        <button onClick={onClose} className="btn btn-secondary">
+          Close
+        </button>
 
-         <button onClick={exportPdf} className="btn btn-outline-primary me-2">Export PDF</button>
-    <button onClick={exportExcel} className="btn btn-outline-success me-2">Export Excel</button>
-        
+        <button onClick={exportPdf} className="btn btn-outline-primary me-2">
+          Export PDF
+        </button>
+        <button onClick={exportExcel} className="btn btn-outline-success me-2">
+          Export Excel
+        </button>
       </div>
 
-      <div className="btn-group mb-3" role="group" aria-label="Filter by stock group">
+      <div
+        className="btn-group mb-3"
+        role="group"
+        aria-label="Filter by stock group"
+      >
         <button
           type="button"
           className={`btn btn-sm ${activeGroup === "All" ? "btn-primary" : "btn-outline-primary"}`}
@@ -170,12 +191,11 @@ const exportExcel = () =>
                   </tr>
 
                   {section.rows.map((row) => (
-                    <tr key={row.id}
-                        onClick={() => onEditItem(row.id)}
-    style={{ cursor: "pointer" }}
-                    
+                    <tr
+                      key={row.id}
+                      onClick={() => onEditItem(row.id)}
+                      style={{ cursor: "pointer" }}
                     >
-                      
                       <td>{row.item_name}</td>
                       <td>{row.stock_group}</td>
                       <td>{row.unit}</td>
@@ -185,8 +205,24 @@ const exportExcel = () =>
                           ? `1 ${row.unit} = ${row.conversion} Kgs`
                           : "-"}
                       </td>
-                      <td>{row.opening_qty}</td>
-                      <td>{row.low_qty_alert || "-"}</td>
+                      <td>
+                        {row.opening_qty} {row.unit}
+                        <div>
+                          {row.unit &&
+                            row.alternate_unit &&
+                            row.conversion > 0 &&
+                            row.opening_qty > 0 && (
+                              <small className="text-muted">
+                                {" "}
+                                ({row.opening_qty * row.conversion}{" "}
+                                {row.alternate_unit})
+                              </small>
+                            )}
+                        </div>
+                      </td>
+                      <td>
+                        {row.low_qty_alert || "-"} {row.unit}
+                      </td>
                     </tr>
                   ))}
                 </React.Fragment>
