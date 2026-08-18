@@ -429,8 +429,8 @@ ipcMain.handle("company:open", async (event, dbPath) => {
     return { error: "The selected file is not a valid Factory Book company database." };
   }
 
-  config.setDbPath(dbPath);
-  relaunch();
+  openDatabaseAt(dbPath);
+  
   return { opened: true, path: dbPath };
 });
 
@@ -615,7 +615,14 @@ ipcMain.handle("dbLocation:selectExisting", async () => {
   relaunch();
   return { switched: true, path: selectedPath };
 });
+ipcMain.handle("company:close", () => {
+  if (database) {
+    database.close();
+    database = null;
+  }
 
+  return { closed: true };
+});
 ipcMain.handle("dbLocation:move", async () => {
   const current = config.getDbPath();
   if (!current || !fs.existsSync(current) || !validateFactoryDatabase(current)) {

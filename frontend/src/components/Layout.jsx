@@ -23,7 +23,7 @@ import CreateWeeklyReport from "../pages/CreateWeeklyReport";
 import StockItemMaster from "../pages/StockItemMaster";
 import api from "../services/api";
 
-export default function Layout() {
+export default function Layout({ onCloseCompany }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -129,6 +129,7 @@ export default function Layout() {
             onMultiCreate={() => setActiveMenu("multicreatestock")}
             onStockGroupUnits={() => setActiveMenu("stockgroupsunits")}
             onClose={() => setActiveMenu("dashboard")}
+            onCloseCompany={onCloseCompany}
           />
         );
 

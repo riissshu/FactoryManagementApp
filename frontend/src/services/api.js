@@ -173,6 +173,9 @@ saveStockItem(item) {
   getDbLocation() {
     return window.api.getDbLocation();
   },
+  closeCompany() {
+  return window.api.closeCompany();
+},
   getDbFolders() {
     return window.api.getDbFolders();
   },

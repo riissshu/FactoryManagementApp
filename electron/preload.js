@@ -94,6 +94,7 @@ contextBridge.exposeInMainWorld("api", {
 
   // Database location / multi-company
   getDbLocation: () => ipcRenderer.invoke("dbLocation:get"),
+  closeCompany: () => ipcRenderer.invoke("company:close"),
   getDbFolders: () => ipcRenderer.invoke("dbLocation:getFolders"),
   createNewDatabase: (options) =>
     ipcRenderer.invoke("dbLocation:createNew", options),

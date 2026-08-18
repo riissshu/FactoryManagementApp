@@ -6,6 +6,7 @@ import api from "./services/api";
 function App() {
   const [loading, setLoading] = useState(true);
   const [factorySetupDone, setFactorySetupDone] = useState(false);
+  const [showGateway, setShowGateway] = useState(false);
 
   useEffect(() => {
     checkStartup();
@@ -31,11 +32,27 @@ function App() {
     );
   }
 
-  return factorySetupDone ? (
-    <Layout />
-  ) : (
-    <FactoryGateway onSetupComplete={checkStartup} />
+  if (showGateway) {
+  return (
+    <FactoryGateway
+      onSetupComplete={async () => {
+        setShowGateway(false);
+        await checkStartup();
+      }}
+    />
   );
+}
+
+return factorySetupDone ? (
+  <Layout
+    onCloseCompany={() => {
+      setShowGateway(true);
+      setFactorySetupDone(false);
+    }}
+  />
+) : (
+  <FactoryGateway onSetupComplete={checkStartup} />
+);
 }
 
 export default App;

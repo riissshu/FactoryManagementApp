@@ -62,10 +62,17 @@ export default function FactoryGateway({ onSetupComplete }) {
   };
 
   const openCompany = async (company) => {
-    if (!company?.path) return;
-    const result = await api.openCompany(company.path);
-    if (result?.error) alert(result.error);
-  };
+  if (!company?.path) return;
+
+  const result = await api.openCompany(company.path);
+
+  if (result?.error) {
+    alert(result.error);
+    return;
+  }
+
+  await onSetupComplete?.();
+};
 
   const selectExistingDatabase = async () => {
     const result = await api.selectExistingDatabase();
@@ -246,7 +253,7 @@ export default function FactoryGateway({ onSetupComplete }) {
   }
 
   return (
-    <div className="container-fluid py-4" style={{ minHeight: "100vh", background: "#f8f9fa" }}>
+    <div className="container-fluid py-4" style={{ minHeight: "100vh", background: "#76a1fc82" }}>
       <div className="container" style={{ maxWidth: "1050px" }}>
         <div className="text-center mb-4">
           <h2 className="fw-bold mb-1">Factory Gateway</h2>
@@ -336,12 +343,7 @@ export default function FactoryGateway({ onSetupComplete }) {
               Restore Backup
             </button>
           </div>
-          <div className="col-md-4">
-            <button className="btn btn-outline-primary w-100 py-3" onClick={selectExistingDatabase}>
-              <i className="bi bi-folder-symlink me-2" />
-              Open Existing Company
-            </button>
-          </div>
+          
         </div>
 
         <div className="card shadow-sm">
