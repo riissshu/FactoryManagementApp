@@ -383,7 +383,7 @@ export default function CreateStockItem({ onClose }) {
             <div className="col-md-6">
               <div className="mb-3">
                 <label className="form-label">Opening Stock Qty</label>
-
+                      <div className="input-group">
                 <input
                   type="number"
                   className="form-control"
@@ -393,7 +393,21 @@ export default function CreateStockItem({ onClose }) {
                   min="0"
                   step="any"
                 />
+                <span className="input-group-text">{item.unit}</span>
+                </div> 
+                   
+                      {item.unit && effectiveAltUnit && item.conversion > 0 && (
+                        <span className="badge text-bg-light text-muted">
+                          
+                          {item.conversion
+                            ? item.openingQty * item.conversion
+                            : "?"}{" "}
+                          {effectiveAltUnit}
+                        </span>
+                      )}
+                   
               </div>
+               
 
               <div className="mb-3">
                 <label className="form-label">
