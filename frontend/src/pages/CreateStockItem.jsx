@@ -24,6 +24,7 @@ export default function CreateStockItem({ onClose }) {
 
   const [validated, setValidated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
 
   // Manual switch position. Only meaningful/used while stockGroup is
   // "Packaging Material" — starts Off, and the user fully controls it,
@@ -34,6 +35,16 @@ export default function CreateStockItem({ onClose }) {
     api.getStockGroups().then(setStockGroups).catch(console.error);
     api.getStockUnits().then(setUnits).catch(console.error);
   }, []);
+
+  useEffect(() => {
+  if (!success) return;
+
+  const timer = setTimeout(() => {
+    setSuccess("");
+  }, 3000);
+
+  return () => clearTimeout(timer);
+}, [success]);
 
   // ---- Alternate Unit switch state machine -------------------------------
   // Spec:
@@ -124,7 +135,7 @@ export default function CreateStockItem({ onClose }) {
 
     if (saving) return;
     setError("");
-
+    setSuccess("");
     const form = e.currentTarget;
 
     if (!form.checkValidity()) {
@@ -150,8 +161,10 @@ export default function CreateStockItem({ onClose }) {
 
       if (item.id) {
         await api.updateStockItem(stockData);
+        setSuccess("Stock item saved successfully.");
       } else {
         await api.saveStockItem(stockData);
+        setSuccess("Stock item saved successfully.");
       }
 
       resetForm();
@@ -169,10 +182,10 @@ export default function CreateStockItem({ onClose }) {
 
     try {
       await api.updateLowQtyAlert(item.id, Number(item.lowQtyAlert) || 0);
-      alert("Low stock alert quantity updated.");
+    
     } catch (error) {
       console.error(error);
-      alert("Unable to update the alert quantity.");
+  
     }
   };
 
@@ -232,6 +245,12 @@ export default function CreateStockItem({ onClose }) {
           </ul>
         </div>
       )}
+
+      {success && (
+  <div className="alert alert-success mt-3">
+    {success}
+  </div>
+)}
 
       <form
         noValidate
@@ -426,6 +445,7 @@ export default function CreateStockItem({ onClose }) {
                     min="0"
                     step="any"
                   />
+                  <span className="input-group-text">{item.unit}</span>
 
                   {item.id && (
                     <button

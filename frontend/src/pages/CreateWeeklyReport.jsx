@@ -148,7 +148,7 @@ export default function WeeklyReport() {
                   <tr>
                     <th style={{ width: "50px" }}>#</th>
                     <th>Stock Item</th>
-                    <th style={{ width: "120px" }}>Unit</th>
+                 
                     <th style={{ width: "220px" }} className="text-end">
                       Available Balance
                     </th>
@@ -166,11 +166,26 @@ export default function WeeklyReport() {
 
                       <td>{row.item_name}</td>
 
-                      <td>{row.unit}</td>
 
-                      <td className="text-end">{row.balance_qty}</td>
+                      <td className="text-end">{row.balance_qty}{" "}{row.unit}
+
+                        <div>
+                          {row.unit &&
+                            row.alternate_unit &&
+                            row.conversion > 0 &&
+                            row.balance_qty > 0 && (
+                              <small className="text-muted">
+                                {" "}
+                                ({row.balance_qty * row.conversion}{" "}
+                                {row.alternate_unit})
+                              </small>
+                            )}
+                        </div>
+
+                      </td>
 
                       <td>
+                        <div className="input-group">
                         <input
                           type="number"
                           className="form-control"
@@ -180,6 +195,22 @@ export default function WeeklyReport() {
                             handlePhysicalStockChange(row.id, e.target.value)
                           }
                         />
+                        <span className="input-group-text">{row.unit}</span>
+                        
+                        </div>
+                        <div className="d-block text-center">
+                           {row.unit &&
+                            row.alternate_unit &&
+                            row.conversion > 0 &&
+                            physicalStock[row.id] > 0 &&
+                            row.balance_qty > 0 && (
+                              <small className="text-muted">
+                                {" "}
+                                ({physicalStock[row.id] * row.conversion}{" "}
+                                {row.alternate_unit})
+                              </small>
+                            )}
+                        </div>
                       </td>
                       <td className="text-center">
                         {physicalStock[row.id] !== undefined &&
@@ -198,14 +229,14 @@ export default function WeeklyReport() {
                               if (difference < 0) {
                                 return (
                                   <span className="text-danger">
-                                    Short {Math.abs(difference)}
+                                    Short 
                                   </span>
                                 );
                               }
 
                               return (
                                 <span className="text-primary">
-                                  Excess {difference}
+                                  Excess 
                                 </span>
                               );
                             })()

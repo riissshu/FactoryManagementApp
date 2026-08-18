@@ -7,6 +7,7 @@ import StockItemList from "../pages/StockItemList";
 import CreateDailyReport from "../pages/CreateDailyReport";
 import StockReport from "../pages/StockReport";
 import DetailedStockReport from "../pages/DetailedStockReport";
+import ViewEditStock from "../pages/View&EditStock";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
 import StockAdjustment from "../pages/StockAdjustments";
@@ -117,7 +118,19 @@ export default function Layout({ onCloseCompany }) {
             onClose={() => setActiveMenu("stockitemmaster")}
             onEditItem={(id) => {
               setSelectedStockItemId(id);
+              setActiveMenu("vieweditstock");
             }}
+          />
+        );
+
+        case "vieweditstock":
+        return (
+          <ViewEditStock
+            itemId={selectedStockItemId}
+            onClose={() => {
+              setSelectedStockItemId(null);
+              setActiveMenu("stockitemlist");
+               }}
           />
         );
 

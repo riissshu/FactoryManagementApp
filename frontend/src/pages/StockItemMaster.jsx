@@ -135,9 +135,13 @@ export default function StockItemMaster({ onAddNew, onViewStock }) {
                       <td>{item.alternate_unit || "-"}</td>
                       <td>{item.opening_qty ?? 0} {item.unit} 
                         <span className="ms-2">
+                          {item.unit &&
+                            item.alternate_unit &&
+                            item.conversion > 0 && (
                           <small className="text-muted badge">({item.conversion * item.opening_qty}{" "}
                             {item.alternate_unit})
                           </small>
+                            )}
                         </span>
                       </td>
                     </tr>
