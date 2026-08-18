@@ -137,8 +137,6 @@ export default function StockSummary({ onStockReport }) {
                   <tr>
                     <th>Item</th>
                     <th className="text-end">Available Balance</th>
-                    <th>Unit</th>
-                    <th>Alternate Unit</th>
                   </tr>
                 </thead>
 
@@ -146,9 +144,20 @@ export default function StockSummary({ onStockReport }) {
                   {items.map((row) => (
                     <tr key={row.id}>
                       <td>{row.item_name}</td>
-                      <td className="text-end">{row.balance_qty}</td>
-                      <td>{row.unit}</td>
-                      <td>{row.alternate_unit || "-"}</td>
+                      <td className="text-end">{row.balance_qty}{" "}{row.unit}
+                        <div>
+                          {row.unit &&
+                            row.alternate_unit &&
+                            row.conversion > 0 &&
+                            row.opening_qty > 0 && (
+                              <small className="text-muted badge">
+                                {" "}
+                                ({row.opening_qty * row.conversion}{" "}
+                                {row.alternate_unit})
+                              </small>
+                            )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

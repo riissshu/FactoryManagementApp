@@ -157,7 +157,7 @@ export default function StockReport({ onClose, onStockItemClick } = {}) {
                           {Number(item.adjustment_add_qty) -
                             Number(item.adjustment_subtract_qty)}
                         </td>
-                        <td className="text-end fw-bold">{item.balance_qty}</td>
+                        <td className="text-end fw-bold">{item.balance_qty}{" "}{item.unit}</td>
                       </tr>
                     ))}
                 </tbody>
