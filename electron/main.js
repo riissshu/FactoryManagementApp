@@ -439,6 +439,21 @@ ipcMain.handle("get-stock-adjustments", () => {
 ipcMain.handle("stock:bulkUpdate", (event, items) => database.bulkUpdateStockItems(items));
 ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockItems(items));
 
+ipcMain.handle(
+  "purchaseRegister:get",
+  () => database.getPurchaseRegister()
+);
+
+ipcMain.handle(
+  "dispatchRegister:get",
+  () => database.getDispatchRegister()
+);
+
+ipcMain.handle(
+  "productionRegister:get",
+  () => database.getProductionRegister()
+);
+
 // =======================
 // Daily Reports
 // =======================

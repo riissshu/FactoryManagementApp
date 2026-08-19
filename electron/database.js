@@ -1151,6 +1151,118 @@ function createDatabase(dbPath) {
     .all();
 }
 
+function getProductionRegister() {
+  const entries = db
+    .prepare(
+      `
+      SELECT
+        me.id AS manufacturing_id,
+        dr.report_date
+      FROM manufacturing_entries me
+      INNER JOIN daily_reports dr
+        ON dr.id = me.daily_report_id
+      ORDER BY
+        dr.report_date DESC,
+        me.id DESC
+      `,
+    )
+    .all();
+
+  const getConsumption = db.prepare(`
+    SELECT
+      mc.id,
+      mc.stock_item_id,
+      si.item_name,
+      mc.qty,
+      mc.unit
+    FROM manufacturing_consumption mc
+    INNER JOIN stock_items si
+      ON si.id = mc.stock_item_id
+    WHERE mc.manufacturing_entry_id = ?
+    ORDER BY mc.id ASC
+  `);
+
+  const getProduction = db.prepare(`
+    SELECT
+      mp.id,
+      mp.stock_item_id,
+      si.item_name,
+      mp.qty,
+      mp.unit
+    FROM manufacturing_production mp
+    INNER JOIN stock_items si
+      ON si.id = mp.stock_item_id
+    WHERE mp.manufacturing_entry_id = ?
+    ORDER BY mp.id ASC
+  `);
+
+  return entries.map((entry) => ({
+    manufacturing_id: entry.manufacturing_id,
+    report_date: entry.report_date,
+    consumption: getConsumption.all(entry.manufacturing_id),
+    production: getProduction.all(entry.manufacturing_id),
+  }));
+}
+
+  function getDispatchRegister() {
+  return db
+    .prepare(
+      `
+      SELECT
+        ge.id AS gatepass_id,
+        dr.report_date,
+        ge.gatepass_no,
+        gi.id AS item_id,
+        gi.stock_item_id,
+        si.item_name,
+        gi.qty,
+        gi.unit
+      FROM gatepass_entries ge
+      INNER JOIN daily_reports dr
+        ON dr.id = ge.daily_report_id
+      INNER JOIN gatepass_items gi
+        ON gi.gatepass_entry_id = ge.id
+      INNER JOIN stock_items si
+        ON si.id = gi.stock_item_id
+      ORDER BY
+        dr.report_date DESC,
+        ge.id DESC,
+        gi.id ASC
+      `,
+    )
+    .all();
+}
+
+  function getPurchaseRegister() {
+    return db
+      .prepare(
+        `
+        SELECT
+          pe.id AS purchase_id,
+          dr.report_date,
+          pe.purchase_no,
+          pi.id AS item_id,
+          pi.stock_item_id,
+          si.item_name,
+          pi.qty,
+          pi.unit
+        FROM purchase_entries pe
+        INNER JOIN daily_reports dr
+          ON dr.id = pe.daily_report_id
+        INNER JOIN purchase_items pi
+          ON pi.purchase_entry_id = pe.id
+        INNER JOIN stock_items si
+          ON si.id = pi.stock_item_id
+        ORDER BY
+          dr.report_date DESC,
+          pe.id DESC,
+          pi.id ASC
+        `,
+      )
+      .all();
+  }
+
+
   function getDailyReports() {
     return db
       .prepare(
@@ -2095,6 +2207,10 @@ function createDatabase(dbPath) {
     updateStockItem,
     updateLowQtyAlert,
     inactivateStockItem,
+
+        getPurchaseRegister,
+        getDispatchRegister,
+        getProductionRegister,
 
     getDailyReports,
     saveDailyReport,

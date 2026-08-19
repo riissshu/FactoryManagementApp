@@ -59,6 +59,13 @@ contextBridge.exposeInMainWorld("api", {
   bulkCreateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkCreate", items),
 
+  getPurchaseRegister: () =>
+  ipcRenderer.invoke("purchaseRegister:get"),
+  getDispatchRegister: () =>
+  ipcRenderer.invoke("dispatchRegister:get"),
+  getProductionRegister: () =>
+  ipcRenderer.invoke("productionRegister:get"),
+
   // Daily Reports
   getDailyReports: () => ipcRenderer.invoke("dailyReport:get"),
   saveDailyReport: (report) => ipcRenderer.invoke("dailyReport:save", report),

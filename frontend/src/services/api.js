@@ -105,6 +105,20 @@ saveStockItem(item) {
     return window.api.bulkCreateStockItems(items);
   },
 
+
+    getPurchaseRegister() {
+    return window.api.getPurchaseRegister();
+  },
+  
+  getDispatchRegister() {
+  return window.api.getDispatchRegister();
+},
+
+getProductionRegister() {
+  return window.api.getProductionRegister();
+},
+
+
   // Daily Reports
   getDailyReports() {
     return window.api.getDailyReports();

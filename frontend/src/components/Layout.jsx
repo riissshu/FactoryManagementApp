@@ -10,6 +10,9 @@ import DetailedStockReport from "../pages/DetailedStockReport";
 import ViewEditStock from "../pages/View&EditStock";
 import StockSummary from "../pages/StockSummary";
 import DailyReportRegister from "../pages/DailyReportRegister";
+import PurchaseRegister from "../pages/PurchaseRegister";
+import DispatchRegister from "../pages/DispatchRegister";
+import ProductionRegister from "../pages/ProductionRegister";
 import StockAdjustment from "../pages/StockAdjustments";
 import StockAdjustmentRegister from "../pages/StockAdjustmentRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
@@ -59,6 +62,28 @@ export default function Layout({ onCloseCompany }) {
     switch (activeMenu) {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
+
+              case "purchaseregister":
+        return (
+          <PurchaseRegister
+            onClose={() => setActiveMenu("dashboard")}
+          />
+        );
+
+        case "productionregister":
+  return (
+    <ProductionRegister
+      onClose={() => setActiveMenu("dashboard")}
+    />
+  );
+
+
+        case "dispatchregister":
+  return (
+    <DispatchRegister
+      onClose={() => setActiveMenu("dashboard")}
+    />
+  );
 
       case "viewdailyreport":
         return (

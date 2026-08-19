@@ -56,6 +56,37 @@ export default function Dashboard({ navigate }) {
           </div>
         )}
 
+           <div className="row mb-4">
+  <div className="col-md-4 mb-2">
+    <button
+      type="button"
+      className="btn btn-outline-primary w-100"
+      onClick={() => navigate("purchaseregister")}
+    >
+      Purchase Register
+    </button>
+  </div>
+
+  <div className="col-md-4 mb-2">
+    <button
+      type="button"
+      className="btn btn-outline-primary w-100"
+      onClick={() => navigate("dispatchregister")}
+    >
+      Dispatch / Sales Register
+    </button>
+  </div>
+  <div className="col-md-4 mb-2">
+  <button
+    type="button"
+    className="btn btn-outline-primary w-100"
+    onClick={() => navigate("productionregister")}
+  >
+    Production Register
+  </button>
+</div>
+</div>
+
         <h5>Recent Daily Reports</h5>
         <div className="table-responsive">
           <table className="table table-bordered">
