@@ -1,11 +1,111 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+const zlib = require("zlib");
 
 const config = require("./config");
 const { createDatabase } = require("./database");
 
 const isDev = process.env.NODE_ENV === "development";
+
+// =======================
+// Encrypted Backup
+// =======================
+
+// Keep this key unchanged after releasing the app.
+// It is used to encrypt/decrypt all .005 backup files.
+const BACKUP_KEY = crypto
+  .createHash("sha256")
+  .update("FactoryBook-Backup-Key-2026-Portable-AES-256", "utf8")
+  .digest();
+
+const BACKUP_MAGIC = Buffer.from("FACTORYBOOK005", "utf8");
+const BACKUP_VERSION = 1;
+
+function encryptBackup(dbBuffer) {
+  const compressed = zlib.deflateRawSync(dbBuffer, { level: 9 });
+  const iv = crypto.randomBytes(12);
+
+  const cipher = crypto.createCipheriv("aes-256-gcm", BACKUP_KEY, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(compressed),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  return Buffer.concat([
+    BACKUP_MAGIC,
+    Buffer.from([BACKUP_VERSION]),
+    iv,
+    authTag,
+    encrypted,
+  ]);
+}
+
+function decryptBackup(backupBuffer) {
+  const magicLength = BACKUP_MAGIC.length;
+
+  if (
+    backupBuffer.length <
+    magicLength + 1 + 12 + 16
+  ) {
+    throw new Error("Invalid or corrupted backup file.");
+  }
+
+  const magic = backupBuffer.subarray(0, magicLength);
+  if (!magic.equals(BACKUP_MAGIC)) {
+    throw new Error("Invalid Factory Book backup file.");
+  }
+
+  const version = backupBuffer.readUInt8(magicLength);
+  if (version !== BACKUP_VERSION) {
+    throw new Error("Unsupported Factory Book backup version.");
+  }
+
+  const ivStart = magicLength + 1;
+  const iv = backupBuffer.subarray(ivStart, ivStart + 12);
+
+  const tagStart = ivStart + 12;
+  const authTag = backupBuffer.subarray(tagStart, tagStart + 16);
+
+  const encryptedStart = tagStart + 16;
+  const encrypted = backupBuffer.subarray(encryptedStart);
+
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    BACKUP_KEY,
+    iv,
+  );
+  decipher.setAuthTag(authTag);
+
+  const compressed = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ]);
+
+  return zlib.inflateRawSync(compressed);
+}
+
+function createEncryptedBackup(db, backupPath) {
+  const tempDbPath = `${backupPath}.tmp.db`;
+
+  try {
+    db.backupTo(tempDbPath);
+
+    const dbBuffer = fs.readFileSync(tempDbPath);
+    const encryptedBackup = encryptBackup(dbBuffer);
+
+    fs.writeFileSync(backupPath, encryptedBackup);
+  } finally {
+    if (fs.existsSync(tempDbPath)) {
+      try {
+        fs.unlinkSync(tempDbPath);
+      } catch (_) {}
+    }
+  }
+}
+
 
 let mainWindow;
 let database = null; // bound functions for the currently open db file
@@ -491,12 +591,15 @@ ipcMain.handle("company:restore", async () => {
     if (overwrite.response !== 0) return { canceled: true };
   }
 
-  if (database) database.close();
+  if (database) {
+     database.close();
+       database = null;
+  }
   fs.copyFileSync(backupPath, target);
   config.setDbPath(target);
   config.setDefaultCompany(target);
 
-  relaunch();
+  
   return { restored: true, path: target, name: info.name };
 });
 
@@ -506,20 +609,29 @@ ipcMain.handle("backup:create", async () => {
   const backupDir = config.getBackupDir();
   fs.mkdirSync(backupDir, { recursive: true });
 
-  const date = new Date();
-  const stamp = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-    String(date.getHours()).padStart(2, "0"),
-    String(date.getMinutes()).padStart(2, "0"),
-    String(date.getSeconds()).padStart(2, "0"),
-    String(date.getMilliseconds()).padStart(3, "0"),
-  ].join("-");
 
-  const fileName = `${safeName(settings?.factory_name)}-backup-${stamp}.db`;
+  const fileName = `${safeName(settings?.factory_name)}.005`;
   const backupPath = path.join(backupDir, fileName);
-  db.backupTo(backupPath);
+
+   // Ask before replacing an existing backup
+  if (fs.existsSync(backupPath)) {
+    const overwrite = await dialog.showMessageBox(mainWindow, {
+      type: "warning",
+      buttons: ["Replace Backup", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      title: "Backup Already Exists",
+      message: `${fileName} already exists.`,
+      detail: "Do you want to replace the existing backup?",
+    });
+
+    if (overwrite.response !== 0) {
+      return { canceled: true };
+    }
+  }
+
+  createEncryptedBackup(db, backupPath);
+
   return { path: backupPath };
 });
 
@@ -528,43 +640,74 @@ ipcMain.handle("backup:restore", async () => {
     title: "Restore Factory Book Backup",
     defaultPath: config.getBackupDir(),
     properties: ["openFile"],
-    filters: [{ name: "Factory Book Backup", extensions: ["db"] }],
+    filters: [{ name: "Factory Book Backup", extensions: ["005"] }],
   });
 
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
 
   const backupPath = result.filePaths[0];
-  if (!hasFactoryTables(backupPath)) {
-    return { error: "The selected file is not a valid Factory Book backup." };
+  const tempDbPath = `${backupPath}.restore.tmp.db`;
+
+  try {
+    const backupBuffer = fs.readFileSync(backupPath);
+    const dbBuffer = decryptBackup(backupBuffer);
+    fs.writeFileSync(tempDbPath, dbBuffer);
+
+    if (!hasFactoryTables(tempDbPath)) {
+      return { error: "The selected file is not a valid Factory Book backup." };
+    }
+
+    const info = getCompanyInfo(tempDbPath, false);
+    if (!info) {
+      return {
+        error: "Unable to read the company information from this backup.",
+      };
+    }
+
+    const companyDir = config.getCompanyDir();
+    fs.mkdirSync(companyDir, { recursive: true });
+
+    const target = path.join(
+      companyDir,
+      `${safeName(info.name)}.db`,
+    );
+
+    if (fs.existsSync(target)) {
+      const overwrite = await dialog.showMessageBox(mainWindow, {
+        type: "warning",
+        buttons: ["Replace Company", "Cancel"],
+        defaultId: 1,
+        cancelId: 1,
+        title: "Company Already Exists",
+        message: `${info.name} already exists in the Company Directory.`,
+        detail: "Do you want to replace the existing company with this backup?",
+      });
+
+      if (overwrite.response !== 0) return { canceled: true };
+    }
+
+    if (database) {
+      database.close();
+      database = null;
+    }
+
+    fs.copyFileSync(tempDbPath, target);
+    config.setDbPath(target);
+    config.setDefaultCompany(target);
+
+    return { restored: true, path: target, name: info.name };
+  } catch (error) {
+    console.error("Backup restore failed:", error);
+    return {
+      error: error?.message || "Unable to restore the selected backup.",
+    };
+  } finally {
+    if (fs.existsSync(tempDbPath)) {
+      try {
+        fs.unlinkSync(tempDbPath);
+      } catch (_) {}
+    }
   }
-
-  const info = getCompanyInfo(backupPath, false);
-  if (!info) return { error: "Unable to read the company information from this backup." };
-
-  const companyDir = config.getCompanyDir();
-  fs.mkdirSync(companyDir, { recursive: true });
-  const target = path.join(companyDir, `${safeName(info.name)}.db`);
-
-  if (fs.existsSync(target)) {
-    const overwrite = await dialog.showMessageBox(mainWindow, {
-      type: "warning",
-      buttons: ["Replace Company", "Cancel"],
-      defaultId: 1,
-      cancelId: 1,
-      title: "Company Already Exists",
-      message: `${info.name} already exists in the Company Directory.`,
-      detail: "Do you want to replace the existing company with this backup?",
-    });
-    if (overwrite.response !== 0) return { canceled: true };
-  }
-
-  if (database) database.close();
-  fs.copyFileSync(backupPath, target);
-  config.setDbPath(target);
-  config.setDefaultCompany(target);
-
-  relaunch();
-  return { restored: true, path: target, name: info.name };
 });
 
 ipcMain.handle("dbLocation:get", () => {
