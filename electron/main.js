@@ -454,6 +454,17 @@ ipcMain.handle(
   () => database.getProductionRegister()
 );
 
+
+// =======================
+// Weekly Reports
+// =======================
+
+ipcMain.handle(
+  "weeklyReport:save",
+  (event, report) => database.saveWeeklyReport(report)
+);
+
+
 // =======================
 // Daily Reports
 // =======================

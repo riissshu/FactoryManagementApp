@@ -66,6 +66,11 @@ contextBridge.exposeInMainWorld("api", {
   getProductionRegister: () =>
   ipcRenderer.invoke("productionRegister:get"),
 
+
+  // Weekly Reports
+saveWeeklyReport: (report) =>
+  ipcRenderer.invoke("weeklyReport:save", report),
+
   // Daily Reports
   getDailyReports: () => ipcRenderer.invoke("dailyReport:get"),
   saveDailyReport: (report) => ipcRenderer.invoke("dailyReport:save", report),

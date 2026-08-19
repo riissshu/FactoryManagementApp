@@ -11,6 +11,8 @@ export default function WeeklyReport() {
   const [physicalStock, setPhysicalStock] = useState({});
   const [isCreating, setIsCreating] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isDatabaseSaved, setIsDatabaseSaved] = useState(false);
+  const [databaseSaveMessage, setDatabaseSaveMessage] = useState("");
 
   useEffect(() => {
     loadStockSummary();
@@ -85,6 +87,35 @@ export default function WeeklyReport() {
     });
   };
 
+
+ const handleSaveToDatabase = async () => {
+  try {
+    const report = {
+      report_date: date,
+      items: rows.map((row) => ({
+        stock_item_id: row.id,
+        item_name: row.item_name,
+        stock_group: row.stock_group,
+        available_balance: row.balance_qty,
+        physical_stock: physicalStock[row.id] ?? "",
+        unit: row.unit,
+        alternate_unit: row.alternate_unit,
+        conversion: row.conversion,
+      })),
+    };
+
+    await api.saveWeeklyReport(report);
+
+    setIsDatabaseSaved(true);
+    setDatabaseSaveMessage("Weekly report saved to database successfully.");
+  } catch (error) {
+    console.error(error);
+    setDatabaseSaveMessage(
+      error.message || "Unable to save weekly report."
+    );
+  }
+};
+
   return (
     <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-start mb-2">
@@ -123,10 +154,19 @@ export default function WeeklyReport() {
             type="button"
             className="btn btn-sm btn-warning"
             onClick={() => setIsSaved(false)}
-            disabled={!isSaved}
+            disabled={!isSaved || isDatabaseSaved}
           >
             Edit
           </button>
+
+            <button
+  type="button"
+  className="btn btn-sm btn-dark"
+  onClick={handleSaveToDatabase}
+  disabled={!isSaved || isDatabaseSaved}
+>
+  Save to Database
+</button>
 
           <button
             type="button"
@@ -142,6 +182,12 @@ export default function WeeklyReport() {
             Export PDF
           </button>
         </div>
+
+        {databaseSaveMessage && (
+  <div className="alert alert-success py-2 px-3 mb-0 mt-2">
+    {databaseSaveMessage}
+  </div>
+)}
       </div>
 
       {/* Stock Tabs */}

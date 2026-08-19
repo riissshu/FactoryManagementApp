@@ -119,6 +119,12 @@ getProductionRegister() {
 },
 
 
+// Weekly Reports
+saveWeeklyReport(report) {
+  return window.api.saveWeeklyReport(report);
+},
+
+
   // Daily Reports
   getDailyReports() {
     return window.api.getDailyReports();
