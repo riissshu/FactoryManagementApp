@@ -13,6 +13,7 @@ import DailyReportRegister from "../pages/DailyReportRegister";
 import PurchaseRegister from "../pages/PurchaseRegister";
 import DispatchRegister from "../pages/DispatchRegister";
 import ProductionRegister from "../pages/ProductionRegister";
+import WeeklyReportRegister from "../pages/WeeklyReportRegister";
 import StockAdjustment from "../pages/StockAdjustments";
 import StockAdjustmentRegister from "../pages/StockAdjustmentRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
@@ -224,6 +225,13 @@ export default function Layout({ onCloseCompany }) {
 
       case "createweeklyreport":
         return <CreateWeeklyReport />;
+
+        case "weeklyreportregister":
+  return (
+    <WeeklyReportRegister
+      onClose={() => setActiveMenu("dashboard")}
+    />
+  );
 
       case "stockitemmaster":
         return (

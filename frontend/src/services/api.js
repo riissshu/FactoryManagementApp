@@ -124,6 +124,14 @@ saveWeeklyReport(report) {
   return window.api.saveWeeklyReport(report);
 },
 
+getWeeklyReports() {
+  return window.api.getWeeklyReports();
+},
+
+getWeeklyReportById(id) {
+  return window.api.getWeeklyReportById(id);
+},
+
 
   // Daily Reports
   getDailyReports() {

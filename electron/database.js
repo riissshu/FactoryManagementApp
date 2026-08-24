@@ -1481,6 +1481,57 @@ function getProductionRegister() {
 
   return true;
 }
+
+function getWeeklyReports() {
+  return db
+    .prepare(
+      `
+      SELECT
+        id,
+        report_date
+      FROM weekly_reports
+      ORDER BY report_date DESC, id DESC
+      `,
+    )
+    .all();
+}
+
+function getWeeklyReportById(id) {
+  const report = db
+    .prepare(
+      `
+      SELECT
+        id,
+        report_date
+      FROM weekly_reports
+      WHERE id = ?
+      `
+    )
+    .get(id);
+
+  if (!report) return null;
+
+  report.items = db
+    .prepare(
+      `
+      SELECT
+        stock_item_id,
+        item_name,
+        stock_group,
+        available_balance,
+        physical_stock,
+        unit,
+        alternate_unit,
+        conversion
+      FROM weekly_report_items
+      WHERE weekly_report_id = ?
+      ORDER BY stock_group, item_name
+      `
+    )
+    .all(id);
+
+  return report;
+}
   
   // Inserts a new daily report. Throws if a report already exists for
   // report.report_date -- one report per calendar date, no exceptions.
@@ -2312,6 +2363,8 @@ function getProductionRegister() {
     getDailyReports,
     saveDailyReport,
     saveWeeklyReport,
+    getWeeklyReports,
+    getWeeklyReportById,
     markDailyReportExported,
     getDailyReportById,
     getDailyReportByDate,

@@ -71,6 +71,12 @@ contextBridge.exposeInMainWorld("api", {
 saveWeeklyReport: (report) =>
   ipcRenderer.invoke("weeklyReport:save", report),
 
+getWeeklyReports: () =>
+  ipcRenderer.invoke("weeklyReport:get"),
+
+getWeeklyReportById: (id) =>
+  ipcRenderer.invoke("weeklyReport:getById", id),
+
   // Daily Reports
   getDailyReports: () => ipcRenderer.invoke("dailyReport:get"),
   saveDailyReport: (report) => ipcRenderer.invoke("dailyReport:save", report),

@@ -85,6 +85,15 @@ export default function Dashboard({ navigate }) {
     Production Register
   </button>
 </div>
+<div className="col-md-4 mb-2">
+  <button
+    type="button"
+    className="btn btn-outline-primary w-100"
+    onClick={() => navigate("weeklyreportregister")}
+  >
+    Weekly Report Register
+  </button>
+</div>
 </div>
 
         <h5>Recent Daily Reports</h5>

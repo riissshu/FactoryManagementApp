@@ -464,6 +464,16 @@ ipcMain.handle(
   (event, report) => database.saveWeeklyReport(report)
 );
 
+ipcMain.handle(
+  "weeklyReport:get",
+  () => database.getWeeklyReports()
+);
+
+ipcMain.handle(
+  "weeklyReport:getById",
+  (event, id) => database.getWeeklyReportById(id)
+);
+
 
 // =======================
 // Daily Reports
