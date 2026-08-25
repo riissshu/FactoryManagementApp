@@ -80,51 +80,147 @@ export default function WeeklyReportRegister({onClose}) {
   }
 };
 
-  const handleExcel = async (report) => {
+ const handleExcel = async (report) => {
   try {
     const savedReport = await api.getWeeklyReportById(report.id);
 
     if (!savedReport) {
-
+     
       return;
     }
 
-    const excelRows = savedReport.items.map((item, index) => {
-      const physical =
-        item.physical_stock !== null &&
-        item.physical_stock !== undefined
-          ? Number(item.physical_stock)
-          : "";
+    const workbook = XLSX.utils.book_new();
 
-      let difference = "";
+    const reportDate = new Date(
+      `${savedReport.report_date}T00:00:00`
+    );
 
-      if (physical !== "") {
-        const diff =
-          physical - Number(item.available_balance);
+    const formattedDate = reportDate.toLocaleDateString("en-GB");
 
-        if (diff === 0) {
-          difference = "Matched";
-        } else if (diff < 0) {
-          difference = `Short ${Math.abs(diff)}`;
-        } else {
-          difference = `Excess ${diff}`;
-        }
-      }
-
-      return {
-        "#": index + 1,
-        "Stock Group": item.stock_group,
-        "Stock Item": item.item_name,
-        Unit: item.unit,
-        "Available Balance": item.available_balance,
-        "Physical Stock": physical,
-        Difference: difference,
-      };
+    const day = reportDate.toLocaleDateString("en-US", {
+      weekday: "long",
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+    const groups = [
+      "Raw Material",
+      "Packaging Material",
+      "Finished Goods",
+    ];
 
-    const workbook = XLSX.utils.book_new();
+    const sheetData = [];
+
+    // Title
+    sheetData.push(["Weekly Report"]);
+    sheetData.push(["Physical Stock Verification"]);
+    sheetData.push([]);
+
+    // Date and Day
+    sheetData.push(["Report Date:", formattedDate]);
+    sheetData.push(["Day:", day]);
+    sheetData.push([]);
+
+    groups.forEach((group) => {
+      const groupItems = savedReport.items.filter(
+        (item) => item.stock_group === group
+      );
+
+      if (groupItems.length === 0) return;
+
+      // Stock group heading
+      sheetData.push([group]);
+
+      // Column headers
+      sheetData.push([
+        "Stock Item",
+        "Unit",
+        "Available Balance",
+        "Physical Stock",
+        "Difference",
+      ]);
+
+      groupItems.forEach((item) => {
+        const physical =
+          item.physical_stock !== null &&
+          item.physical_stock !== undefined
+            ? Number(item.physical_stock)
+            : "";
+
+        let difference = "";
+
+        if (physical !== "") {
+          const diff =
+            physical - Number(item.available_balance);
+
+          if (diff === 0) {
+            difference = "Matched";
+          } else if (diff < 0) {
+            difference = `Short ${Math.abs(diff)}`;
+          } else {
+            difference = `Excess ${diff}`;
+          }
+        }
+
+        sheetData.push([
+          item.item_name,
+          item.unit,
+          item.available_balance,
+          physical,
+          difference,
+        ]);
+      });
+
+      // Space between stock groups
+      sheetData.push([]);
+      sheetData.push([]);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // Column widths
+    worksheet["!cols"] = [
+      { wch: 28 },
+      { wch: 12 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 20 },
+    ];
+
+    // Merge title
+    worksheet["!merges"] = [
+      {
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: 4 },
+      },
+      {
+        s: { r: 1, c: 0 },
+        e: { r: 1, c: 4 },
+      },
+    ];
+
+    // Basic styling
+    if (worksheet["A1"]) {
+      worksheet["A1"].s = {
+        font: {
+          bold: true,
+          sz: 16,
+        },
+        alignment: {
+          horizontal: "center",
+        },
+      };
+    }
+
+    if (worksheet["A2"]) {
+      worksheet["A2"].s = {
+        font: {
+          bold: true,
+          sz: 11,
+        },
+        alignment: {
+          horizontal: "center",
+        },
+      };
+    }
 
     XLSX.utils.book_append_sheet(
       workbook,
@@ -138,7 +234,7 @@ export default function WeeklyReportRegister({onClose}) {
     );
   } catch (error) {
     console.error("Unable to export weekly report:", error);
-  
+    
   }
 };
 
