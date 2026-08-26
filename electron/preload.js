@@ -66,6 +66,25 @@ contextBridge.exposeInMainWorld("api", {
   getProductionRegister: () =>
   ipcRenderer.invoke("productionRegister:get"),
 
+    // Clipboard
+  getClipboard: () =>
+    ipcRenderer.invoke("clipboard:get"),
+
+  addClipboard: (item) =>
+    ipcRenderer.invoke("clipboard:add", item),
+
+  pinClipboard: (item) =>
+    ipcRenderer.invoke("clipboard:pin", item),
+
+  unpinClipboard: (item) =>
+    ipcRenderer.invoke("clipboard:unpin", item),
+
+  deleteClipboard: (item) =>
+    ipcRenderer.invoke("clipboard:delete", item),
+
+  clearClipboard: () =>
+    ipcRenderer.invoke("clipboard:clear"),
+
 
   // Weekly Reports
 saveWeeklyReport: (report) =>

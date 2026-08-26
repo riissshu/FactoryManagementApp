@@ -119,6 +119,33 @@ getProductionRegister() {
 },
 
 
+  // Clipboard
+  getClipboard() {
+    return window.api.getClipboard();
+  },
+
+  addClipboard(item) {
+    return window.api.addClipboard(item);
+  },
+
+  pinClipboard(item) {
+    return window.api.pinClipboard(item);
+  },
+
+  unpinClipboard(item) {
+    return window.api.unpinClipboard(item);
+  },
+
+  deleteClipboard(item) {
+    return window.api.deleteClipboard(item);
+  },
+
+  clearClipboard() {
+    return window.api.clearClipboard();
+  },
+
+  
+
 // Weekly Reports
 saveWeeklyReport(report) {
   return window.api.saveWeeklyReport(report);

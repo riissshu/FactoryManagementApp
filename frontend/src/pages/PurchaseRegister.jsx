@@ -48,6 +48,28 @@ export default function PurchaseRegister({ onClose }) {
     });
   };
 
+  const copyPurchase = async (purchase) => {
+  try {
+    await api.addClipboard({
+      entry_type: "purchase",
+      title: `Purchase - ${purchase.purchase_no}`,
+      source_id: purchase.purchase_id,
+      data: {
+        purchaseNo: purchase.purchase_no,
+          sourceReference: purchase.purchase_no,
+  sourceDate: purchase.report_date,
+        items: purchase.items.map((item) => ({
+          item: String(item.stock_item_id),
+          qty: String(item.qty),
+          unit: item.unit,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Unable to copy purchase:", error);
+  }
+};
+
   const filteredPurchases =
     fromDate && toDate && fromDate > toDate
       ? []
@@ -156,6 +178,7 @@ export default function PurchaseRegister({ onClose }) {
                       Qty
                     </th>
 
+                    <th style={{ width: "90px" }}>Action</th>
                   
                   </tr>
                 </thead>
@@ -184,6 +207,20 @@ export default function PurchaseRegister({ onClose }) {
                         <td className="text-end">
                           {formatQty(item.qty)}{" "}{item.unit}
                         </td>
+
+                        {itemIndex === 0 && (
+  <td rowSpan={purchase.items.length}>
+    <button
+      type="button"
+      className="btn btn-sm btn-outline-primary"
+      onClick={() => copyPurchase(purchase)}
+      title="Copy to Clipboard"
+    >
+      <i className="bi bi-clipboard me-1"></i>
+      Copy
+    </button>
+  </td>
+)}
 
                         
                       </tr>

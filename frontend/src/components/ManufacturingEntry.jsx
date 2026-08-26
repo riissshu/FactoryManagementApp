@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import api from "../services/api";
 
 const blankRow = () => ({
   item: "",
@@ -46,6 +47,9 @@ export default function ManufacturingEntry({
 }) {
   const [form, setForm] = useState(blankEntry());
 
+  const [showClipboard, setShowClipboard] = useState(false);
+const [clipboardItems, setClipboardItems] = useState([]);
+
   useEffect(() => {
     if (entry) {
       setForm({
@@ -65,6 +69,48 @@ export default function ManufacturingEntry({
       setForm(blankEntry());
     }
   }, [entry]);
+
+  const openClipboard = async () => {
+  try {
+    const items = await api.getClipboard();
+    setClipboardItems(items || []);
+    setShowClipboard(true);
+  } catch (error) {
+    console.error("Unable to load Clipboard:", error);
+  }
+};
+
+const compatibleClipboardItems = clipboardItems.filter(
+  (item) => item.entry_type === "production",
+);
+
+const incompatibleClipboardItems = clipboardItems.filter(
+  (item) => item.entry_type !== "production",
+);
+
+const pasteProductionFromClipboard = (item) => {
+  setForm({
+    consumption:
+      item.data.consumption?.length > 0
+        ? item.data.consumption.map((row) => ({
+            item: row.item,
+            qty: row.qty,
+            unit: row.unit,
+          }))
+        : [blankRow()],
+
+    production:
+      item.data.production?.length > 0
+        ? item.data.production.map((row) => ({
+            item: row.item,
+            qty: row.qty,
+            unit: row.unit,
+          }))
+        : [blankRow()],
+  });
+
+  setShowClipboard(false);
+};
 
   const updateItem = (side, index, field, value) => {
     setForm((prev) => ({
@@ -152,22 +198,33 @@ export default function ManufacturingEntry({
 
           <div className="modal-body">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <div>
-                <strong>Production Status: </strong>
+  <div>
+    <strong>Production Status: </strong>
 
-                {difference === 0 ? (
-                  <span className="badge text-bg-success">Balanced</span>
-                ) : difference > 0 ? (
-                  <span className="badge text-bg-warning">
-                    {difference.toFixed(2)} loss to record
-                  </span>
-                ) : (
-                  <span className="badge text-bg-danger">
-                    {Math.abs(difference).toFixed(2)} over production
-                  </span>
-                )}
-              </div>
-            </div>
+    {difference === 0 ? (
+      <span className="badge text-bg-success">Balanced</span>
+    ) : difference > 0 ? (
+      <span className="badge text-bg-warning">
+        {difference.toFixed(2)} loss to record
+      </span>
+    ) : (
+      <span className="badge text-bg-danger">
+        {Math.abs(difference).toFixed(2)} over production
+      </span>
+    )}
+  </div>
+
+  {!entry && (
+    <button
+      type="button"
+      className="btn btn-sm btn-outline-primary"
+      onClick={openClipboard}
+    >
+      <i className="bi bi-clipboard me-1"></i>
+      Paste from Clipboard
+    </button>
+  )}
+</div>
 
             <div className="row g-4">
               {/* CONSUMPTION */}
@@ -377,6 +434,130 @@ export default function ManufacturingEntry({
           </div>
         </div>
       </div>
+
+                      {showClipboard && (
+  <div
+    className="modal fade show d-block"
+    tabIndex="-1"
+    style={{
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    }}
+  >
+    <div className="modal-dialog modal-lg modal-dialog-centered">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            Paste from Clipboard
+          </h5>
+
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowClipboard(false)}
+          />
+        </div>
+
+        <div className="modal-body">
+
+          {compatibleClipboardItems.length === 0 &&
+            incompatibleClipboardItems.length === 0 && (
+              <div className="text-center text-muted py-4">
+                Clipboard is empty.
+              </div>
+            )}
+
+          {compatibleClipboardItems.length > 0 && (
+            <>
+              <div className="fw-semibold mb-2">
+                Production Entries
+              </div>
+
+              {compatibleClipboardItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="d-flex justify-content-between align-items-center border rounded p-3 mb-2"
+                >
+                  <div>
+                    <div className="fw-semibold">
+                      {item.title}
+                    </div>
+
+                    <small className="text-muted">
+                      Production
+                    </small>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() =>
+                      pasteProductionFromClipboard(item)
+                    }
+                  >
+                    Paste
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+          {incompatibleClipboardItems.length > 0 && (
+            <>
+              <hr />
+
+              <div className="text-muted fw-semibold mb-2">
+                Other copied entries
+              </div>
+
+              {incompatibleClipboardItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="d-flex justify-content-between align-items-center border rounded p-3 mb-2 text-muted bg-light"
+                >
+                  <div>
+                    <div className="fw-semibold">
+                      {item.title}
+                    </div>
+
+                    <small>
+                      {item.entry_type === "purchase"
+                        ? "Purchase"
+                        : item.entry_type === "dispatch"
+                        ? "Dispatch"
+                        : item.entry_type}
+                    </small>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    disabled
+                  >
+                    Not compatible
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+
+        </div>
+
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowClipboard(false)}
+          >
+            Cancel
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

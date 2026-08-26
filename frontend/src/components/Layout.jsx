@@ -14,6 +14,7 @@ import PurchaseRegister from "../pages/PurchaseRegister";
 import DispatchRegister from "../pages/DispatchRegister";
 import ProductionRegister from "../pages/ProductionRegister";
 import WeeklyReportRegister from "../pages/WeeklyReportRegister";
+import Clipboard from "../pages/Clipboard";
 import StockAdjustment from "../pages/StockAdjustments";
 import StockAdjustmentRegister from "../pages/StockAdjustmentRegister";
 import MultiAlterStock from "../pages/MultiAlterStock";
@@ -63,6 +64,13 @@ export default function Layout({ onCloseCompany }) {
     switch (activeMenu) {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
+
+        case "clipboard":
+  return (
+    <Clipboard
+      navigate={selectMenu}
+    />
+  );
 
               case "purchaseregister":
         return (

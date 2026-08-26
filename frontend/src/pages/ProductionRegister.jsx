@@ -48,6 +48,33 @@ export default function ProductionRegister({ onClose }) {
     });
   };
 
+  const copyProduction = async (entry) => {
+  try {
+    await api.addClipboard({
+      entry_type: "production",
+      title: `Production - ${formatDate(entry.report_date)}`,
+      source_id: entry.manufacturing_id,
+      data: {
+         sourceReference: entry.manufacturing_id,
+  sourceDate: entry.report_date,
+
+        consumption: entry.consumption.map((row) => ({
+          item: String(row.stock_item_id),
+          qty: String(row.qty),
+          unit: row.unit,
+        })),
+        production: entry.production.map((row) => ({
+          item: String(row.stock_item_id),
+          qty: String(row.qty),
+          unit: row.unit,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Unable to copy production:", error);
+  }
+};
+
   const filteredEntries =
     fromDate && toDate && fromDate > toDate
       ? []
@@ -140,12 +167,24 @@ export default function ProductionRegister({ onClose }) {
               key={entry.manufacturing_id}
             >
               <div className="card-header d-flex justify-content-between align-items-center">
-                <strong>Production Entry {index + 1}</strong>
+  <strong>Production Entry {index + 1}</strong>
 
-                <span>
-                  Date: {formatDate(entry.report_date)}
-                </span>
-              </div>
+  <div className="d-flex align-items-center gap-2">
+    <span>
+      Date: {formatDate(entry.report_date)}
+    </span>
+
+    <button
+      type="button"
+      className="btn btn-sm btn-outline-primary"
+      onClick={() => copyProduction(entry)}
+      title="Copy to Clipboard"
+    >
+      <i className="bi bi-clipboard me-1"></i>
+      Copy
+    </button>
+  </div>
+</div>
 
               <div className="card-body p-0">
                 <div className="table-responsive">

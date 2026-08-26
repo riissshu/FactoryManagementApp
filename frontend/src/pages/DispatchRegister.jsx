@@ -48,6 +48,28 @@ export default function DispatchRegister({ onClose }) {
     });
   };
 
+const copyDispatch = async (dispatch) => {
+  try {
+    await api.addClipboard({
+      entry_type: "dispatch",
+      title: `Dispatch - ${dispatch.gatepass_no}`,
+      source_id: dispatch.gatepass_id,
+      data: {
+        gatePassNo: dispatch.gatepass_no,
+        sourceReference: dispatch.gatepass_no,
+  sourceDate: dispatch.report_date,
+        items: dispatch.items.map((row) => ({
+          item: String(row.stock_item_id),
+          qty: String(row.qty),
+          unit: row.unit,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Unable to copy dispatch:", error);
+  }
+};
+
   const filteredDispatches =
     fromDate && toDate && fromDate > toDate
       ? []
@@ -156,7 +178,7 @@ export default function DispatchRegister({ onClose }) {
                       Qty
                     </th>
 
-               
+               <th style={{ width: "90px" }}>Action</th>
                   </tr>
                 </thead>
 
@@ -185,7 +207,21 @@ export default function DispatchRegister({ onClose }) {
                           {formatQty(item.qty)}{" "}{item.unit}
                         </td>
 
-                        
+                        {itemIndex === 0 && (
+  <td rowSpan={dispatch.items.length}>
+    <button
+      type="button"
+      className="btn btn-sm btn-outline-primary"
+      onClick={() => copyDispatch(dispatch)}
+      title="Copy to Clipboard"
+    >
+      <i className="bi bi-clipboard me-1"></i>
+      Copy
+    </button>
+  </td>
+)}
+
+
                       </tr>
                     ))
                   )}

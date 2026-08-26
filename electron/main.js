@@ -110,8 +110,14 @@ function createEncryptedBackup(db, backupPath) {
 let mainWindow;
 let database = null; // bound functions for the currently open db file
 
+// Temporary clipboard - cleared when the app/company is closed
+let temporaryClipboard = [];
+
 function openDatabaseAt(dbPath) {
   if (!dbPath) throw new Error("Company database path is required.");
+
+  temporaryClipboard = [];
+
   if (database) database.close();
   database = createDatabase(dbPath);
   config.setDbPath(dbPath);
@@ -455,6 +461,80 @@ ipcMain.handle(
 );
 
 
+
+// =======================
+// Clipboard
+// =======================
+
+ipcMain.handle("clipboard:get", () => {
+  const pinned = database.getPinnedClipboard();
+
+  return [
+    ...temporaryClipboard,
+    ...pinned,
+  ];
+});
+
+ipcMain.handle("clipboard:add", (event, item) => {
+  const clipboardItem = {
+    id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    entry_type: item.entry_type,
+    title: item.title,
+    source_id: item.source_id || null,
+    data: item.data,
+    pinned: false,
+    created_at: new Date().toISOString(),
+  };
+
+  temporaryClipboard.unshift(clipboardItem);
+
+  return clipboardItem;
+});
+
+ipcMain.handle("clipboard:pin", (event, item) => {
+  const saved = database.savePinnedClipboard(item);
+
+  temporaryClipboard = temporaryClipboard.filter(
+    (clipboardItem) => clipboardItem.id !== item.id
+  );
+
+  return saved;
+});
+
+ipcMain.handle("clipboard:unpin", (event, item) => {
+  database.deleteClipboardItem(item.id);
+
+  const temporaryItem = {
+    ...item,
+    id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    pinned: false,
+    created_at: new Date().toISOString(),
+  };
+
+  temporaryClipboard.unshift(temporaryItem);
+
+  return temporaryItem;
+});
+
+ipcMain.handle("clipboard:delete", (event, item) => {
+  if (item.pinned) {
+    database.deleteClipboardItem(item.id);
+  } else {
+    temporaryClipboard = temporaryClipboard.filter(
+      (clipboardItem) => clipboardItem.id !== item.id
+    );
+  }
+
+  return true;
+});
+
+ipcMain.handle("clipboard:clear", () => {
+  temporaryClipboard = [];
+
+  return true;
+});
+
+
 // =======================
 // Weekly Reports
 // =======================
@@ -795,6 +875,8 @@ ipcMain.handle("dbLocation:selectExisting", async () => {
   return { switched: true, path: selectedPath };
 });
 ipcMain.handle("company:close", () => {
+   temporaryClipboard = [];
+
   if (database) {
     database.close();
     database = null;
@@ -982,6 +1064,7 @@ ipcMain.handle(
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
+    temporaryClipboard = [];
     app.quit();
   }
 });
