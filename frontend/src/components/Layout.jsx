@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Dashboard from "../pages/Dashboard";
+import BoMDashboard from "../pages/BoMDashboard";
+import CreateBOM from "../pages/CreateBoM";
+import ViewBoM from "../pages/ViewBoM";
 import CreateStockItem from "../pages/CreateStockItem";
 import StockItemList from "../pages/StockItemList";
 import CreateDailyReport from "../pages/CreateDailyReport";
@@ -34,6 +37,7 @@ export default function Layout({ onCloseCompany }) {
 
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [selectedStockItemId, setSelectedStockItemId] = useState(null);
+  const [selectedBomId, setSelectedBomId] = useState(null);
 
   const [selectedDailyReportId, setSelectedDailyReportId] = useState(null);
   const [dailyReportMode, setDailyReportMode] = useState("new");
@@ -65,34 +69,45 @@ export default function Layout({ onCloseCompany }) {
       case "dashboard":
         return <Dashboard navigate={selectMenu} />;
 
-        case "clipboard":
-  return (
-    <Clipboard
-      navigate={selectMenu}
-    />
-  );
-
-              case "purchaseregister":
+      case "bom":
         return (
-          <PurchaseRegister
+          <BoMDashboard
             onClose={() => setActiveMenu("dashboard")}
+            onCreate={() => setActiveMenu("createBom")}
+            onViewBom={(id) => {
+              setSelectedBomId(id);
+              setActiveMenu("viewBom");
+            }}
           />
         );
 
-        case "productionregister":
-  return (
-    <ProductionRegister
-      onClose={() => setActiveMenu("dashboard")}
-    />
-  );
+      case "createBom":
+        return <CreateBOM onClose={() => setActiveMenu("bom")} />;
 
+      case "viewBom":
+        return (
+          <ViewBoM
+            bomId={selectedBomId}
+            onClose={() => {
+              setSelectedBomId(null);
+              setActiveMenu("bom");
+            }}
+          />
+        );
 
-        case "dispatchregister":
-  return (
-    <DispatchRegister
-      onClose={() => setActiveMenu("dashboard")}
-    />
-  );
+      case "clipboard":
+        return <Clipboard navigate={selectMenu} />;
+
+      case "purchaseregister":
+        return <PurchaseRegister onClose={() => setActiveMenu("dashboard")} />;
+
+      case "productionregister":
+        return (
+          <ProductionRegister onClose={() => setActiveMenu("dashboard")} />
+        );
+
+      case "dispatchregister":
+        return <DispatchRegister onClose={() => setActiveMenu("dashboard")} />;
 
       case "viewdailyreport":
         return (
@@ -157,14 +172,14 @@ export default function Layout({ onCloseCompany }) {
           />
         );
 
-        case "vieweditstock":
+      case "vieweditstock":
         return (
           <ViewEditStock
             itemId={selectedStockItemId}
             onClose={() => {
               setSelectedStockItemId(null);
               setActiveMenu("stockitemlist");
-               }}
+            }}
           />
         );
 
@@ -234,12 +249,10 @@ export default function Layout({ onCloseCompany }) {
       case "createweeklyreport":
         return <CreateWeeklyReport />;
 
-        case "weeklyreportregister":
-  return (
-    <WeeklyReportRegister
-      onClose={() => setActiveMenu("dashboard")}
-    />
-  );
+      case "weeklyreportregister":
+        return (
+          <WeeklyReportRegister onClose={() => setActiveMenu("dashboard")} />
+        );
 
       case "stockitemmaster":
         return (

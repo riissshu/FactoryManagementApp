@@ -38,12 +38,13 @@ function createDatabase(dbPath) {
     );
   `);
 
-  db.prepare(`
+  db.prepare(
+    `
     INSERT OR IGNORE INTO app_metadata
       (id, database_type, database_version, database_id)
     VALUES (1, 'factory_book', 1, ?)
-  `).run(crypto.randomUUID());
-
+  `,
+  ).run(crypto.randomUUID());
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -117,11 +118,11 @@ function createDatabase(dbPath) {
     );
   }
 
-// =======================
-// Weekly Reports
-// =======================
+  // =======================
+  // Weekly Reports
+  // =======================
 
-db.exec(`
+  db.exec(`
   CREATE TABLE IF NOT EXISTS weekly_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       report_date TEXT NOT NULL UNIQUE,
@@ -130,7 +131,7 @@ db.exec(`
   );
 `);
 
-db.exec(`
+  db.exec(`
   CREATE TABLE IF NOT EXISTS weekly_report_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       weekly_report_id INTEGER NOT NULL,
@@ -146,8 +147,6 @@ db.exec(`
       FOREIGN KEY (stock_item_id) REFERENCES stock_items(id)
   );
 `);
-
-
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS daily_reports (
@@ -256,8 +255,7 @@ db.exec(`
     );
     `);
 
-
-      // =======================
+  // =======================
   // Clipboard
   // =======================
 
@@ -446,6 +444,263 @@ db.exec(`
 
     return true;
   }
+
+  // =======================
+  // BOM Stock Group Settings
+  // =======================
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS bom_stock_group_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      stock_group_id INTEGER NOT NULL UNIQUE,
+      available_for_bom INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (stock_group_id) REFERENCES stock_groups(id)
+  );
+`);
+
+  function getBOMStockGroupSettings() {
+    return db
+      .prepare(
+        `
+      SELECT
+        sg.id,
+        sg.name,
+        COALESCE(bsgs.available_for_bom, 0) AS available_for_bom
+      FROM stock_groups sg
+      LEFT JOIN bom_stock_group_settings bsgs
+        ON bsgs.stock_group_id = sg.id
+      WHERE sg.is_active = 1
+      ORDER BY sg.name
+    `,
+      )
+      .all();
+  }
+
+  function setBOMStockGroupAvailability(stockGroupId, availableForBOM) {
+    db.prepare(
+      `
+    INSERT INTO bom_stock_group_settings
+      (stock_group_id, available_for_bom)
+    VALUES (?, ?)
+    ON CONFLICT(stock_group_id)
+    DO UPDATE SET available_for_bom = excluded.available_for_bom
+  `,
+    ).run(stockGroupId, availableForBOM ? 1 : 0);
+
+    return true;
+  }
+
+  // =======================
+  // BOM
+  // =======================
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS boms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bom_name TEXT NOT NULL,
+    finished_product_id INTEGER NOT NULL,
+    output_qty REAL NOT NULL,
+    unit TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (finished_product_id) REFERENCES stock_items(id)
+  )
+`);
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS bom_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bom_id INTEGER NOT NULL,
+    stock_item_id INTEGER NOT NULL,
+    quantity REAL NOT NULL,
+    unit TEXT NOT NULL,
+    FOREIGN KEY (bom_id) REFERENCES boms(id) ON DELETE CASCADE,
+    FOREIGN KEY (stock_item_id) REFERENCES stock_items(id)
+  )
+`);
+
+  function createBOM({
+    bomName,
+    finishedProductId,
+    outputQty,
+    unit,
+    consumption,
+  }) {
+    const insertBOM = db.prepare(`
+    INSERT INTO boms (
+      bom_name,
+      finished_product_id,
+      output_qty,
+      unit
+    )
+    VALUES (?, ?, ?, ?)
+  `);
+
+    const insertItem = db.prepare(`
+    INSERT INTO bom_items (
+      bom_id,
+      stock_item_id,
+      quantity,
+      unit
+    )
+    VALUES (?, ?, ?, ?)
+  `);
+
+    const saveBOM = db.transaction(() => {
+      const result = insertBOM.run(bomName, finishedProductId, outputQty, unit);
+
+      const bomId = result.lastInsertRowid;
+
+      for (const item of consumption) {
+        insertItem.run(bomId, item.stockItemId, item.quantity, item.unit);
+      }
+
+      return bomId;
+    });
+
+    return saveBOM();
+  }
+
+  function getBOMs() {
+    return db
+      .prepare(
+        `
+      SELECT
+        b.id,
+        b.bom_name,
+        b.finished_product_id,
+        si.item_name AS finished_product,
+        b.output_qty,
+        b.unit,
+        b.status,
+        b.created_at
+      FROM boms b
+      JOIN stock_items si
+        ON si.id = b.finished_product_id
+      ORDER BY b.id DESC
+    `,
+      )
+      .all();
+  }
+
+  function getBOM(bomId) {
+    const bom = db
+      .prepare(
+        `
+      SELECT
+        b.id,
+        b.bom_name,
+        b.finished_product_id,
+        si.item_name AS finished_product,
+        b.output_qty,
+        b.unit,
+        b.status,
+        b.created_at
+      FROM boms b
+      JOIN stock_items si
+        ON si.id = b.finished_product_id
+      WHERE b.id = ?
+    `,
+      )
+      .get(bomId);
+
+    if (!bom) {
+      return null;
+    }
+
+    const consumption = db
+      .prepare(
+        `
+      SELECT
+        bi.id,
+        bi.stock_item_id,
+        si.item_name,
+        bi.quantity,
+        bi.unit
+      FROM bom_items bi
+      JOIN stock_items si
+        ON si.id = bi.stock_item_id
+      WHERE bi.bom_id = ?
+      ORDER BY bi.id
+    `,
+      )
+      .all(bomId);
+
+    return {
+      ...bom,
+      consumption,
+    };
+  }
+
+  function updateBOM({
+    bomId,
+    bomName,
+    finishedProductId,
+    outputQty,
+    unit,
+    consumption,
+  }) {
+    const updateBOM = db.prepare(`
+    UPDATE boms
+    SET
+      bom_name = ?,
+      finished_product_id = ?,
+      output_qty = ?,
+      unit = ?
+    WHERE id = ?
+  `);
+
+    const deleteItems = db.prepare(`
+    DELETE FROM bom_items
+    WHERE bom_id = ?
+  `);
+
+    const insertItem = db.prepare(`
+    INSERT INTO bom_items (
+      bom_id,
+      stock_item_id,
+      quantity,
+      unit
+    )
+    VALUES (?, ?, ?, ?)
+  `);
+
+    const saveBOM = db.transaction(() => {
+      updateBOM.run(bomName, finishedProductId, outputQty, unit, bomId);
+
+      deleteItems.run(bomId);
+
+      for (const item of consumption) {
+        insertItem.run(bomId, item.stockItemId, item.quantity, item.unit);
+      }
+    });
+
+    return saveBOM();
+  }
+
+
+  function deleteBOM(bomId) {
+  const deleteItems = db.prepare(`
+    DELETE FROM bom_items
+    WHERE bom_id = ?
+  `);
+
+  const deleteBOM = db.prepare(`
+    DELETE FROM boms
+    WHERE id = ?
+  `);
+
+  const removeBOM = db.transaction(() => {
+    deleteItems.run(bomId);
+    const result = deleteBOM.run(bomId);
+
+    return result.changes > 0;
+  });
+
+  return removeBOM();
+}
+
+
 
   // =======================
   // Stock Groups / Units (lookup lists)
@@ -1167,9 +1422,9 @@ db.exec(`
   }
 
   function getStockAdjustments() {
-  return db
-    .prepare(
-      `
+    return db
+      .prepare(
+        `
       SELECT
         sa.id AS adjustment_id,
         sa.adjustment_date,
@@ -1196,14 +1451,14 @@ db.exec(`
         sa.id DESC,
         sai.id ASC
       `,
-    )
-    .all();
-}
+      )
+      .all();
+  }
 
-function getProductionRegister() {
-  const entries = db
-    .prepare(
-      `
+  function getProductionRegister() {
+    const entries = db
+      .prepare(
+        `
       SELECT
         me.id AS manufacturing_id,
         dr.report_date
@@ -1214,10 +1469,10 @@ function getProductionRegister() {
         dr.report_date DESC,
         me.id DESC
       `,
-    )
-    .all();
+      )
+      .all();
 
-  const getConsumption = db.prepare(`
+    const getConsumption = db.prepare(`
     SELECT
       mc.id,
       mc.stock_item_id,
@@ -1231,7 +1486,7 @@ function getProductionRegister() {
     ORDER BY mc.id ASC
   `);
 
-  const getProduction = db.prepare(`
+    const getProduction = db.prepare(`
     SELECT
       mp.id,
       mp.stock_item_id,
@@ -1245,18 +1500,18 @@ function getProductionRegister() {
     ORDER BY mp.id ASC
   `);
 
-  return entries.map((entry) => ({
-    manufacturing_id: entry.manufacturing_id,
-    report_date: entry.report_date,
-    consumption: getConsumption.all(entry.manufacturing_id),
-    production: getProduction.all(entry.manufacturing_id),
-  }));
-}
+    return entries.map((entry) => ({
+      manufacturing_id: entry.manufacturing_id,
+      report_date: entry.report_date,
+      consumption: getConsumption.all(entry.manufacturing_id),
+      production: getProduction.all(entry.manufacturing_id),
+    }));
+  }
 
   function getDispatchRegister() {
-  return db
-    .prepare(
-      `
+    return db
+      .prepare(
+        `
       SELECT
         ge.id AS gatepass_id,
         dr.report_date,
@@ -1278,9 +1533,9 @@ function getProductionRegister() {
         ge.id DESC,
         gi.id ASC
       `,
-    )
-    .all();
-}
+      )
+      .all();
+  }
 
   function getPurchaseRegister() {
     return db
@@ -1310,7 +1565,6 @@ function getProductionRegister() {
       )
       .all();
   }
-
 
   function getDailyReports() {
     return db
@@ -1435,32 +1689,30 @@ function getProductionRegister() {
   }
 
   function saveWeeklyReport(report) {
-  const existing = db
-    .prepare(
-      "SELECT id FROM weekly_reports WHERE report_date = ?"
-    )
-    .get(report.report_date);
+    const existing = db
+      .prepare("SELECT id FROM weekly_reports WHERE report_date = ?")
+      .get(report.report_date);
 
-  if (existing) {
-    throw new Error(
-      `A weekly report for ${report.report_date} already exists.`
-    );
-  }
+    if (existing) {
+      throw new Error(
+        `A weekly report for ${report.report_date} already exists.`,
+      );
+    }
 
-  const transaction = db.transaction(() => {
-    const weeklyReport = db
-      .prepare(
-        `
+    const transaction = db.transaction(() => {
+      const weeklyReport = db
+        .prepare(
+          `
         INSERT INTO weekly_reports (report_date)
         VALUES (?)
+        `,
+        )
+        .run(report.report_date);
+
+      const weeklyReportId = weeklyReport.lastInsertRowid;
+
+      const insertItem = db.prepare(
         `
-      )
-      .run(report.report_date);
-
-    const weeklyReportId = weeklyReport.lastInsertRowid;
-
-    const insertItem = db.prepare(
-      `
       INSERT INTO weekly_report_items
       (
         weekly_report_id,
@@ -1474,63 +1726,63 @@ function getProductionRegister() {
         conversion
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
-    );
-
-    (report.items || []).forEach((item) => {
-      insertItem.run(
-        weeklyReportId,
-        Number(item.stock_item_id),
-        item.item_name,
-        item.stock_group,
-        Number(item.available_balance) || 0,
-        item.physical_stock === "" || item.physical_stock == null
-          ? null
-          : Number(item.physical_stock),
-        item.unit,
-        item.alternate_unit || null,
-        Number(item.conversion) || 0
+      `,
       );
+
+      (report.items || []).forEach((item) => {
+        insertItem.run(
+          weeklyReportId,
+          Number(item.stock_item_id),
+          item.item_name,
+          item.stock_group,
+          Number(item.available_balance) || 0,
+          item.physical_stock === "" || item.physical_stock == null
+            ? null
+            : Number(item.physical_stock),
+          item.unit,
+          item.alternate_unit || null,
+          Number(item.conversion) || 0,
+        );
+      });
     });
-  });
 
-  transaction();
+    transaction();
 
-  return true;
-}
+    return true;
+  }
 
-function getWeeklyReports() {
-  return db
-    .prepare(
-      `
+  function getWeeklyReports() {
+    return db
+      .prepare(
+        `
       SELECT
         id,
         report_date
       FROM weekly_reports
       ORDER BY report_date DESC, id DESC
       `,
-    )
-    .all();
-}
+      )
+      .all();
+  }
 
-function getWeeklyReportById(id) {
-  const report = db
-    .prepare(
-      `
+  function getWeeklyReportById(id) {
+    const report = db
+      .prepare(
+        `
       SELECT
         id,
         report_date
       FROM weekly_reports
       WHERE id = ?
-      `
-    )
-    .get(id);
+      `,
+      )
+      .get(id);
 
-  if (!report) return null;
+    if (!report) return null;
 
-  report.items = db
-    .prepare(
-      `
+    report.items = db
+      .prepare(
+        `
       SELECT
         stock_item_id,
         item_name,
@@ -1543,13 +1795,13 @@ function getWeeklyReportById(id) {
       FROM weekly_report_items
       WHERE weekly_report_id = ?
       ORDER BY stock_group, item_name
-      `
-    )
-    .all(id);
+      `,
+      )
+      .all(id);
 
-  return report;
-}
-  
+    return report;
+  }
+
   // Inserts a new daily report. Throws if a report already exists for
   // report.report_date -- one report per calendar date, no exceptions.
   // The UNIQUE index on daily_reports(report_date) is the real backstop
@@ -2063,11 +2315,10 @@ function getWeeklyReportById(id) {
     return true;
   }
 
-
   function getStockItemTransactions(stockItemId) {
-  return db
-    .prepare(
-      `
+    return db
+      .prepare(
+        `
       WITH transactions AS (
 
         -- PURCHASE
@@ -2241,17 +2492,16 @@ function getWeeklyReportById(id) {
         sort_order ASC,
         transaction_id ASC
       `,
-    )
-    .all(
-      stockItemId,
-      stockItemId,
-      stockItemId,
-      stockItemId,
-      stockItemId,
-      stockItemId,
-    );
-}
-
+      )
+      .all(
+        stockItemId,
+        stockItemId,
+        stockItemId,
+        stockItemId,
+        stockItemId,
+        stockItemId,
+      );
+  }
 
   // =======================
   // Clipboard
@@ -2259,7 +2509,8 @@ function getWeeklyReportById(id) {
 
   function getPinnedClipboard() {
     return db
-      .prepare(`
+      .prepare(
+        `
         SELECT
           id,
           entry_type,
@@ -2271,7 +2522,8 @@ function getWeeklyReportById(id) {
         FROM clipboard_items
         WHERE pinned = 1
         ORDER BY id DESC
-      `)
+      `,
+      )
       .all()
       .map((item) => ({
         ...item,
@@ -2282,11 +2534,13 @@ function getWeeklyReportById(id) {
 
   function savePinnedClipboard(item) {
     const result = db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO clipboard_items
           (entry_type, title, source_id, data, pinned)
         VALUES (?, ?, ?, ?, 1)
-      `)
+      `,
+      )
       .run(
         item.entry_type,
         item.title,
@@ -2305,13 +2559,10 @@ function getWeeklyReportById(id) {
   }
 
   function deleteClipboardItem(id) {
-    db
-      .prepare("DELETE FROM clipboard_items WHERE id = ?")
-      .run(id);
+    db.prepare("DELETE FROM clipboard_items WHERE id = ?").run(id);
 
     return true;
   }
-
 
   function getStockReport() {
     return db
@@ -2431,13 +2682,22 @@ function getWeeklyReportById(id) {
     updateLowQtyAlert,
     inactivateStockItem,
 
-        getPurchaseRegister,
-        getDispatchRegister,
-        getProductionRegister,
+    getPurchaseRegister,
+    getDispatchRegister,
+    getProductionRegister,
 
-            getPinnedClipboard,
+    getPinnedClipboard,
     savePinnedClipboard,
     deleteClipboardItem,
+
+    getBOMStockGroupSettings,
+    setBOMStockGroupAvailability,
+
+    createBOM,
+    getBOMs,
+    getBOM,
+    updateBOM,
+    deleteBOM,
 
     getDailyReports,
     saveDailyReport,

@@ -354,6 +354,46 @@ ipcMain.handle("settings:verifyPassword", (event, password) =>
   database.verifyMasterPassword(password),
 );
 
+
+ipcMain.handle(
+  "bomStockGroups:get",
+  () => database.getBOMStockGroupSettings()
+);
+
+ipcMain.handle(
+  "bomStockGroups:setAvailability",
+  (event, stockGroupId, availableForBOM) =>
+    database.setBOMStockGroupAvailability(
+      stockGroupId,
+      availableForBOM
+    )
+);
+
+ipcMain.handle(
+  "bom:create",
+  (event, bomData) => database.createBOM(bomData)
+);
+
+ipcMain.handle(
+  "bom:getAll",
+  () => database.getBOMs()
+);
+
+ipcMain.handle(
+  "bom:get",
+  (event, bomId) => database.getBOM(bomId)
+);
+
+ipcMain.handle(
+  "bom:update",
+  (event, bomData) => database.updateBOM(bomData)
+);
+
+ipcMain.handle(
+  "bom:delete",
+  (event, bomId) => database.deleteBOM(bomId)
+);
+
 // =======================
 // Stock Groups / Units
 // =======================

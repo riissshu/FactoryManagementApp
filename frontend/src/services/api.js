@@ -11,6 +11,32 @@ const api = {
     return window.api.verifyMasterPassword(password);
   },
 
+
+  getBOMStockGroupSettings: () =>
+  window.api.getBOMStockGroupSettings(),
+
+setBOMStockGroupAvailability: (stockGroupId, availableForBOM) =>
+  window.api.setBOMStockGroupAvailability(
+    stockGroupId,
+    availableForBOM
+  ),
+
+
+  createBOM: (bomData) =>
+  window.api.createBOM(bomData),
+
+getBOMs: () =>
+  window.api.getBOMs(),
+
+getBOM: (bomId) =>
+  window.api.getBOM(bomId),
+
+updateBOM: (bomData) =>
+  window.api.updateBOM(bomData),
+
+deleteBOM: (bomId) =>
+  window.api.deleteBOM(bomId),
+
   // Stock Groups / Units
   getStockGroups() {
     return window.api.getStockGroups();

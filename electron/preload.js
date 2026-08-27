@@ -17,6 +17,31 @@ contextBridge.exposeInMainWorld("api", {
   verifyMasterPassword: (password) =>
     ipcRenderer.invoke("settings:verifyPassword", password),
 
+  getBOMStockGroupSettings: () =>
+  ipcRenderer.invoke("bomStockGroups:get"),
+
+setBOMStockGroupAvailability: (stockGroupId, availableForBOM) =>
+  ipcRenderer.invoke(
+    "bomStockGroups:setAvailability",
+    stockGroupId,
+    availableForBOM
+),
+
+createBOM: (bomData) =>
+  ipcRenderer.invoke("bom:create", bomData),
+
+getBOMs: () =>
+  ipcRenderer.invoke("bom:getAll"),
+
+getBOM: (bomId) =>
+  ipcRenderer.invoke("bom:get", bomId),
+
+updateBOM: (bomData) =>
+  ipcRenderer.invoke("bom:update", bomData),
+
+deleteBOM: (bomId) =>
+  ipcRenderer.invoke("bom:delete", bomId),
+
   // Stock Groups / Units
   getStockGroups: () => ipcRenderer.invoke("stockGroups:get"),
   addStockGroup: (name) => ipcRenderer.invoke("stockGroups:add", name),
