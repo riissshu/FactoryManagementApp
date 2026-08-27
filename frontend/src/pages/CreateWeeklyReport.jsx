@@ -65,7 +65,7 @@ export default function WeeklyReport() {
     }));
   };
 
-  const tabs = ["Raw Material", "Packaging Material", "Finished Goods"];
+  const tabs = [...new Set(rows.map((row) => row.stock_group))];
 
   const filteredRows = rows.filter((row) => row.stock_group === activeTab);
 

@@ -102,10 +102,8 @@ export default function WeeklyReportRegister({onClose}) {
     });
 
     const groups = [
-      "Raw Material",
-      "Packaging Material",
-      "Finished Goods",
-    ];
+  ...new Set(savedReport.items.map((item) => item.stock_group)),
+];
 
     const sheetData = [];
 

@@ -27,10 +27,8 @@ export const exportWeeklyReportPdf = ({
 
   // Separate rows by stock group
   const groups = [
-    "Raw Material",
-    "Packaging Material",
-    "Finished Goods",
-  ];
+  ...new Set(rows.map((row) => row.stock_group)),
+];
 
   let currentY = 33;
 
