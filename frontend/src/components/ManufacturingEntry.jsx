@@ -48,7 +48,14 @@ export default function ManufacturingEntry({
   const [form, setForm] = useState(blankEntry());
 
   const [showClipboard, setShowClipboard] = useState(false);
-const [clipboardItems, setClipboardItems] = useState([]);
+  const [clipboardItems, setClipboardItems] = useState([]);
+  const [showBOMModal, setShowBOMModal] = useState(false);
+  const [boms, setBoms] = useState([]);
+  const [loadingBOMs, setLoadingBOMs] = useState(false);
+  const [selectedBOM, setSelectedBOM] = useState(null);
+  const [bomOutputQty, setBomOutputQty] = useState(null);
+  const [showRecalculateModal, setShowRecalculateModal] = useState(false);
+  const [pendingProductionQty, setPendingProductionQty] = useState("");
 
   useEffect(() => {
     if (entry) {
@@ -70,47 +77,171 @@ const [clipboardItems, setClipboardItems] = useState([]);
     }
   }, [entry]);
 
+  const openBOMModal = async () => {
+    try {
+      setLoadingBOMs(true);
+      setShowBOMModal(true);
+
+      const data = await api.getBOMs();
+
+      setBoms(data || []);
+    } catch (error) {
+      console.error("Failed to load BOMs:", error);
+    } finally {
+      setLoadingBOMs(false);
+    }
+  };
+
+  const selectBOM = async (bomId) => {
+    try {
+      const data = await api.getBOM(bomId);
+
+      setSelectedBOM(data);
+      setBomOutputQty(Number(data.output_qty));
+
+      setForm({
+        consumption:
+          data.consumption?.length > 0
+            ? data.consumption.map((row) => ({
+                item: String(row.stock_item_id),
+                qty: row.quantity,
+                unit: row.unit || "",
+              }))
+            : [blankRow()],
+
+        production: [
+          {
+            item: String(data.finished_product_id),
+            qty: data.output_qty,
+            unit: data.unit || "",
+          },
+        ],
+      });
+
+      setShowBOMModal(false);
+    } catch (error) {
+      console.error("Failed to load selected BOM:", error);
+    }
+  };
+
+  const updateProductionQty = (value) => {
+    setForm((current) => ({
+      ...current,
+      production: [
+        {
+          ...current.production[0],
+          qty: value,
+        },
+      ],
+    }));
+  };
+
+  const checkProductionQtyChange = () => {
+    if (!selectedBOM || !bomOutputQty || Number(bomOutputQty) <= 0) {
+      return;
+    }
+
+    const currentQty = Number(form.production[0]?.qty);
+
+    if (!currentQty || currentQty <= 0) {
+      return;
+    }
+
+    setPendingProductionQty(form.production[0]?.qty ?? "");
+    setShowRecalculateModal(true);
+  };
+
+  const confirmRecalculate = () => {
+    const value = pendingProductionQty;
+
+    setForm((current) => {
+      const factor = Number(value) / Number(bomOutputQty);
+
+      const updatedConsumption = current.consumption.map((row, index) => {
+        const bomRow = selectedBOM?.consumption?.[index];
+
+        if (!bomRow) {
+          return row;
+        }
+
+        return {
+          ...row,
+          qty: value === "" ? "" : Number(bomRow.quantity) * factor,
+        };
+      });
+
+      return {
+        ...current,
+        production: [
+          {
+            ...current.production[0],
+            qty: value,
+          },
+        ],
+        consumption: updatedConsumption,
+      };
+    });
+
+    setShowRecalculateModal(false);
+    setPendingProductionQty("");
+  };
+
+  const keepExistingConsumption = () => {
+    setForm((current) => ({
+      ...current,
+      production: [
+        {
+          ...current.production[0],
+          qty: pendingProductionQty,
+        },
+      ],
+    }));
+
+    setShowRecalculateModal(false);
+    setPendingProductionQty("");
+  };
+
   const openClipboard = async () => {
-  try {
-    const items = await api.getClipboard();
-    setClipboardItems(items || []);
-    setShowClipboard(true);
-  } catch (error) {
-    console.error("Unable to load Clipboard:", error);
-  }
-};
+    try {
+      const items = await api.getClipboard();
+      setClipboardItems(items || []);
+      setShowClipboard(true);
+    } catch (error) {
+      console.error("Unable to load Clipboard:", error);
+    }
+  };
 
-const compatibleClipboardItems = clipboardItems.filter(
-  (item) => item.entry_type === "production",
-);
+  const compatibleClipboardItems = clipboardItems.filter(
+    (item) => item.entry_type === "production",
+  );
 
-const incompatibleClipboardItems = clipboardItems.filter(
-  (item) => item.entry_type !== "production",
-);
+  const incompatibleClipboardItems = clipboardItems.filter(
+    (item) => item.entry_type !== "production",
+  );
 
-const pasteProductionFromClipboard = (item) => {
-  setForm({
-    consumption:
-      item.data.consumption?.length > 0
-        ? item.data.consumption.map((row) => ({
-            item: row.item,
-            qty: row.qty,
-            unit: row.unit,
-          }))
-        : [blankRow()],
+  const pasteProductionFromClipboard = (item) => {
+    setForm({
+      consumption:
+        item.data.consumption?.length > 0
+          ? item.data.consumption.map((row) => ({
+              item: row.item,
+              qty: row.qty,
+              unit: row.unit,
+            }))
+          : [blankRow()],
 
-    production:
-      item.data.production?.length > 0
-        ? item.data.production.map((row) => ({
-            item: row.item,
-            qty: row.qty,
-            unit: row.unit,
-          }))
-        : [blankRow()],
-  });
+      production:
+        item.data.production?.length > 0
+          ? item.data.production.map((row) => ({
+              item: row.item,
+              qty: row.qty,
+              unit: row.unit,
+            }))
+          : [blankRow()],
+    });
 
-  setShowClipboard(false);
-};
+    setShowClipboard(false);
+  };
 
   const updateItem = (side, index, field, value) => {
     setForm((prev) => ({
@@ -198,33 +329,41 @@ const pasteProductionFromClipboard = (item) => {
 
           <div className="modal-body">
             <div className="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <strong>Production Status: </strong>
+              <div>
+                <strong>Production Status: </strong>
 
-    {difference === 0 ? (
-      <span className="badge text-bg-success">Balanced</span>
-    ) : difference > 0 ? (
-      <span className="badge text-bg-warning">
-        {difference.toFixed(2)} loss to record
-      </span>
-    ) : (
-      <span className="badge text-bg-danger">
-        {Math.abs(difference).toFixed(2)} over production
-      </span>
-    )}
-  </div>
+                {difference === 0 ? (
+                  <span className="badge text-bg-success">Balanced</span>
+                ) : difference > 0 ? (
+                  <span className="badge text-bg-warning">
+                    {difference.toFixed(2)} loss to record
+                  </span>
+                ) : (
+                  <span className="badge text-bg-danger">
+                    {Math.abs(difference).toFixed(2)} over production
+                  </span>
+                )}
+              </div>
 
-  {!entry && (
-    <button
-      type="button"
-      className="btn btn-sm btn-outline-primary"
-      onClick={openClipboard}
-    >
-      <i className="bi bi-clipboard me-1"></i>
-      Paste from Clipboard
-    </button>
-  )}
-</div>
+              {!entry && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={openClipboard}
+                >
+                  <i className="bi bi-clipboard me-1"></i>
+                  Paste from Clipboard
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-outline-primary"
+                onClick={openBOMModal}
+              >
+                Paste from BOM
+              </button>
+            </div>
 
             <div className="row g-4">
               {/* CONSUMPTION */}
@@ -392,14 +531,19 @@ const pasteProductionFromClipboard = (item) => {
                               min="0"
                               className="form-control"
                               value={row.qty}
-                              onChange={(e) =>
-                                updateItem(
-                                  "production",
-                                  index,
-                                  "qty",
-                                  e.target.value,
-                                )
-                              }
+                              onBlur={checkProductionQtyChange}
+                              onChange={(e) => {
+                                if (selectedBOM) {
+                                  updateProductionQty(e.target.value);
+                                } else {
+                                  updateItem(
+                                    "production",
+                                    index,
+                                    "qty",
+                                    e.target.value,
+                                  );
+                                }
+                              }}
                             />
                           </td>
 
@@ -418,12 +562,46 @@ const pasteProductionFromClipboard = (item) => {
                       ))}
                     </tbody>
                   </table>
+                  {/* INLINE CONFIRMATION BLOCK  */}
+
+                  {showRecalculateModal && (
+                    <div className=" d-flex justify-content-between align-items-center mt-3 mb-3">
+                      <div>
+                        <strong>Production quantity changed.</strong>
+                        <div>
+                          Do you want to recalculate consumption quantities
+                          based on the BOM?
+                        </div>
+                      </div>
+
+                      <div className="d-flex gap-2 ms-3">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={keepExistingConsumption}
+                        >
+                          No
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={confirmRecalculate}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="modal-footer">
+
+                  
+
             <button type="button" className="btn btn-light" onClick={onClose}>
               Cancel
             </button>
@@ -435,129 +613,231 @@ const pasteProductionFromClipboard = (item) => {
         </div>
       </div>
 
-                      {showClipboard && (
-  <div
-    className="modal fade show d-block"
-    tabIndex="-1"
-    style={{
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-    }}
-  >
-    <div className="modal-dialog modal-lg modal-dialog-centered">
-      <div className="modal-content">
+      {showClipboard && (
+        <div
+          className="modal fade show d-block"
+          tabIndex="-1"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Paste from Clipboard</h5>
 
-        <div className="modal-header">
-          <h5 className="modal-title">
-            Paste from Clipboard
-          </h5>
-
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setShowClipboard(false)}
-          />
-        </div>
-
-        <div className="modal-body">
-
-          {compatibleClipboardItems.length === 0 &&
-            incompatibleClipboardItems.length === 0 && (
-              <div className="text-center text-muted py-4">
-                Clipboard is empty.
-              </div>
-            )}
-
-          {compatibleClipboardItems.length > 0 && (
-            <>
-              <div className="fw-semibold mb-2">
-                Production Entries
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowClipboard(false)}
+                />
               </div>
 
-              {compatibleClipboardItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="d-flex justify-content-between align-items-center border rounded p-3 mb-2"
-                >
-                  <div>
-                    <div className="fw-semibold">
-                      {item.title}
+              <div className="modal-body">
+                {compatibleClipboardItems.length === 0 &&
+                  incompatibleClipboardItems.length === 0 && (
+                    <div className="text-center text-muted py-4">
+                      Clipboard is empty.
+                    </div>
+                  )}
+
+                {compatibleClipboardItems.length > 0 && (
+                  <>
+                    <div className="fw-semibold mb-2">Production Entries</div>
+
+                    {compatibleClipboardItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="d-flex justify-content-between align-items-center border rounded p-3 mb-2"
+                      >
+                        <div>
+                          <div className="fw-semibold">{item.title}</div>
+
+                          <small className="text-muted">Production</small>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => pasteProductionFromClipboard(item)}
+                        >
+                          Paste
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {incompatibleClipboardItems.length > 0 && (
+                  <>
+                    <hr />
+
+                    <div className="text-muted fw-semibold mb-2">
+                      Other copied entries
                     </div>
 
-                    <small className="text-muted">
-                      Production
-                    </small>
-                  </div>
+                    {incompatibleClipboardItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="d-flex justify-content-between align-items-center border rounded p-3 mb-2 text-muted bg-light"
+                      >
+                        <div>
+                          <div className="fw-semibold">{item.title}</div>
 
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary"
-                    onClick={() =>
-                      pasteProductionFromClipboard(item)
-                    }
-                  >
-                    Paste
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
+                          <small>
+                            {item.entry_type === "purchase"
+                              ? "Purchase"
+                              : item.entry_type === "dispatch"
+                                ? "Dispatch"
+                                : item.entry_type}
+                          </small>
+                        </div>
 
-          {incompatibleClipboardItems.length > 0 && (
-            <>
-              <hr />
-
-              <div className="text-muted fw-semibold mb-2">
-                Other copied entries
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
+                          disabled
+                        >
+                          Not compatible
+                        </button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
 
-              {incompatibleClipboardItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="d-flex justify-content-between align-items-center border rounded p-3 mb-2 text-muted bg-light"
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowClipboard(false)}
                 >
-                  <div>
-                    <div className="fw-semibold">
-                      {item.title}
-                    </div>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                    <small>
-                      {item.entry_type === "purchase"
-                        ? "Purchase"
-                        : item.entry_type === "dispatch"
-                        ? "Dispatch"
-                        : item.entry_type}
-                    </small>
+      {showBOMModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Select BOM</h5>
+
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowBOMModal(false)}
+                ></button>
+              </div>
+
+              <div className="modal-body">
+                {loadingBOMs ? (
+                  <div className="text-center py-4">Loading BOMs...</div>
+                ) : boms.length === 0 ? (
+                  <div className="text-center text-muted py-4">
+                    No BOMs available.
                   </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Finished Product</th>
+                          <th>BOM Name</th>
+                          <th className="text-end">Output Qty</th>
+                          <th>Unit</th>
+                          <th className="text-center">Action</th>
+                        </tr>
+                      </thead>
 
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-secondary"
-                    disabled
-                  >
-                    Not compatible
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
+                      <tbody>
+                        {boms.map((bom) => (
+                          <tr key={bom.id}>
+                            <td>{bom.finished_product}</td>
+                            <td>{bom.bom_name}</td>
+                            <td className="text-end">{bom.output_qty}</td>
+                            <td>{bom.unit}</td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                onClick={() => selectBOM(bom.id)}
+                              >
+                                Select
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
 
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowBOMModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
 
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => setShowClipboard(false)}
-          >
-            Cancel
-          </button>
+      {/* {showRecalculateModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Recalculate Consumption</h5>
+              </div>
+
+              <div className="modal-body">
+                <p className="mb-0">
+                  Production quantity has changed.
+                  <br />
+                  Do you want to recalculate consumption quantities based on the
+                  BOM?
+                </p>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={keepExistingConsumption}
+                >
+                  No
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={confirmRecalculate}
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-
-      </div>
-    </div>
-  </div>
-)}
-
+      )} */}
     </div>
   );
 }
