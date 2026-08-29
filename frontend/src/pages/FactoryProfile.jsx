@@ -245,21 +245,22 @@ export default function FactoryProfile({
           Factory Profile
         </h3>
 
-        <div className="me-5">
-          <button
+        <div className="">
+
+        <button
+          onClick={() => setShowConfirmModal(true)}
+          className="btn btn-outline-danger me-2"
+        >
+          Close Company
+        </button>
+
+        <button
             onClick={onClose}
-            className="btn btn-secondary"
+            className="btn btn-outline-secondary me-2"
           >
             Sign Out
           </button>
         </div>
-
-        <button
-          onClick={() => setShowConfirmModal(true)}
-          className="btn btn-outline-danger ms-2"
-        >
-          Close Company
-        </button>
 
       </div>
 
@@ -423,7 +424,7 @@ export default function FactoryProfile({
 
           <div className="text-end mt-4">
             <button
-              className="btn btn-primary px-4"
+              className="btn btn-outline-primary px-4"
               onClick={saveProfile}
             >
               Save Changes
@@ -618,7 +619,7 @@ export default function FactoryProfile({
             {onStockGroupUnits && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-outline-secondary"
                 onClick={onStockGroupUnits}
               >
                 Stock Groups & Units

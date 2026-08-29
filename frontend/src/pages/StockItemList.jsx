@@ -110,7 +110,8 @@ export default function StockItemList({ onClose, onEditItem }) {
     <div>
       <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
         <h2 className="mb-0">Stock Item List</h2>
-        <button onClick={onClose} className="btn btn-secondary">
+        <div>
+        <button onClick={onClose} className="btn btn-outline-secondary me-2">
           Close
         </button>
 
@@ -120,6 +121,7 @@ export default function StockItemList({ onClose, onEditItem }) {
         <button onClick={exportExcel} className="btn btn-outline-success me-2">
           Export Excel
         </button>
+        </div>
       </div>
 
       <div

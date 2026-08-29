@@ -261,7 +261,7 @@ export default function WeeklyReport() {
               <div className="d-flex justify-content-end mb-2">
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline-secondary"
+                  className="btn btn-sm btn-outline-secondary me-2"
                   onClick={handleMatchAll}
                 >
                   Match All

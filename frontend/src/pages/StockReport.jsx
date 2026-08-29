@@ -13,7 +13,7 @@ export default function StockReport({ onClose, onStockItemClick } = {}) {
       .then(setItems)
       .catch((error) => {
         console.error(error);
-        alert("Unable to load the stock report.");
+     
       });
   }, []);
 
@@ -94,8 +94,9 @@ export default function StockReport({ onClose, onStockItemClick } = {}) {
 
   return (
     <div className="page-shell">
+      <div className="d-flex justify-content-between align-items-center mb-3">
       <h2>Detailed Stock Report</h2>
-
+      <div>
       <button onClick={onClose} className="btn btn-secondary">
         Close
       </button>
@@ -106,8 +107,10 @@ export default function StockReport({ onClose, onStockItemClick } = {}) {
       <button onClick={exportExcel} className="btn btn-outline-success ms-2">
         Export Excel
       </button>
+      </div>
+      </div>
 
-      <div className="content-card">
+      <div className="">
         <div className="col-md-5 mb-4">
           <label className="form-label">Search Item</label>
           <input

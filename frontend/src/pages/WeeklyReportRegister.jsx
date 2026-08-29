@@ -255,8 +255,8 @@ export default function WeeklyReportRegister({onClose}) {
             <tr>
               <th>Date</th>
               <th>Day</th>
-              <th className="text-center">PDF</th>
-              <th className="text-center">Excel</th>
+              <th className="text-center">Download / Export</th>
+            
             </tr>
           </thead>
 
@@ -283,22 +283,21 @@ export default function WeeklyReportRegister({onClose}) {
                   <td className="text-center">
                     <button
                       type="button"
-                      className="btn btn-sm btn-outline-danger"
+                      className="btn btn-sm btn-outline-danger me-2"
                       onClick={() => handlePdf(report)}
                     >
-                      PDF
+                     <i class="bi bi-filetype-pdf"></i> PDF
                     </button>
-                  </td>
-
-                  <td className="text-center">
                     <button
                       type="button"
                       className="btn btn-sm btn-outline-success"
                       onClick={() => handleExcel(report)}
                     >
-                      Excel
+                     <i class="bi bi-file-earmark-spreadsheet"></i> Excel
                     </button>
                   </td>
+
+                 
                 </tr>
               ))
             )}

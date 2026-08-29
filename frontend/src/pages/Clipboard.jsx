@@ -127,7 +127,7 @@ export default function Clipboard({ navigate }) {
           </div>
         </div>
       ) : (
-        <div className="card shadow-sm">
+        <div>
           <div className="list-group list-group-flush">
             {items.map((item) => (
               <div
@@ -173,7 +173,7 @@ export default function Clipboard({ navigate }) {
                         )}
 
                         {item.pinned && (
-                          <span className="badge text-bg-warning">
+                          <span className="badge text-bg-primary">
                             <i className="bi bi-pin-fill me-1"></i>
                             Pinned
                           </span>
@@ -187,20 +187,20 @@ export default function Clipboard({ navigate }) {
                     {item.pinned ? (
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-warning"
+                        className="btn btn-sm btn-outline-secondary"
                         onClick={() => handleUnpin(item)}
                       >
                         <i className="bi bi-pin-angle me-1"></i>
-                        Unpin
+                        
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn btn-sm btn-outline-secondary"
                         onClick={() => handlePin(item)}
                       >
                         <i className="bi bi-pin me-1"></i>
-                        Pin
+                        
                       </button>
                     )}
 
@@ -210,7 +210,7 @@ export default function Clipboard({ navigate }) {
                       onClick={() => handleDelete(item)}
                     >
                       <i className="bi bi-trash me-1"></i>
-                      Clear
+                      
                     </button>
                   </div>
                 </div>
