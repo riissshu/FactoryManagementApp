@@ -265,9 +265,7 @@ export default function StockAdjustmentRegister({ onClose }) {
                           Qty
                         </th>
 
-                        <th style={{ width: "12%" }}>
-                          Unit
-                        </th>
+                    
 
                         <th style={{ width: "28%" }}>
                           Reason
@@ -294,10 +292,10 @@ export default function StockAdjustmentRegister({ onClose }) {
                           <td>{item.item_name}</td>
 
                           <td className="text-end fw-semibold">
-                            {formatQty(item)}
+                            {formatQty(item)}{" "}{item.unit}
                           </td>
 
-                          <td>{item.unit}</td>
+                      
 
                           <td>
                             {item.reason || "—"}

@@ -325,9 +325,10 @@ export default function CreateStockItem({ onClose }) {
 
               <div className="row">
                 <div className="col-md-6">
-                  <label className="form-label">Alternate Unit</label>
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                  <label className="form-label mb-0">Alternate Unit</label>
 
-                  <div className="form-check form-switch">
+                  <div className="form-check form-switch mb-0">
                     <input
                       className="form-check-input"
                       type="checkbox"
@@ -354,6 +355,7 @@ export default function CreateStockItem({ onClose }) {
                     >
                       {switchOn ? "On" : "Off"}
                     </label>
+                    </div>
                   </div>
 
                   <select
@@ -487,10 +489,6 @@ export default function CreateStockItem({ onClose }) {
           </div>
         </div>
       </form>
-
-      <button className="btn btn-secondary" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }
