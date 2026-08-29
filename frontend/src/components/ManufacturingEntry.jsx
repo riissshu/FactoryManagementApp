@@ -564,7 +564,7 @@ export default function ManufacturingEntry({
                   </table>
                   {/* INLINE CONFIRMATION BLOCK  */}
 
-                  {showRecalculateModal && (
+                  {/* {showRecalculateModal && (
                     <div className=" d-flex justify-content-between align-items-center mt-3 mb-3">
                       <div>
                         <strong>Production quantity changed.</strong>
@@ -592,7 +592,9 @@ export default function ManufacturingEntry({
                         </button>
                       </div>
                     </div>
-                  )}
+                  )} */}
+
+
                 </div>
               </div>
             </div>
@@ -796,7 +798,7 @@ export default function ManufacturingEntry({
         </div>
       )}
 
-      {/* {showRecalculateModal && (
+      {showRecalculateModal && (
         <div
           className="modal d-block"
           tabIndex="-1"
@@ -837,7 +839,7 @@ export default function ManufacturingEntry({
             </div>
           </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 }
