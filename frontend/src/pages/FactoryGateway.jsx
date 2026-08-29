@@ -253,7 +253,7 @@ export default function FactoryGateway({ onSetupComplete }) {
   }
 
   return (
-    <div className="container-fluid py-4" style={{ minHeight: "100vh", background: "#76a1fc82" }}>
+    <div className="container-fluid" style={{ minHeight: "100vh", background: "#76a1fc82" }}>
       <div className="container" style={{ maxWidth: "1050px" }}>
         <div className="text-center mb-4">
           <h2 className="fw-bold mb-1">Factory Gateway</h2>
@@ -330,20 +330,21 @@ export default function FactoryGateway({ onSetupComplete }) {
           </div>
         </div>
 
-        <div className="row g-3 mb-4">
-          <div className="col-md-4">
-            <button className="btn btn-primary w-100 py-3" onClick={() => setShowCreate(true)}>
+<div className="card shadow-sm mb-4">
+        <div className="row m-2">
+          <div className="col-auto">
+            <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
               <i className="bi bi-plus-circle me-2" />
               Create New Company
             </button>
           </div>
-          <div className="col-md-4">
-            <button className="btn btn-outline-danger w-100 py-3" onClick={restoreBackup}>
+          <div className="col-auto">
+            <button className="btn btn-outline-danger" onClick={restoreBackup}>
               <i className="bi bi-database-up me-2" />
               Restore Backup
             </button>
           </div>
-          
+          </div>
         </div>
 
         <div className="card shadow-sm">
