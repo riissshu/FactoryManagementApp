@@ -2,7 +2,7 @@ import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
-export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCollapsed }) {
+export default function Sidebar({ activeMenu, setActiveMenu, collapsed, setCollapsed, factoryLogo,}) {
   const menuItems = [
     {
       title: "Dashboard",
@@ -91,21 +91,39 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed,   setCol
         overflowY: "auto",
       }}
     >
-     <div
-    className="d-flex align-items-center justify-content-between p-3 border-bottom border-light border-opacity-10"
->
-    {!collapsed && (
-        <h5 className="mb-0 fw-bold"></h5>
-    )}
-
+ <div className="d-flex align-items-center justify-content-between p-3 border-bottom border-light border-opacity-10">
+  {!collapsed && factoryLogo && (
     <button
-        className="btn btn-outline-light btn-sm"
-        onClick={() => setCollapsed(!collapsed)}
+      type="button"
+      className="btn border-0 p-0"
+      onClick={() => setActiveMenu("factoryprofile")}
+      title="Factory Profile"
     >
-        <i className="bi bi-list fs-5"></i>
+      <img
+        src={factoryLogo}
+        alt="Factory Logo"
+        className="rounded-circle border"
+        style={{
+          width: "42px",
+          height: "42px",
+          objectFit: "contain",
+        }}
+      />
     </button>
-</div>
+  )}
 
+  <button
+    className="btn btn-outline-light btn-sm"
+    onClick={() => setCollapsed(!collapsed)}
+    title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+  >
+    <i
+      className={`bi ${
+        collapsed ? "bi-list" : "bi-chevron-left"
+      } fs-5`}
+    ></i>
+  </button>
+</div>
       <div className="pt-2">
         {menuItems.map((item, index) => {
           if (item.type === "heading") {

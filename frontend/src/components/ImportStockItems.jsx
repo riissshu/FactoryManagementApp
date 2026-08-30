@@ -70,19 +70,28 @@ export default function ImportStockItems({ onClose }) {
 }));
 
 const stockItems = await api.getStockItems();
+const stockGroups = await api.getStockGroups();
+const stockUnits = await api.getStockUnits();
 
 setExistingItems(stockItems);
 
-     const errors = validateRows(formattedRows, stockItems);
+const errors = validateRows(
+  formattedRows,
+  stockItems,
+  stockGroups,
+  stockUnits
+);
 
      const previewRows = formattedRows.map((row, index) => ({
   ...row,
-  error: getRowError(
-    row,
-    index,
-    formattedRows,
-    stockItems
-  ),
+ error: getRowError(
+  row,
+  index,
+  formattedRows,
+  stockItems,
+  stockGroups,
+  stockUnits
+),
 }));
 
 setValidationErrors(errors);
@@ -92,7 +101,14 @@ setImportedRows(previewRows);
     reader.readAsArrayBuffer(file);
   };
 
-const getRowError = (row, index, rows, existingItems) => {
+  const getRowError = (
+  row,
+  index,
+  rows,
+  existingItems,
+  stockGroups = [],
+  stockUnits = []
+) => {
   const rowNumber = index + 2;
 
   const itemName = String(row.item_name || "")
@@ -110,6 +126,46 @@ const getRowError = (row, index, rows, existingItems) => {
   if (!row.unit || !String(row.unit).trim()) {
     return "Unit is required.";
   }
+
+  const groupName = String(row.stock_group).trim();
+const unitName = String(row.unit).trim();
+const alternateUnit = String(row.alternate_unit || "").trim();
+
+const existingGroupNames = stockGroups.map((group) =>
+  String(group.name || group.stock_group || "").trim()
+);
+
+const existingUnitNames = stockUnits.map((unit) =>
+  String(unit.name || unit.unit_name || "").trim()
+);
+
+// Group must match exactly - case sensitive
+if (!existingGroupNames.includes(groupName)) {
+  return `Invalid Group "${row.stock_group}".`;
+}
+
+// Primary Unit must match exactly - case sensitive
+if (!existingUnitNames.includes(unitName)) {
+  return `Invalid Unit "${row.unit}".`;
+}
+
+// Alternate Unit, when provided, must match exactly - case sensitive
+if (
+  alternateUnit &&
+  !existingUnitNames.includes(alternateUnit)
+) {
+  return `Invalid Alternate Unit "${row.alternate_unit}".`;
+}
+
+// For all groups except Packaging Material,
+// Alternate Unit is compulsory when Primary Unit is not Kgs
+if (
+  groupName !== "Packaging Material" &&
+  unitName !== "Kgs" &&
+  !alternateUnit
+) {
+  return "Alternate Unit is required when Primary Unit is not Kgs.";
+}
 
   if (
     row.opening_qty === "" ||
@@ -179,7 +235,12 @@ const getRowError = (row, index, rows, existingItems) => {
 };
 
 
-const validateRows = (rows, existingItems = []) => {
+const validateRows = (
+  rows,
+  existingItems = [],
+  stockGroups = [],
+  stockUnits = []
+) => {
   const errors = [];
   const itemNames = new Set();
 
@@ -193,6 +254,57 @@ const validateRows = (rows, existingItems = []) => {
     const rowNumber = index + 2; // Excel row number; row 1 is headers
 
     const itemName = String(row.item_name || "").trim().toLowerCase();
+
+    const groupName = String(row.stock_group || "").trim();
+const unitName = String(row.unit || "").trim();
+const alternateUnit = String(row.alternate_unit || "").trim();
+
+const existingGroupNames = stockGroups.map((group) =>
+  String(group.name || group.stock_group || "").trim()
+);
+
+const existingUnitNames = stockUnits.map((unit) =>
+  String(unit.name || unit.unit_name || "").trim()
+);
+
+if (
+  groupName &&
+  !existingGroupNames.includes(groupName)
+) {
+  errors.push(
+    `Row ${rowNumber}: Invalid Group "${row.stock_group}".`
+  );
+}
+
+if (
+  unitName &&
+  !existingUnitNames.includes(unitName)
+) {
+  errors.push(
+    `Row ${rowNumber}: Invalid Unit "${row.unit}".`
+  );
+}
+
+if (
+  alternateUnit &&
+  !existingUnitNames.includes(alternateUnit)
+) {
+  errors.push(
+    `Row ${rowNumber}: Invalid Alternate Unit "${row.alternate_unit}".`
+  );
+}
+
+if (
+  groupName &&
+  groupName !== "Packaging Material" &&
+  unitName &&
+  unitName !== "Kgs" &&
+  !alternateUnit
+) {
+  errors.push(
+    `Row ${rowNumber}: Alternate Unit is required when Primary Unit is not Kgs.`
+  );
+}
 
 if (itemName) {
   if (itemNames.has(itemName)) {

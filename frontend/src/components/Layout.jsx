@@ -302,6 +302,7 @@ export default function Layout({ onCloseCompany }) {
         setActiveMenu={selectMenu}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        factoryLogo={settings.factory_logo}
       />
       <div
         style={{
@@ -311,12 +312,7 @@ export default function Layout({ onCloseCompany }) {
           backgroundColor: "#f8f9fa",
         }}
       >
-        <Navbar
-          factoryName={settings.factory_name}
-          factoryLogo={settings.factory_logo}
-          collapsed={collapsed}
-          setActiveMenu={selectMenu}
-        />
+        <Navbar factoryName={settings.factory_name} collapsed={collapsed} />
 
         <main
           className="p-4"

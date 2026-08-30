@@ -1,12 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 
 export default function Navbar({
   factoryName = "Factory Stock Maintenance",
-  factoryLogo = null,
   collapsed,
-  setActiveMenu,
 }) {
   return (
     <nav
@@ -25,28 +23,6 @@ export default function Navbar({
         <div className="d-flex align-items-center w-100">
           <div className="flex-grow-1">
             <h4 className="mb-0 fw-bold text-primary">{factoryName}</h4>
-          </div>
-
-          <div className="position-relative">
-            <button
-              className="btn border-0 d-flex align-items-center"
-              onClick={() => {
-                setActiveMenu("factoryprofile");
-              }}
-            >
-              {factoryLogo && (
-                <img
-                  src={factoryLogo}
-                  alt="Factory Logo"
-                  className="rounded-circle border"
-                  style={{
-                    width: "42px",
-                    height: "42px",
-                    objectFit: "contain",
-                  }}
-                />
-              )}
-            </button>
           </div>
         </div>
       </div>
