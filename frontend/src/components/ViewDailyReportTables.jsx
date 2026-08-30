@@ -204,6 +204,15 @@ export default function PreviewDailyReportTables({
                   Gate Pass No.
                 </th>
 
+                <th
+  style={{
+    ...headerStyle,
+    width: 180,
+  }}
+>
+  Party Name
+</th>
+
                 <th style={headerStyle}>Stock Item</th>
 
                 <th
@@ -230,7 +239,7 @@ export default function PreviewDailyReportTables({
             <tbody>
               {gatePasses.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center text-muted py-4">
+                  <td colSpan="6" className="text-center text-muted py-4">
                     No dispatch entries.
                   </td>
                 </tr>
@@ -254,6 +263,9 @@ export default function PreviewDailyReportTables({
                             >
                               {entry.gatePassNo}
                             </td>
+                            <td rowSpan={entry.items.length}>
+  {entry.partyName}
+</td>
                           </>
                         )}
 
@@ -266,7 +278,7 @@ export default function PreviewDailyReportTables({
                     ))}
 
                     <tr style={totalStyle} className="fw-semibold">
-                      <td colSpan="5" className="text-end py-2">
+                      <td colSpan="6" className="text-end py-2">
                         <span className="text-muted me-2">Total Qty:</span>
 
                         {totalQty(entry.items)}

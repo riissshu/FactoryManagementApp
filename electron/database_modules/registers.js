@@ -62,6 +62,7 @@ function createRegistersModule(db) {
         ge.id AS gatepass_id,
         dr.report_date,
         ge.gatepass_no,
+          ge.party_name,
         gi.id AS item_id,
         gi.stock_item_id,
         si.item_name,
@@ -90,7 +91,7 @@ function createRegistersModule(db) {
         SELECT
           pe.id AS purchase_id,
           dr.report_date,
-            dr.supplier_name,
+            pe.supplier_name,
           pe.purchase_no,
           pi.id AS item_id,
           pi.stock_item_id,

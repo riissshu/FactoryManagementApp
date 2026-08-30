@@ -247,6 +247,14 @@ export default function DailyReportTables({
                 >
                   Gate Pass No.
                 </th>
+                <th
+  style={{
+    ...headerStyle,
+    width: 180,
+  }}
+>
+  Party Name
+</th>
 
                 <th style={headerStyle}>Stock Item</th>
 
@@ -308,6 +316,9 @@ export default function DailyReportTables({
                             >
                               {entry.gatePassNo}
                             </td>
+                            <td rowSpan={entry.items.length}>
+  {entry.partyName}
+</td>
                           </>
                         )}
 

@@ -226,6 +226,7 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
       purchases: report.purchases,
       gatePasses: report.gatePasses.map((entry) => ({
         gatePassNo: entry.gatepass_no,
+          partyName: entry.party_name,
         items: entry.items.map(mapItem),
       })),
       manufactured: report.manufactured.map((entry) => ({
@@ -275,9 +276,9 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
       report.gatePasses.forEach((gatePass) => {
         const gatePassEntry = db
           .prepare(
-            "INSERT INTO gatepass_entries (daily_report_id, gatepass_no) VALUES (?, ?)",
+            "INSERT INTO gatepass_entries (daily_report_id, gatepass_no, party_name) VALUES (?, ?, ?)",
           )
-          .run(dailyReportId, gatePass.gatePassNo);
+          .run(dailyReportId, gatePass.gatePassNo, gatePass.partyName,);
 
         const gatePassEntryId = gatePassEntry.lastInsertRowid;
 
@@ -641,12 +642,13 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
             INSERT INTO gatepass_entries
             (
               daily_report_id,
-              gatepass_no
+              gatepass_no,
+                 party_name
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?)
           `,
           )
-          .run(id, gatePass.gatePassNo);
+          .run(id, gatePass.gatePassNo, gatePass.partyName,);
 
         const gatePassEntryId = gatePassEntry.lastInsertRowid;
 

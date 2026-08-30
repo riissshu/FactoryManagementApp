@@ -9,6 +9,7 @@ const blankRow = () => ({
 
 const blankEntry = () => ({
   gatePassNo: "",
+  partyName: "",
   items: [blankRow()],
 });
 
@@ -30,6 +31,8 @@ const [clipboardItems, setClipboardItems] = useState([]);
       setForm({
         gatePassNo:
           entry.gatePassNo || "",
+           partyName:
+    entry.partyName || "",
         items:
           entry.items?.length
             ? entry.items.map((row) => ({
@@ -66,6 +69,7 @@ const incompatibleClipboardItems = clipboardItems.filter(
 const pasteDispatchFromClipboard = (item) => {
   setForm({
     gatePassNo: item.data.gatePassNo || "",
+       partyName: item.data.partyName || "",
     items:
       item.data.items?.length > 0
         ? item.data.items.map((row) => ({
@@ -150,6 +154,8 @@ const pasteDispatchFromClipboard = (item) => {
     onSave({
       gatePassNo:
         form.gatePassNo.trim(),
+         partyName:
+    form.partyName.trim(),
       items,
     });
   };
@@ -197,6 +203,23 @@ const pasteDispatchFromClipboard = (item) => {
                 autoFocus
               />
             </div>
+
+            <div className="mb-4">
+  <label className="form-label fw-semibold">
+    Party Name
+  </label>
+
+  <input
+    className="form-control"
+    value={form.partyName}
+    onChange={(e) =>
+      setForm((prev) => ({
+        ...prev,
+        partyName: e.target.value,
+      }))
+    }
+  />
+</div>
 
           <div className="d-flex justify-content-between align-items-center mb-2">
   <h6 className="fw-bold mb-0">

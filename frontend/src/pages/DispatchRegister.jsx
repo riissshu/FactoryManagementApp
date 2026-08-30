@@ -56,6 +56,7 @@ const copyDispatch = async (dispatch) => {
       source_id: dispatch.gatepass_id,
       data: {
         gatePassNo: dispatch.gatepass_no,
+          partyName: dispatch.party_name,
         sourceReference: dispatch.gatepass_no,
   sourceDate: dispatch.report_date,
         items: dispatch.items.map((row) => ({
@@ -99,6 +100,7 @@ const copyDispatch = async (dispatch) => {
         gatepass_id: dispatch.gatepass_id,
         report_date: dispatch.report_date,
         gatepass_no: dispatch.gatepass_no,
+          party_name: dispatch.party_name,
         items: [dispatch],
       });
     }
@@ -169,6 +171,10 @@ const copyDispatch = async (dispatch) => {
                       Gatepass No.
                     </th>
 
+                    <th style={{ width: "180px" }}>
+  Party Name
+</th>
+
                     <th>Item</th>
 
                     <th
@@ -198,6 +204,9 @@ const copyDispatch = async (dispatch) => {
                             >
                               {dispatch.gatepass_no}
                             </td>
+                            <td rowSpan={dispatch.items.length}>
+  {dispatch.party_name}
+</td>
                           </>
                         )}
 
