@@ -9,6 +9,7 @@ const blankRow = () => ({
 
 const blankEntry = () => ({
   purchaseNo: "",
+    supplierName: "",
   items: [blankRow()],
 });
 
@@ -29,6 +30,7 @@ const [clipboardItems, setClipboardItems] = useState([]);
     if (entry) {
       setForm({
         purchaseNo: entry.purchaseNo || "",
+          supplierName: entry.supplierName || "",
         items:
           entry.items?.length
             ? entry.items.map((row) => ({
@@ -65,6 +67,7 @@ const incompatibleClipboardItems = clipboardItems.filter(
 const pastePurchaseFromClipboard = (item) => {
   setForm({
     purchaseNo: item.data.purchaseNo || "",
+       supplierName: item.data.supplierName || "",
     items:
       item.data.items?.length > 0
         ? item.data.items.map((row) => ({
@@ -141,6 +144,10 @@ const pastePurchaseFromClipboard = (item) => {
       return;
     }
 
+    if (!form.supplierName.trim()) {
+  return;
+}
+
     if (!items.length) {
      
       return;
@@ -149,6 +156,7 @@ const pastePurchaseFromClipboard = (item) => {
     onSave({
       purchaseNo:
         form.purchaseNo.trim(),
+          supplierName: form.supplierName.trim(),
       items,
     });
   };
@@ -196,6 +204,23 @@ const pastePurchaseFromClipboard = (item) => {
                 autoFocus
               />
             </div>
+
+            <div className="mb-4">
+  <label className="form-label fw-semibold">
+    Supplier Name
+  </label>
+
+  <input
+    className="form-control"
+    value={form.supplierName}
+    onChange={(e) =>
+      setForm((prev) => ({
+        ...prev,
+        supplierName: e.target.value,
+      }))
+    }
+  />
+</div>
 
             <div className="d-flex justify-content-between align-items-center mb-2">
   <h6 className="fw-bold mb-0">

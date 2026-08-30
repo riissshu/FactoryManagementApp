@@ -42,6 +42,7 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         daily_report_id INTEGER NOT NULL,
         purchase_no TEXT NOT NULL,
+        supplier_name TEXT NOT NULL,
         FOREIGN KEY (daily_report_id) REFERENCES daily_reports(id)
     );
     `);
@@ -63,6 +64,7 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         daily_report_id INTEGER NOT NULL,
         gatepass_no TEXT NOT NULL,
+        party_name TEXT NOT NULL,
         FOREIGN KEY (daily_report_id) REFERENCES daily_reports(id)
     );
     `);
@@ -157,6 +159,7 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
 
       return {
         purchaseNo: purchase.purchase_no,
+          supplierName: purchase.supplier_name,
         items: items.map((item) => ({
           item: item.stock_item_id,
           qty: item.qty,
@@ -249,9 +252,9 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
       report.purchases.forEach((purchase) => {
         const purchaseEntry = db
           .prepare(
-            "INSERT INTO purchase_entries (daily_report_id, purchase_no) VALUES (?, ?)",
+            "INSERT INTO purchase_entries (daily_report_id, purchase_no, supplier_name) VALUES (?, ?, ?)",
           )
-          .run(dailyReportId, purchase.purchaseNo);
+          .run(dailyReportId, purchase.purchaseNo, purchase.supplierName,);
 
         const purchaseEntryId = purchaseEntry.lastInsertRowid;
 
@@ -594,12 +597,13 @@ function createDailyReportsModule(db, { verifyMasterPassword }) {
             INSERT INTO purchase_entries
             (
               daily_report_id,
-              purchase_no
+              purchase_no,
+               supplier_name
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?)
           `,
           )
-          .run(id, purchase.purchaseNo);
+          .run(id, purchase.purchaseNo, purchase.supplierName,);
 
         const purchaseEntryId = purchaseEntry.lastInsertRowid;
 
