@@ -86,6 +86,15 @@ export default function DailyReportTables({
                   Purchase No.
                 </th>
 
+                <th
+  style={{
+    ...headerStyle,
+    width: 180,
+  }}
+>
+  Supplier Name
+</th>
+
                 <th style={headerStyle}>Stock Item</th>
 
                 <th
@@ -122,7 +131,7 @@ export default function DailyReportTables({
             <tbody>
               {purchases.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted py-4">
+                  <td colSpan="7" className="text-center text-muted py-4">
                     No purchase entries added.
                   </td>
                 </tr>
@@ -146,6 +155,12 @@ export default function DailyReportTables({
                             >
                               {entry.purchaseNo}
                             </td>
+
+                            <td
+  rowSpan={entry.items.length}
+>
+  {entry.supplierName || "-"}
+</td>
                           </>
                         )}
 
@@ -181,7 +196,7 @@ export default function DailyReportTables({
                     ))}
 
                     <tr style={totalStyle} className="fw-semibold">
-                      <td colSpan="6" className="text-end py-2">
+                      <td colSpan="7" className="text-end py-2">
                         <span className="text-muted me-2">Total Qty:</span>
 
                         {totalQty(entry.items)}

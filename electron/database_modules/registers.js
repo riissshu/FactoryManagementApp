@@ -90,6 +90,7 @@ function createRegistersModule(db) {
         SELECT
           pe.id AS purchase_id,
           dr.report_date,
+            dr.supplier_name,
           pe.purchase_no,
           pi.id AS item_id,
           pi.stock_item_id,

@@ -56,6 +56,7 @@ export default function PurchaseRegister({ onClose }) {
       source_id: purchase.purchase_id,
       data: {
         purchaseNo: purchase.purchase_no,
+          supplierName: purchase.supplier_name,
           sourceReference: purchase.purchase_no,
   sourceDate: purchase.report_date,
         items: purchase.items.map((item) => ({
@@ -99,6 +100,7 @@ export default function PurchaseRegister({ onClose }) {
         purchase_id: purchase.purchase_id,
         report_date: purchase.report_date,
         purchase_no: purchase.purchase_no,
+         supplier_name: purchase.supplier_name,
         items: [purchase],
       });
     }
@@ -168,6 +170,9 @@ export default function PurchaseRegister({ onClose }) {
                     <th style={{ width: "160px" }}>
                       Purchase No.
                     </th>
+                    <th style={{ width: "180px" }}>
+  Supplier Name
+</th>
 
                     <th>Item</th>
 
@@ -199,6 +204,9 @@ export default function PurchaseRegister({ onClose }) {
                             >
                               {purchase.purchase_no}
                             </td>
+                            <td rowSpan={purchase.items.length}>
+  {purchase.supplier_name || "-"}
+</td>
                           </>
                         )}
 
