@@ -1102,6 +1102,55 @@ ipcMain.handle(
   }
 );
 
+ipcMain.handle(
+  "template:downloadStockItems",
+  async () => {
+    const templatePath = path.join(
+      __dirname,
+      "templates",
+      "stock_items_template.xlsx"
+    );
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: "Save Stock Items Template",
+      defaultPath: "stock_items_template.xlsx",
+      filters: [
+        {
+          name: "Excel Workbook",
+          extensions: ["xlsx"],
+        },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return {
+        canceled: true,
+      };
+    }
+
+    try {
+      const templateBuffer = fs.readFileSync(templatePath);
+
+      fs.writeFileSync(result.filePath, templateBuffer);
+
+      return {
+        path: result.filePath,
+      };
+    } catch (error) {
+      console.error(
+        "Stock item template export failed:",
+        error
+      );
+
+      return {
+        error:
+          error?.message ||
+          "Unable to save the stock item template.",
+      };
+    }
+  }
+);
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     temporaryClipboard = [];

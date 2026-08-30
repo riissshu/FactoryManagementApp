@@ -83,6 +83,8 @@ deleteBOM: (bomId) =>
     ipcRenderer.invoke("stock:bulkUpdate", items),
   bulkCreateStockItems: (items) =>
     ipcRenderer.invoke("stock:bulkCreate", items),
+  downloadStockItemTemplate: () =>
+    ipcRenderer.invoke("template:downloadStockItems"),
 
   getPurchaseRegister: () =>
   ipcRenderer.invoke("purchaseRegister:get"),

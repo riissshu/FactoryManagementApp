@@ -8,24 +8,17 @@ export default function ImportStockItems({ onClose }) {
   const [existingItems, setExistingItems] = useState([]);
   const [creating, setCreating] = useState(false);
 
-  const downloadStockItemTemplate = () => {
-    const headers = [
-      "Item Name",
-      "Group",
-      "Unit",
-      "Alternate Unit",
-      "Conversion",
-      "Opening Stock",
-      "Low Qty Alert",
-    ];
-
-    const worksheet = XLSX.utils.aoa_to_sheet([headers]);
-
-    const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Stock Items");
-
-    XLSX.writeFile(workbook, "stock_items_template.xlsx");
+  const downloadStockItemTemplate = async () => {
+    try {
+      const result = await api.downloadStockItemTemplate();
+      if (result?.error) {
+        alert(result.error);
+      }
+      // result.canceled means the user closed the Save dialog — nothing to do.
+    } catch (error) {
+      console.error("Template download failed:", error);
+      alert("Unable to download the template.");
+    }
   };
 
   const handleExcelFile = (event) => {
@@ -51,6 +44,7 @@ export default function ImportStockItems({ onClose }) {
 
       const rows = XLSX.utils.sheet_to_json(worksheet, {
         defval: "",
+        range: "A1:G1000", // keep this sheet's reference lists (col J) out of the parsed rows
       });
 
       const nonEmptyRows = rows.filter((row) =>

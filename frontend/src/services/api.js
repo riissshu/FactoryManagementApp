@@ -130,6 +130,9 @@ saveStockItem(item) {
   bulkCreateStockItems(items) {
     return window.api.bulkCreateStockItems(items);
   },
+  downloadStockItemTemplate() {
+    return window.api.downloadStockItemTemplate();
+  },
 
 
     getPurchaseRegister() {
