@@ -111,16 +111,19 @@ export default function StockItemList({ onClose, onEditItem }) {
       <div className="d-flex justify-content-between align-items-center pt-2 pb-2">
         <h2 className="mb-0">Stock Item List</h2>
         <div>
-        <button onClick={onClose} className="btn btn-outline-secondary me-2">
-          Close
-        </button>
+          <button onClick={onClose} className="btn btn-outline-secondary me-2">
+            Close
+          </button>
 
-        <button onClick={exportPdf} className="btn btn-outline-primary me-2">
-          Export PDF
-        </button>
-        <button onClick={exportExcel} className="btn btn-outline-success me-2">
-          Export Excel
-        </button>
+          <button onClick={exportPdf} className="btn btn-outline-primary me-2">
+            Export PDF
+          </button>
+          <button
+            onClick={exportExcel}
+            className="btn btn-outline-success me-2"
+          >
+            Export Excel
+          </button>
         </div>
       </div>
 
@@ -223,7 +226,9 @@ export default function StockItemList({ onClose, onEditItem }) {
                         </div>
                       </td>
                       <td>
-                        {row.low_qty_alert || "-"} {row.unit}
+                        {row.low_qty_alert
+                          ? `${row.low_qty_alert} ${row.unit}`
+                          : "-"}
                       </td>
                     </tr>
                   ))}
