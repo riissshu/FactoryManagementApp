@@ -292,7 +292,7 @@ export default function DailyReportTables({
             <tbody>
               {gatePasses.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted py-4">
+                  <td colSpan="7" className="text-center text-muted py-4">
                     No dispatch entries added.
                   </td>
                 </tr>
@@ -354,7 +354,7 @@ export default function DailyReportTables({
                     ))}
 
                     <tr style={totalStyle} className="fw-semibold">
-                      <td colSpan="6" className="text-end py-2">
+                      <td colSpan="7" className="text-end py-2">
                         <span className="text-muted me-2">Total Qty:</span>
 
                         {totalQty(entry.items)}
