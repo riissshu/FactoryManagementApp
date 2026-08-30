@@ -58,36 +58,34 @@ export const exportWeeklyReportPdf = ({
         difference = physical - Number(row.balance_qty);
 
         if (difference === 0) {
-          difference = "Matched";
-        } else if (difference < 0) {
-          difference = `Short ${Math.abs(difference)}`;
-        } else {
-          difference = `Excess ${difference}`;
-        }
+  difference = "Matched";
+} else if (difference < 0) {
+  difference = `Short ${Math.abs(difference)} ${row.unit}`;
+} else {
+  difference = `Excess ${difference} ${row.unit}`;
+}
       }
 
       return [
-        index + 1,
-        row.item_name,
-        row.unit,
-        row.balance_qty,
-        physical,
-        difference,
-      ];
+  index + 1,
+  row.item_name,
+  `${row.balance_qty} ${row.unit}`,
+  physical !== "" ? `${physical} ${row.unit}` : "",
+  difference,
+];
     });
 
     autoTable(doc, {
       startY: currentY + 2,
-      head: [
-        [
-          "#",
-          "Stock Item",
-          "Unit",
-          "Available Balance",
-          "Physical Stock",
-          "Difference",
-        ],
-      ],
+    head: [
+  [
+    "#",
+    "Stock Item",
+    "Available Balance",
+    "Physical Stock",
+    "Difference",
+  ],
+],
       body: tableData,
       theme: "grid",
       styles: {
@@ -97,15 +95,15 @@ export const exportWeeklyReportPdf = ({
       },
       headStyles: {
         fontStyle: "bold",
+        fillColor: [81, 85, 207],
       },
-      columnStyles: {
-        0: { cellWidth: 10, halign: "center" },
-        1: { cellWidth: 55 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 32, halign: "right" },
-        4: { cellWidth: 32, halign: "right" },
-        5: { cellWidth: 35, halign: "center" },
-      },
+   columnStyles: {
+  0: { cellWidth: 10, halign: "center" },
+  1: { cellWidth: 60 },
+  2: { cellWidth: 37, halign: "right" },
+  3: { cellWidth: 37, halign: "right" },
+  4: { cellWidth: 38, halign: "center" },
+},
       margin: {
         left: 14,
         right: 14,

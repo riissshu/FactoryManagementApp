@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
-import { exportTablePdf, exportTableExcel } from "../utils/exportUtils";
+import { exportTablePdf, exportTableExcel } from "../utils/exportStockItemList";
 
 export default function StockItemList({ onClose, onEditItem }) {
   const [items, setItems] = useState([]);

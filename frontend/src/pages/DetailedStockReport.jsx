@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../services/api";
-import { exportTablePdf, exportTableExcel } from "../utils/exportUtils";
+import {
+  exportDetailedStockPDF,
+  exportDetailedStockExcel
+} from "../utils/exportDetailedStockReport";
+
 
 export default function DetailedStockReport({
   stockItemId,
@@ -167,80 +171,26 @@ export default function DetailedStockReport({
     });
   };
 
-  // -----------------------------------------
-  // PDF EXPORT
-  // -----------------------------------------
 
-  const exportPdf = async () => {
-    const settings = await api.getSettings();
+ const exportPdf = () => {
+  exportDetailedStockPDF({
+    item,
+    rows: displayRows,
+    filename: `${
+      item?.item_name || "stock-item"
+    }-detailed-stock-report.pdf`,
+  });
+};
 
-    await exportTablePdf({
-      title: "Detailed Stock Report",
-      company: settings?.factory_name,
-      subtitle: item?.item_name || "",
-      filename: `${
-        item?.item_name || "stock-item"
-      }-detailed-stock-report.pdf`,
-      headers: [
-        "Date",
-        "Particulars",
-        "Reference",
-        "Inward",
-        "Outward",
-        "Balance",
-        "Unit",
-        "Reason / Remarks",
-      ],
-      rows: displayRows.map((row) => [
-        row.transaction_date
-          ? formatDate(row.transaction_date)
-          : "Opening",
-        row.transaction_type,
-        row.reference_no || "-",
-        row.inward_qty || "",
-        row.outward_qty || "",
-        row.balance_qty,
-        row.unit || item?.unit || "",
-        row.reason || row.remarks || "-",
-      ]),
-      numericCols: [3, 4, 5],
-    });
-  };
-
-  // -----------------------------------------
-  // EXCEL EXPORT
-  // -----------------------------------------
-
-  const exportExcel = () => {
-    exportTableExcel({
-      filename: `${
-        item?.item_name || "stock-item"
-      }-detailed-stock-report.xlsx`,
-      sheetName: "Detailed Stock Report",
-      headers: [
-        "Date",
-        "Particulars",
-        "Reference",
-        "Inward",
-        "Outward",
-        "Balance",
-        "Unit",
-        "Reason / Remarks",
-      ],
-      rows: displayRows.map((row) => [
-        row.transaction_date
-          ? formatDate(row.transaction_date)
-          : "Opening",
-        row.transaction_type,
-        row.reference_no || "-",
-        row.inward_qty || "",
-        row.outward_qty || "",
-        row.balance_qty,
-        row.unit || item?.unit || "",
-        row.reason || row.remarks || "-",
-      ]),
-    });
-  };
+const exportExcel = () => {
+  exportDetailedStockExcel({
+    item,
+    rows: displayRows,
+    filename: `${
+      item?.item_name || "stock-item"
+    }-detailed-stock-report.xlsx`,
+  });
+};
 
   // -----------------------------------------
   // LOADING

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
+import { exportExcel, exportPDF } from "../utils/exportStockAdjustments";
 
 export default function StockAdjustmentRegister({ onClose }) {
   const [adjustments, setAdjustments] = useState([]);
@@ -22,9 +23,7 @@ export default function StockAdjustmentRegister({ onClose }) {
 
       setAdjustments(result || []);
     } catch (err) {
-      setError(
-        err?.message || "Unable to load stock adjustments."
-      );
+      setError(err?.message || "Unable to load stock adjustments.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +49,7 @@ export default function StockAdjustmentRegister({ onClose }) {
     });
 
     return Object.values(groups).sort(
-      (a, b) => b.adjustment_id - a.adjustment_id
+      (a, b) => b.adjustment_id - a.adjustment_id,
     );
   }, [adjustments]);
 
@@ -79,9 +78,7 @@ export default function StockAdjustmentRegister({ onClose }) {
   const formatQty = (item) => {
     const qty = Number(item.qty) || 0;
 
-    return item.adjustment_type === "subtract"
-      ? `−${qty}`
-      : `+${qty}`;
+    return item.adjustment_type === "subtract" ? `−${qty}` : `+${qty}`;
   };
 
   return (
@@ -89,9 +86,7 @@ export default function StockAdjustmentRegister({ onClose }) {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h4 className="mb-1">
-            Stock Adjustment Register
-          </h4>
+          <h4 className="mb-1">Stock Adjustment Register</h4>
 
           <small className="text-muted">
             View all stock adjustment entries
@@ -106,6 +101,24 @@ export default function StockAdjustmentRegister({ onClose }) {
             disabled={loading}
           >
             Refresh
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-outline-danger"
+            onClick={() => exportPDF(filteredAdjustments, fromDate, toDate)}
+            disabled={loading || filteredAdjustments.length === 0}
+          >
+            Export PDF
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-outline-success"
+            onClick={() => exportExcel(filteredAdjustments)}
+            disabled={loading || filteredAdjustments.length === 0}
+          >
+            Export Excel
           </button>
 
           {onClose && (
@@ -125,32 +138,24 @@ export default function StockAdjustmentRegister({ onClose }) {
         <div className="card-body">
           <div className="row g-3 align-items-end">
             <div className="col-md-3">
-              <label className="form-label fw-semibold">
-                From Date
-              </label>
+              <label className="form-label fw-semibold">From Date</label>
 
               <input
                 type="date"
                 className="form-control"
                 value={fromDate}
-                onChange={(e) =>
-                  setFromDate(e.target.value)
-                }
+                onChange={(e) => setFromDate(e.target.value)}
               />
             </div>
 
             <div className="col-md-3">
-              <label className="form-label fw-semibold">
-                To Date
-              </label>
+              <label className="form-label fw-semibold">To Date</label>
 
               <input
                 type="date"
                 className="form-control"
                 value={toDate}
-                onChange={(e) =>
-                  setToDate(e.target.value)
-                }
+                onChange={(e) => setToDate(e.target.value)}
               />
             </div>
 
@@ -167,15 +172,8 @@ export default function StockAdjustmentRegister({ onClose }) {
 
             <div className="col-md-auto ms-md-auto">
               <span className="text-muted">
-                Showing{" "}
-                <strong>
-                  {filteredAdjustments.length}
-                </strong>{" "}
-                of{" "}
-                <strong>
-                  {groupedAdjustments.length}
-                </strong>{" "}
-                entries
+                Showing <strong>{filteredAdjustments.length}</strong> of{" "}
+                <strong>{groupedAdjustments.length}</strong> entries
               </span>
             </div>
           </div>
@@ -189,11 +187,7 @@ export default function StockAdjustmentRegister({ onClose }) {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="alert alert-danger py-2">
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert-danger py-2">{error}</div>}
 
       {/* Loading */}
       {loading ? (
@@ -202,9 +196,7 @@ export default function StockAdjustmentRegister({ onClose }) {
             Loading adjustments...
           </div>
         </div>
-      ) : fromDate &&
-        toDate &&
-        fromDate > toDate ? (
+      ) : fromDate && toDate && fromDate > toDate ? (
         <div className="card shadow-sm">
           <div className="card-body text-center text-muted py-4">
             Please select a valid date range.
@@ -214,32 +206,23 @@ export default function StockAdjustmentRegister({ onClose }) {
         <div className="card shadow-sm">
           <div className="card-body text-center text-muted py-4">
             No stock adjustment entries found
-            {fromDate || toDate
-              ? " for the selected date range."
-              : "."}
+            {fromDate || toDate ? " for the selected date range." : "."}
           </div>
         </div>
       ) : (
         /* Adjustment Entries */
         <div>
           {filteredAdjustments.map((entry) => (
-            <div
-              key={entry.adjustment_id}
-              className="card shadow-sm mb-3"
-            >
+            <div key={entry.adjustment_id} className="card shadow-sm mb-3">
               {/* Entry Header */}
               <div className="card-header bg-light">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <strong>
-                      Adjustment Entry #
-                      {entry.adjustment_id}
-                    </strong>
+                    <strong>Adjustment Entry #{entry.adjustment_id}</strong>
                   </div>
 
                   <div>
-                    <strong>Date:</strong>{" "}
-                    {entry.adjustment_date}
+                    <strong>Date:</strong> {entry.adjustment_date}
                   </div>
                 </div>
               </div>
@@ -250,26 +233,15 @@ export default function StockAdjustmentRegister({ onClose }) {
                   <table className="table table-bordered align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th style={{ width: "15%" }}>
-                          Adjustment Type
-                        </th>
+                        <th style={{ width: "15%" }}>Adjustment Type</th>
 
-                        <th style={{ width: "30%" }}>
-                          Stock Item
-                        </th>
+                        <th style={{ width: "30%" }}>Stock Item</th>
 
-                        <th
-                          style={{ width: "15%" }}
-                          className="text-end"
-                        >
+                        <th style={{ width: "15%" }} className="text-end">
                           Qty
                         </th>
 
-                    
-
-                        <th style={{ width: "28%" }}>
-                          Reason
-                        </th>
+                        <th style={{ width: "28%" }}>Reason</th>
                       </tr>
                     </thead>
 
@@ -277,8 +249,7 @@ export default function StockAdjustmentRegister({ onClose }) {
                       {entry.items.map((item) => (
                         <tr key={item.item_id}>
                           <td>
-                            {item.adjustment_type ===
-                            "subtract" ? (
+                            {item.adjustment_type === "subtract" ? (
                               <span className="text-danger fw-semibold">
                                 Subtract
                               </span>
@@ -292,14 +263,10 @@ export default function StockAdjustmentRegister({ onClose }) {
                           <td>{item.item_name}</td>
 
                           <td className="text-end fw-semibold">
-                            {formatQty(item)}{" "}{item.unit}
+                            {formatQty(item)} {item.unit}
                           </td>
 
-                      
-
-                          <td>
-                            {item.reason || "—"}
-                          </td>
+                          <td>{item.reason || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -310,8 +277,7 @@ export default function StockAdjustmentRegister({ onClose }) {
               {/* Overall Remarks */}
               {entry.remarks && (
                 <div className="card-footer">
-                  <strong>Remarks:</strong>{" "}
-                  {entry.remarks}
+                  <strong>Remarks:</strong> {entry.remarks}
                 </div>
               )}
             </div>
