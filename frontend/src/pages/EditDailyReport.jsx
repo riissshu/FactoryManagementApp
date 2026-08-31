@@ -270,33 +270,6 @@ export default function EditDailyReport({
       return;
     }
 
-    const mismatch =
-      data.manufactured.find(
-        (entry) =>
-          Math.abs(
-            entry.consumption.reduce(
-              (sum, item) =>
-                sum +
-                (Number(item.qty) || 0),
-              0
-            ) -
-              entry.production.reduce(
-                (sum, item) =>
-                  sum +
-                  (Number(item.qty) || 0),
-                0
-              )
-          ) > 0.0001
-      );
-
-    if (mismatch) {
-      alert(
-        "Consumption and production quantities must match. Add the difference as a Material loss row under Production before saving."
-      );
-
-      return;
-    }
-
     try {
       setSaving(true);
 
