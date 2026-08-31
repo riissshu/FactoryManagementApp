@@ -403,14 +403,6 @@ export default function ViewEditStock({ itemId, onClose }) {
     // NO TRANSACTION
     // --------------------------------------------
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${item.itemName}"?\n\n` +
-        `This action cannot be undone.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
 
     await api.deleteStockItem(item.id);
 
@@ -554,9 +546,7 @@ const handleMakeInactive = async () => {
 
     if (onClose) {
       onClose();
-    } else {
-      window.history.back();
-    }
+    } 
   };
 
   // --------------------------------------------------

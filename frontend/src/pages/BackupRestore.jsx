@@ -4,6 +4,7 @@ import api from "../services/api";
 export default function BackupRestore() {
   const [backupDir, setBackupDir] = useState("");
   const [message, setMessage] = useState("");
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
 
   useEffect(() => {
     loadFolder();
@@ -45,10 +46,13 @@ export default function BackupRestore() {
     }
   };
 
+  const confirmRestore = () => {
+  setShowRestoreModal(false);
+  restore();
+};
+
   const restore = async () => {
-    if (!window.confirm("Restore a backup? The selected company will replace the company with the same name in the Company Directory, if it exists.")) {
-      return;
-    }
+    
 
     try {
       const result = await api.restoreBackup();
@@ -101,11 +105,57 @@ export default function BackupRestore() {
                 Restore Backup
               </h5>
               <p className="text-muted">Select a Factory Book backup. The restored company is placed in the Company Directory.</p>
-              <button className="btn btn-danger" onClick={restore}>Restore Backup</button>
+              <button className="btn btn-danger"   onClick={() => setShowRestoreModal(true)}>Restore Backup</button>
             </div>
           </div>
         </div>
       </div>
+      {showRestoreModal && (
+  <div
+    className="modal fade show"
+    style={{ display: "block" }}
+    tabIndex="-1"
+    role="dialog"
+  >
+    <div className="modal-dialog modal-dialog-centered" role="document">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Restore Backup</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowRestoreModal(false)}
+          />
+        </div>
+
+        <div className="modal-body">
+          Restore a backup? The selected company will replace the company
+          with the same name in the Company Directory, if it exists.
+        </div>
+
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowRestoreModal(false)}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={confirmRestore}
+          >
+            Restore
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}    {showRestoreModal && (
+  <div className="modal-backdrop fade show"></div>
+)}
     </div>
   );
 }

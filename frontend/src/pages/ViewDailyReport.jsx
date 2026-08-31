@@ -195,10 +195,6 @@ export default function ViewDailyReport({
       return;
     }
 
-    if (!window.confirm("Delete this daily report?")) {
-      return;
-    }
-
     try {
       await api.deleteDailyReport(reportId);
 

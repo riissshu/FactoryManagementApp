@@ -197,13 +197,7 @@ export default function EditDailyReport({
   // --------------------------------------------------
 
   const deletePurchase = (index) => {
-    if (
-      !window.confirm(
-        "Delete this purchase entry?"
-      )
-    ) {
-      return;
-    }
+   
 
     setData((prev) => ({
       ...prev,
@@ -218,13 +212,7 @@ export default function EditDailyReport({
   // --------------------------------------------------
 
   const deleteDispatch = (index) => {
-    if (
-      !window.confirm(
-        "Delete this dispatch entry?"
-      )
-    ) {
-      return;
-    }
+    
 
     setData((prev) => ({
       ...prev,
@@ -239,13 +227,7 @@ export default function EditDailyReport({
   // --------------------------------------------------
 
   const deleteManufacturing = (index) => {
-    if (
-      !window.confirm(
-        "Delete this manufacturing entry?"
-      )
-    ) {
-      return;
-    }
+    
 
     setData((prev) => ({
       ...prev,
