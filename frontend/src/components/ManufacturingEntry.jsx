@@ -602,12 +602,6 @@ export default function ManufacturingEntry({
 
           <div className="modal-footer">
 
-                  
-
-            <button type="button" className="btn btn-light" onClick={onClose}>
-              Cancel
-            </button>
-
             <button type="button" className="btn btn-primary" onClick={save}>
               Save Manufacturing
             </button>
