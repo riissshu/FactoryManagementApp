@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../services/api";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { exportWeeklyReportPdf } from "../utils/exportWeeklyReportPdf";
+import { exportWeeklyReportExcel } from "../utils/exportWeeklyReportExcel";
 
 export default function WeeklyReport() {
   const [date, setDate] = useState("");
@@ -116,6 +117,25 @@ export default function WeeklyReport() {
   }
 };
 
+
+const handleExcel = () => {
+  const report = {
+    report_date: date,
+    items: rows.map((row) => ({
+      stock_item_id: row.id,
+      item_name: row.item_name,
+      stock_group: row.stock_group,
+      available_balance: row.balance_qty,
+      physical_stock: physicalStock[row.id] ?? "",
+      unit: row.unit,
+      alternate_unit: row.alternate_unit,
+      conversion: row.conversion,
+    })),
+  };
+
+  exportWeeklyReportExcel(report);
+};
+
   return (
     <div className="container-fluid">
       <div className="d-flex justify-content-between align-items-start mb-2">
@@ -181,6 +201,15 @@ export default function WeeklyReport() {
           >
             Export PDF
           </button>
+
+            <button
+  type="button"
+  className="btn btn-sm btn-outline-success"
+  onClick={handleExcel}
+>
+  Export Excel
+</button>
+
         </div>
 
         {databaseSaveMessage && (

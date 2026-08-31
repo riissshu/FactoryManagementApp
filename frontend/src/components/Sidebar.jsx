@@ -92,13 +92,14 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed, setColla
       }}
     >
  <div className="d-flex align-items-center justify-content-between p-3 border-bottom border-light border-opacity-10">
-  {!collapsed && factoryLogo && (
-    <button
-      type="button"
-      className="btn border-0 p-0"
-      onClick={() => setActiveMenu("factoryprofile")}
-      title="Factory Profile"
-    >
+  {!collapsed && (
+  <button
+    type="button"
+    className="btn border-0 p-0"
+    onClick={() => setActiveMenu("factoryprofile")}
+    title="Factory Profile"
+  >
+    {factoryLogo ? (
       <img
         src={factoryLogo}
         alt="Factory Logo"
@@ -109,8 +110,20 @@ export default function Sidebar({ activeMenu, setActiveMenu, collapsed, setColla
           objectFit: "contain",
         }}
       />
-    </button>
-  )}
+    ) : (
+      <div
+        className="rounded-circle border d-flex align-items-center justify-content-center"
+        style={{
+          width: "42px",
+          height: "42px",
+          backgroundColor: "rgba(255,255,255,0.15)",
+        }}
+      >
+        <i className="bi bi-gear"></i>
+      </div>
+    )}
+  </button>
+)}
 
   <button
     className="btn btn-outline-light btn-sm"

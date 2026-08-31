@@ -503,7 +503,7 @@ const exportExcel = () => {
                     </td>
 
                     <td className="text-end fw-semibold">
-                       {Number(row.balance_qty) > 0
+                       {Number(row.balance_qty)
     ? `${formatQty(row.balance_qty)} ${row.unit}`
     : "-"}
                       
