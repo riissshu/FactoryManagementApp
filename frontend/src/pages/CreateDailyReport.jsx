@@ -176,6 +176,7 @@ export default function DailyReportForm({
     useState(false);
 
   const dateInputRef = useRef(null);
+  const saveMessageRef = useRef(null);
 
   const [modal, setModal] = useState(null);
 
@@ -187,6 +188,17 @@ export default function DailyReportForm({
 
   const [editingManufacturing, setEditingManufacturing] =
     useState(null);
+
+
+  useEffect(() => {
+  if (saveMessage && saveMessageRef.current) {
+    saveMessageRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+}, [saveMessage]);
+
 
   // Load stock items
   useEffect(() => {
@@ -537,6 +549,15 @@ setShowPreview(false);
           </div>
         </div>
 
+        {saveMessage && (
+  <div
+    ref={saveMessageRef}
+    className="alert alert-success"
+  >
+    {saveMessage}
+  </div>
+)}
+
         <div style={{ width: 190 }}>
           <label className="form-label fw-semibold">
             Report Date
@@ -567,12 +588,6 @@ setShowPreview(false);
               Checking date...
             </div>
           )}
-
-          {saveMessage && (
-  <div className="alert alert-success">
-    {saveMessage}
-  </div>
-)}
 
         </div>
       </div>
