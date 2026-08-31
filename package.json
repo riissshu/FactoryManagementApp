@@ -8,6 +8,7 @@
     "dev:react": "npm --prefix frontend run dev",
     "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
     "build": "npm --prefix frontend run build",
+    "dist": "npm run build && electron-builder",
     "start": "electron ."
   },
   "repository": {
@@ -24,12 +25,36 @@
   "homepage": "https://github.com/riissshu/FACTORY-STOCK-APP#readme",
   "dependencies": {
     "better-sqlite3": "^13.0.2",
+    "electron-updater": "^6.8.9",
     "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "concurrently": "^10.0.4",
     "cross-env": "^10.1.0",
     "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "com.factorybook.app",
+    "productName": "FactoryBook",
+    "artifactName": "FactoryBook-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "riissshu",
+      "repo": "FactoryManagementApp"
+    }
   }
 }

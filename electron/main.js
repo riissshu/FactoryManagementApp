@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -299,6 +300,30 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    if (!isDev) {
+  autoUpdater.on("checking-for-update", () => {
+    console.log("Checking for update...");
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    console.log("Update available:", info.version);
+  });
+
+  autoUpdater.on("update-not-available", (info) => {
+    console.log("No update available:", info.version);
+  });
+
+  autoUpdater.on("error", (error) => {
+    console.error("Auto update error:", error);
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("Update downloaded:", info.version);
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
+  
   const legacy = config.getDbPath();
   if (legacy && fs.existsSync(legacy) && hasFactoryTables(legacy)) {
     migrateConfiguredLegacyDatabase(legacy);
