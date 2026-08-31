@@ -24,7 +24,6 @@ const COLORS = {
   border: [185, 185, 185],
 
   text: [35, 35, 35],
-
 };
 
 /* =========================================================
@@ -33,49 +32,30 @@ const COLORS = {
 
 const getStockItem = (stockItems, itemId) => {
   return stockItems.find(
-    (item) =>
-      String(item.id) === String(itemId)
+    (item) => String(item.id) === String(itemId)
   );
 };
 
-const getItemName = (
-  stockItems,
-  itemId
-) => {
+const getItemName = (stockItems, itemId) => {
   return (
-    getStockItem(
-      stockItems,
-      itemId
-    )?.item_name || ""
+    getStockItem(stockItems, itemId)?.item_name || ""
   );
 };
 
-const getItemUnit = (
-  stockItems,
-  itemId
-) => {
+const getItemUnit = (stockItems, itemId) => {
   return (
-    getStockItem(
-      stockItems,
-      itemId
-    )?.unit || ""
+    getStockItem(stockItems, itemId)?.unit || ""
   );
 };
 
-const totalQty = (
-  items = []
-) => {
+const totalQty = (items = []) => {
   return items.reduce(
-    (sum, item) =>
-      sum +
-      (Number(item.qty) || 0),
+    (sum, item) => sum + (Number(item.qty) || 0),
     0
   );
 };
 
-const formatQty = (
-  value
-) => {
+const formatQty = (value) => {
   if (
     value === "" ||
     value === null ||
@@ -87,7 +67,41 @@ const formatQty = (
   return Number(value).toString();
 };
 
+const formatUnitQty = (unit, qty) => {
+  const formattedQty = formatQty(qty);
 
+  if (!formattedQty) {
+    return unit || "";
+  }
+
+  if (!unit) {
+    return formattedQty;
+  }
+
+  return `${formattedQty} ${unit}`;
+};
+
+/* =========================================================
+   PAGE POSITION HELPER
+========================================================= */
+
+const ensureSpace = (doc, y, requiredHeight = 25) => {
+  const pageHeight =
+    doc.internal.pageSize.getHeight();
+
+  const bottomMargin = 15;
+
+  if (
+    y + requiredHeight >
+    pageHeight - bottomMargin
+  ) {
+    doc.addPage();
+
+    return 20;
+  }
+
+  return y;
+};
 
 /* =========================================================
    REPORT HEADER
@@ -101,18 +115,10 @@ const addReportHeader = (
   const pageWidth =
     doc.internal.pageSize.getWidth();
 
-  doc.setFont(
-    "helvetica",
-    "bold"
-  );
+  doc.setFont("helvetica", "bold");
 
-  doc.setTextColor(
-    ...COLORS.text
-  );
+  doc.setTextColor(...COLORS.text);
 
-  /*
-   * Factory name
-   */
   doc.setFontSize(16);
 
   doc.text(
@@ -124,9 +130,6 @@ const addReportHeader = (
     }
   );
 
-  /*
-   * Daily Report
-   */
   doc.setFontSize(12);
 
   doc.text(
@@ -138,9 +141,6 @@ const addReportHeader = (
     }
   );
 
-  /*
-   * Date
-   */
   doc.setFont(
     "helvetica",
     "normal"
@@ -164,27 +164,12 @@ const addReportHeader = (
    SECTION HEADER
 ========================================================= */
 
-const addSectionHeader = (
-  doc,
-  title,
-  y
-) => {
-  doc.setFont(
-    "helvetica",
-    "bold"
-  );
-
+const addSectionHeader = (doc, title, y) => {
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
+  doc.setTextColor(...COLORS.text);
 
-  doc.setTextColor(
-    ...COLORS.text
-  );
-
-  doc.text(
-    title,
-    14,
-    y
-  );
+  doc.text(title, 14, y);
 
   return y + 5;
 };
@@ -199,22 +184,54 @@ const addTransactionSection = ({
   documents,
   stockItems,
   field,
+  partyField,
+  partyHeader,
   numberHeader,
   startY,
   sectionColor,
 }) => {
-  let y = addSectionHeader(
-    doc,
-    title,
-    startY
-  );
+  
+  let y = startY;
 
-  /*
-   * No entries
-   */
-  if (
-    documents.length === 0
-  ) {
+/* -------------------------------------------------------
+   KEEP SECTION HEADER WITH FIRST TABLE
+------------------------------------------------------- */
+
+let requiredHeight = 25;
+
+if (documents.length > 0) {
+  const firstItems =
+    documents[0]?.items || [];
+
+  requiredHeight =
+    25 +
+    firstItems.length * 8 +
+    20;
+}
+
+y = ensureSpace(
+  doc,
+  y,
+  requiredHeight
+);
+
+y = addSectionHeader(
+  doc,
+  title,
+  y
+);
+
+  /* -------------------------------------------------------
+     NO ENTRIES
+  ------------------------------------------------------- */
+
+  if (documents.length === 0) {
+    y = ensureSpace(
+      doc,
+      y,
+      20
+    );
+
     autoTable(doc, {
       startY: y,
 
@@ -229,18 +246,12 @@ const addTransactionSection = ({
       theme: "grid",
 
       styles: {
-        font:
-          "helvetica",
-
+        font: "helvetica",
         fontSize: 8,
-
         cellPadding: 2.2,
-
         lineColor:
           COLORS.border,
-
         lineWidth: 0.3,
-
         textColor:
           COLORS.text,
       },
@@ -248,15 +259,13 @@ const addTransactionSection = ({
       headStyles: {
         fillColor:
           sectionColor.header,
-
         textColor:
           COLORS.text,
-
         fontStyle:
           "bold",
       },
 
-      tableWidth: 216,
+      tableWidth: 269,
 
       margin: {
         left: 14,
@@ -264,29 +273,43 @@ const addTransactionSection = ({
       },
     });
 
-   
+    return (
+      doc.lastAutoTable.finalY +
+      10
+    );
   }
 
-  /*
-   * Each document gets
-   * its own table.
-   */
+  /* -------------------------------------------------------
+     DOCUMENTS
+  ------------------------------------------------------- */
+
   documents.forEach(
     (document) => {
       const items =
         document.items || [];
 
+      /*
+       * Make sure the table has
+       * enough space on the page.
+       */
+      y = ensureSpace(
+        doc,
+        y,
+        35
+      );
+
       const body = [];
 
-      /*
-       * Item rows
-       */
       items.forEach(
         (item, index) => {
           body.push([
             index === 0
-              ? document[field] ||
-                ""
+              ? document[field] || ""
+              : "",
+
+            index === 0
+              ? document[partyField] ||
+                "-"
               : "",
 
             getItemName(
@@ -294,20 +317,18 @@ const addTransactionSection = ({
               item.item
             ),
 
-            getItemUnit(
-              stockItems,
-              item.item
-            ),
-
             {
               content:
-                formatQty(
+                formatUnitQty(
+                  getItemUnit(
+                    stockItems,
+                    item.item
+                  ),
                   item.qty
                 ),
 
               styles: {
-                halign:
-                  "right",
+                halign: "right",
               },
             },
           ]);
@@ -326,9 +347,7 @@ const addTransactionSection = ({
             "Total Qty:",
 
           styles: {
-            halign:
-              "right",
-
+            halign: "right",
             fontStyle:
               "bold",
           },
@@ -341,9 +360,7 @@ const addTransactionSection = ({
             ),
 
           styles: {
-            halign:
-              "right",
-
+            halign: "right",
             fontStyle:
               "bold",
           },
@@ -353,82 +370,66 @@ const addTransactionSection = ({
       autoTable(doc, {
         startY: y,
 
-        head: [[
-          numberHeader,
-          "Stock Item",
-          "Unit",
-          "Quantity",
-        ]],
+        head: [
+          [
+            numberHeader,
+            partyHeader,
+            "Stock Item",
+            "Unit / Quantity",
+          ],
+        ],
 
         body,
 
         theme: "grid",
 
         styles: {
-          font:
-            "helvetica",
-
+          font: "helvetica",
           fontSize: 8,
-
           cellPadding: 2.2,
-
           lineColor:
             COLORS.border,
-
           lineWidth: 0.3,
-
           textColor:
             COLORS.text,
-
-          valign:
-            "middle",
+          valign: "middle",
         },
 
         headStyles: {
           fillColor:
             sectionColor.header,
-
           textColor:
             COLORS.text,
-
           fontStyle:
             "bold",
-
           fontSize: 8.2,
-
-          halign:
-            "left",
+          halign: "left",
         },
 
-        tableWidth: 216,
+        tableWidth: 269,
 
         columnStyles: {
           0: {
-            cellWidth: 72,
+            cellWidth: 55,
           },
 
           1: {
-            cellWidth: 40,
+            cellWidth: 65,
           },
 
           2: {
-            cellWidth: 34,
+            cellWidth: 75,
           },
 
           3: {
-            cellWidth: 70,
-
-            halign:
-              "right",
+            cellWidth: 74,
+            halign: "right",
           },
         },
 
         didParseCell: (
           data
         ) => {
-          /*
-           * Total row
-           */
           if (
             data.row.index ===
             body.length - 1
@@ -450,9 +451,6 @@ const addTransactionSection = ({
     }
   );
 
- 
- 
-
   return y;
 };
 
@@ -467,18 +465,60 @@ const addManufacturingSection = ({
   startY,
   sectionColor,
 }) => {
-  let y = addSectionHeader(
-    doc,
-    "MANUFACTURING ENTRIES",
-    startY
-  );
+ let y = startY;
 
-  /*
-   * No manufacturing
-   */
-  if (
-    manufactured.length === 0
-  ) {
+/* -------------------------------------------------------
+   KEEP MANUFACTURING HEADER WITH FIRST BATCH
+------------------------------------------------------- */
+
+let requiredHeight = 25;
+
+if (manufactured.length > 0) {
+  const firstBatch =
+    manufactured[0];
+
+  const firstConsumption =
+    firstBatch?.consumption || [];
+
+  const firstProduction =
+    firstBatch?.production || [];
+
+  const firstBatchRows =
+    Math.max(
+      firstConsumption.length,
+      firstProduction.length,
+      1
+    );
+
+  requiredHeight =
+    35 +
+    firstBatchRows * 8 +
+    20;
+}
+
+y = ensureSpace(
+  doc,
+  y,
+  requiredHeight
+);
+
+y = addSectionHeader(
+  doc,
+  "MANUFACTURING ENTRIES",
+  y
+);
+
+  /* -------------------------------------------------------
+     NO ENTRIES
+  ------------------------------------------------------- */
+
+  if (manufactured.length === 0) {
+    y = ensureSpace(
+      doc,
+      y,
+      20
+    );
+
     autoTable(doc, {
       startY: y,
 
@@ -486,25 +526,21 @@ const addManufacturingSection = ({
         ["Message"],
       ],
 
-      body: [[
-        "No manufacturing entries.",
-      ]],
+      body: [
+        [
+          "No manufacturing entries.",
+        ],
+      ],
 
       theme: "grid",
 
       styles: {
-        font:
-          "helvetica",
-
+        font: "helvetica",
         fontSize: 8,
-
         cellPadding: 2.2,
-
         lineColor:
           COLORS.border,
-
         lineWidth: 0.3,
-
         textColor:
           COLORS.text,
       },
@@ -512,10 +548,8 @@ const addManufacturingSection = ({
       headStyles: {
         fillColor:
           sectionColor.header,
-
         textColor:
           COLORS.text,
-
         fontStyle:
           "bold",
       },
@@ -526,24 +560,23 @@ const addManufacturingSection = ({
       },
     });
 
-  
+    return (
+      doc.lastAutoTable.finalY +
+      10
+    );
   }
 
-  /*
-   * Each manufacturing
-   * entry is a batch.
-   */
+  /* -------------------------------------------------------
+     MANUFACTURING BATCHES
+  ------------------------------------------------------- */
+
   manufactured.forEach(
     (batch, batchIndex) => {
-      
-
       const consumption =
-        batch.consumption ||
-        [];
+        batch.consumption || [];
 
       const production =
-        batch.production ||
-        [];
+        batch.production || [];
 
       const maxRows =
         Math.max(
@@ -552,11 +585,23 @@ const addManufacturingSection = ({
           1
         );
 
+      /*
+       * Estimate enough space for
+       * batch heading + table.
+       */
+      const estimatedHeight =
+        25 +
+        maxRows * 8 +
+        15;
+
+      y = ensureSpace(
+        doc,
+        y,
+        estimatedHeight
+      );
+
       const body = [];
 
-      /*
-       * Item rows
-       */
       for (
         let index = 0;
         index < maxRows;
@@ -576,23 +621,19 @@ const addManufacturingSection = ({
               )
             : "",
 
-          c
-            ? getItemUnit(
-                stockItems,
-                c.item
-              )
-            : "",
-
           {
             content: c
-              ? formatQty(
+              ? formatUnitQty(
+                  getItemUnit(
+                    stockItems,
+                    c.item
+                  ),
                   c.qty
                 )
               : "",
 
             styles: {
-              halign:
-                "right",
+              halign: "right",
             },
           },
 
@@ -603,23 +644,19 @@ const addManufacturingSection = ({
               )
             : "",
 
-          p
-            ? getItemUnit(
-                stockItems,
-                p.item
-              )
-            : "",
-
           {
             content: p
-              ? formatQty(
+              ? formatUnitQty(
+                  getItemUnit(
+                    stockItems,
+                    p.item
+                  ),
                   p.qty
                 )
               : "",
 
             styles: {
-              halign:
-                "right",
+              halign: "right",
             },
           },
         ]);
@@ -636,13 +673,10 @@ const addManufacturingSection = ({
           styles: {
             fontStyle:
               "bold",
-
             halign:
               "left",
           },
         },
-
-        "",
 
         {
           content:
@@ -655,7 +689,6 @@ const addManufacturingSection = ({
           styles: {
             fontStyle:
               "bold",
-
             halign:
               "right",
           },
@@ -668,13 +701,10 @@ const addManufacturingSection = ({
           styles: {
             fontStyle:
               "bold",
-
             halign:
               "left",
           },
         },
-
-        "",
 
         {
           content:
@@ -687,7 +717,6 @@ const addManufacturingSection = ({
           styles: {
             fontStyle:
               "bold",
-
             halign:
               "right",
           },
@@ -698,77 +727,74 @@ const addManufacturingSection = ({
         startY: y,
 
         head: [
-  [
-    {
-      content: `Batch ${
-        batchIndex + 1
-      }`,
+          [
+            {
+              content:
+                `Batch ${
+                  batchIndex + 1
+                }`,
 
-      colSpan: 6,
+              colSpan: 4,
 
-      styles: {
-        halign: "left",
-        fontStyle: "bold",
-        fontSize: 9,
-          fillColor: "bff5b3",
-      },
-    },
-  ],
+              styles: {
+                halign:
+                  "left",
+                fontStyle:
+                  "bold",
+                fontSize: 9,
+                fillColor:
+                  "bff5b3",
+              },
+            },
+          ],
 
-  [
-    {
-      content:
-        "CONSUMPTION",
+          [
+            {
+              content:
+                "CONSUMPTION",
 
-      colSpan: 3,
+              colSpan: 2,
 
-      styles: {
-        halign: "center",
-      },
-    },
+              styles: {
+                halign:
+                  "center",
+              },
+            },
 
-    {
-      content:
-        "PRODUCTION / LOSS",
+            {
+              content:
+                "PRODUCTION / LOSS",
 
-      colSpan: 3,
+              colSpan: 2,
 
-      styles: {
-        halign: "center",
-      },
-    },
-  ],
+              styles: {
+                halign:
+                  "center",
+              },
+            },
+          ],
 
-  [
-    "Stock Item",
-    "Unit",
-    "Quantity",
-    "Stock Item",
-    "Unit",
-    "Quantity",
-  ],
-],
+          [
+            "Stock Item",
+            "Unit / Quantity",
+            "Stock Item",
+            "Unit / Quantity",
+          ],
+        ],
 
         body,
 
         theme: "grid",
 
         styles: {
-          font:
-            "helvetica",
-
+          font: "helvetica",
           fontSize: 8,
-
           cellPadding: 2.2,
-
           lineColor:
             COLORS.border,
-
           lineWidth: 0.3,
-
           textColor:
             COLORS.text,
-
           valign:
             "middle",
         },
@@ -776,15 +802,11 @@ const addManufacturingSection = ({
         headStyles: {
           fillColor:
             sectionColor.header,
-
           textColor:
             COLORS.text,
-
           fontStyle:
             "bold",
-
           fontSize: 8,
-
           halign:
             "left",
         },
@@ -793,42 +815,27 @@ const addManufacturingSection = ({
 
         columnStyles: {
           0: {
-            cellWidth: 70,
+            cellWidth: 75,
           },
 
           1: {
-            cellWidth: 30,
+            cellWidth: 60,
+            halign: "right",
           },
 
           2: {
-            cellWidth: 34,
-
-            halign:
-              "right",
+            cellWidth: 75,
           },
 
           3: {
-            cellWidth: 70,
-          },
-
-          4: {
-            cellWidth: 30,
-          },
-
-          5: {
-            cellWidth: 35,
-
-            halign:
-              "right",
+            cellWidth: 59,
+            halign: "right",
           },
         },
 
         didParseCell: (
           data
         ) => {
-          /*
-           * Total row
-           */
           if (
             data.row.index ===
             body.length - 1
@@ -850,13 +857,8 @@ const addManufacturingSection = ({
     }
   );
 
- 
-  
-
   return y;
 };
-
-
 
 /* =========================================================
    MAIN EXPORT
@@ -872,9 +874,6 @@ export const exportDailyReportPdf =
     stockItems = [],
     filename,
   }) => {
-    /*
-     * A4 LANDSCAPE
-     */
     const doc = new jsPDF({
       orientation:
         "landscape",
@@ -884,9 +883,10 @@ export const exportDailyReportPdf =
       format: "a4",
     });
 
-    /*
-     * Report header
-     */
+    /* -----------------------------------------------------
+       REPORT HEADER
+    ----------------------------------------------------- */
+
     addReportHeader(
       doc,
       company,
@@ -894,15 +894,13 @@ export const exportDailyReportPdf =
     );
 
     /*
-     * Starting position
+     * Start below the report header.
      */
     let y = 37;
 
-    /*
-     * ==========================
-     * PURCHASE
-     * ==========================
-     */
+    /* -----------------------------------------------------
+       PURCHASE
+    ----------------------------------------------------- */
 
     y =
       addTransactionSection({
@@ -919,6 +917,12 @@ export const exportDailyReportPdf =
         field:
           "purchaseNo",
 
+        partyField:
+          "supplierName",
+
+        partyHeader:
+          "Supplier Name",
+
         numberHeader:
           "Purchase No.",
 
@@ -929,11 +933,9 @@ export const exportDailyReportPdf =
           COLORS.purchase,
       });
 
-    /*
-     * ==========================
-     * DISPATCH
-     * ==========================
-     */
+    /* -----------------------------------------------------
+       DISPATCH
+    ----------------------------------------------------- */
 
     y =
       addTransactionSection({
@@ -950,6 +952,12 @@ export const exportDailyReportPdf =
         field:
           "gatePassNo",
 
+        partyField:
+          "partyName",
+
+        partyHeader:
+          "Party Name",
+
         numberHeader:
           "Gate Pass No.",
 
@@ -960,11 +968,9 @@ export const exportDailyReportPdf =
           COLORS.dispatch,
       });
 
-    /*
-     * ==========================
-     * MANUFACTURING
-     * ==========================
-     */
+    /* -----------------------------------------------------
+       MANUFACTURING
+    ----------------------------------------------------- */
 
     addManufacturingSection({
       doc,
@@ -980,21 +986,15 @@ export const exportDailyReportPdf =
         COLORS.manufacturing,
     });
 
-    /*
-     * ==========================
-     * PDF DATA
-     * ==========================
-     */
+    /* -----------------------------------------------------
+       EXPORT PDF
+    ----------------------------------------------------- */
 
     const pdfData =
       doc.output(
         "arraybuffer"
       );
 
-    /*
-     * Existing Electron
-     * export mechanism.
-     */
     return window.api.exportPdf({
       title:
         "Daily Report",

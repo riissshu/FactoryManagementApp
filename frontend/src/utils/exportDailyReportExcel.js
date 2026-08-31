@@ -19,14 +19,17 @@ export const exportDailyReportExcel = async ({
       style: "thin",
       color: { argb: "BFBFBF" },
     },
+
     bottom: {
       style: "thin",
       color: { argb: "BFBFBF" },
     },
+
     left: {
       style: "thin",
       color: { argb: "BFBFBF" },
     },
+
     right: {
       style: "thin",
       color: { argb: "BFBFBF" },
@@ -68,16 +71,33 @@ export const exportDailyReportExcel = async ({
       0
     );
 
+  const formatUnitQty = (unit, qty) => {
+    const number =
+      qty === "" ||
+      qty === null ||
+      qty === undefined
+        ? ""
+        : Number(qty).toString();
+
+    if (!number) {
+      return unit || "";
+    }
+
+    if (!unit) {
+      return number;
+    }
+
+    return `${number} ${unit}`;
+  };
+
   /*
    * Column widths
    */
   worksheet.columns = [
-    { width: 30 },
-    { width: 16 },
-    { width: 14 },
-    { width: 30 },
-    { width: 16 },
-    { width: 14 },
+    { width: 25 },
+    { width: 25 },
+    { width: 32 },
+    { width: 20 },
   ];
 
   /*
@@ -97,7 +117,7 @@ export const exportDailyReportExcel = async ({
   };
 
   worksheet.mergeCells(
-    `A${row.number}:F${row.number}`
+    `A${row.number}:D${row.number}`
   );
 
   row = worksheet.addRow([
@@ -114,7 +134,7 @@ export const exportDailyReportExcel = async ({
   };
 
   worksheet.mergeCells(
-    `A${row.number}:F${row.number}`
+    `A${row.number}:D${row.number}`
   );
 
   row = worksheet.addRow([
@@ -126,7 +146,7 @@ export const exportDailyReportExcel = async ({
   };
 
   worksheet.mergeCells(
-    `A${row.number}:F${row.number}`
+    `A${row.number}:D${row.number}`
   );
 
   worksheet.addRow([]);
@@ -138,6 +158,8 @@ export const exportDailyReportExcel = async ({
     title,
     documents,
     field,
+    partyField,
+    partyHeader,
     numberHeader
   ) => {
     row = worksheet.addRow([
@@ -150,7 +172,7 @@ export const exportDailyReportExcel = async ({
     };
 
     worksheet.mergeCells(
-      `B${row.number}:F${row.number}`
+      `B${row.number}:D${row.number}`
     );
 
     worksheet.addRow([]);
@@ -158,9 +180,9 @@ export const exportDailyReportExcel = async ({
     documents.forEach((document) => {
       row = worksheet.addRow([
         numberHeader,
+        partyHeader,
         "Stock Item",
-        "Unit",
-        "Quantity",
+        "Unit / Quantity",
       ]);
 
       row.font = {
@@ -183,11 +205,16 @@ export const exportDailyReportExcel = async ({
               ? document[field] || ""
               : "",
 
+            index === 0
+              ? document[partyField] || "-"
+              : "",
+
             getName(item.item),
 
-            getUnit(item.item),
-
-            Number(item.qty) || 0,
+            formatUnitQty(
+              getUnit(item.item),
+              item.qty
+            ),
           ]);
 
           row.eachCell((cell) => {
@@ -229,17 +256,27 @@ export const exportDailyReportExcel = async ({
     });
   };
 
+  /*
+   * Purchase Entries
+   */
   addTransactionSection(
     "PURCHASE ENTRIES",
     purchases,
     "purchaseNo",
+    "supplierName",
+    "Supplier Name",
     "Purchase No."
   );
 
+  /*
+   * Dispatch Entries
+   */
   addTransactionSection(
     "DISPATCH ENTRIES",
     gatePasses,
     "gatePassNo",
+    "partyName",
+    "Party Name",
     "Gate Pass No."
   );
 
@@ -255,6 +292,10 @@ export const exportDailyReportExcel = async ({
     bold: true,
   };
 
+  worksheet.mergeCells(
+    `B${row.number}:D${row.number}`
+  );
+
   worksheet.addRow([]);
 
   manufactured.forEach(
@@ -268,15 +309,13 @@ export const exportDailyReportExcel = async ({
       };
 
       worksheet.mergeCells(
-        `A${row.number}:F${row.number}`
+        `A${row.number}:D${row.number}`
       );
 
       row = worksheet.addRow([
         "CONSUMPTION",
         "",
-        "",
         "PRODUCTION / LOSS",
-        "",
         "",
       ]);
 
@@ -291,11 +330,11 @@ export const exportDailyReportExcel = async ({
       row.fill = headerFill;
 
       worksheet.mergeCells(
-        `A${row.number}:C${row.number}`
+        `A${row.number}:B${row.number}`
       );
 
       worksheet.mergeCells(
-        `D${row.number}:F${row.number}`
+        `C${row.number}:D${row.number}`
       );
 
       row.eachCell((cell) => {
@@ -304,11 +343,9 @@ export const exportDailyReportExcel = async ({
 
       row = worksheet.addRow([
         "Stock Item",
-        "Unit",
-        "Quantity",
+        "Unit / Quantity",
         "Stock Item",
-        "Unit",
-        "Quantity",
+        "Unit / Quantity",
       ]);
 
       row.font = {
@@ -342,16 +379,26 @@ export const exportDailyReportExcel = async ({
         const p = production[i];
 
         row = worksheet.addRow([
-          c ? getName(c.item) : "",
-          c ? getUnit(c.item) : "",
           c
-            ? Number(c.qty) || 0
+            ? getName(c.item)
             : "",
 
-          p ? getName(p.item) : "",
-          p ? getUnit(p.item) : "",
+          c
+            ? formatUnitQty(
+                getUnit(c.item),
+                c.qty
+              )
+            : "",
+
           p
-            ? Number(p.qty) || 0
+            ? getName(p.item)
+            : "",
+
+          p
+            ? formatUnitQty(
+                getUnit(p.item),
+                p.qty
+              )
             : "",
         ]);
 
@@ -359,22 +406,20 @@ export const exportDailyReportExcel = async ({
           cell.border = border;
         });
 
-        row.getCell(3).alignment = {
+        row.getCell(2).alignment = {
           horizontal: "right",
         };
 
-        row.getCell(6).alignment = {
+        row.getCell(4).alignment = {
           horizontal: "right",
         };
       }
 
       row = worksheet.addRow([
         "Total Consumption:",
-        "",
         totalQty(consumption),
 
         "Total Production:",
-        "",
         totalQty(production),
       ]);
 
@@ -392,15 +437,7 @@ export const exportDailyReportExcel = async ({
         horizontal: "right",
       };
 
-      row.getCell(3).alignment = {
-        horizontal: "right",
-      };
-
-      row.getCell(5).alignment = {
-        horizontal: "right",
-      };
-
-      row.getCell(6).alignment = {
+      row.getCell(4).alignment = {
         horizontal: "right",
       };
 
@@ -412,10 +449,10 @@ export const exportDailyReportExcel = async ({
    * Save Excel file
    */
   const excelData =
-  await workbook.xlsx.writeBuffer();
+    await workbook.xlsx.writeBuffer();
 
-return window.api.exportExcel({
-  filename,
-  excelData,
-});
+  return window.api.exportExcel({
+    filename,
+    excelData,
+  });
 };
