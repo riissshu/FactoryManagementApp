@@ -20,6 +20,8 @@ export default function FactoryProfile({
 
   const [folders, setFolders] = useState(null);
   const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+const [downloadProgress, setDownloadProgress] = useState(0);
   const [appVersion, setAppVersion] = useState("");
 
   const fileInputRef = useRef(null);
@@ -35,6 +37,25 @@ export default function FactoryProfile({
     loadProfile();
     loadFolders();
     loadAppVersion();
+
+
+  const removeUpdateListener = api.onUpdateProgress((progress) => {
+  const percent = progress.percent || 0;
+
+  setDownloadProgress(percent);
+
+  if (percent >= 100) {
+    setShowDownloadModal(false);
+  } else {
+    setShowDownloadModal(true);
+  }
+});
+
+  return () => {
+    if (removeUpdateListener) {
+      removeUpdateListener();
+    }
+  }
 
   }, []);
 
@@ -224,6 +245,54 @@ export default function FactoryProfile({
         </div>
       )}
 
+      {/* Download Progress Modal */}
+{showDownloadModal && (
+  <div
+    className="modal fade show d-block"
+    tabIndex="-1"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            <i className="bi bi-download me-2"></i>
+            Downloading Update
+          </h5>
+        </div>
+
+        <div className="modal-body">
+
+          <p className="mb-3">
+            FactoryBook update is downloading...
+          </p>
+
+          <div className="progress" style={{ height: "20px" }}>
+            <div
+              className="progress-bar progress-bar-striped progress-bar-animated"
+              role="progressbar"
+              style={{ width: `${downloadProgress}%` }}
+              aria-valuenow={downloadProgress}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              {downloadProgress}%
+            </div>
+          </div>
+
+          <div className="text-center mt-2 text-muted">
+            {downloadProgress}% completed
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div
@@ -280,7 +349,7 @@ export default function FactoryProfile({
       )}
 
       {/* Modal backdrop */}
-      {(showMessageModal || showConfirmModal) && (
+      {(showMessageModal || showConfirmModal || showDownloadModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
 

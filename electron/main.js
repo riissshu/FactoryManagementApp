@@ -354,6 +354,17 @@ app.whenReady().then(() => {
       console.error("Auto update error:", error);
     });
 
+    autoUpdater.on("download-progress", (progress) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("app:update-progress", {
+      percent: Math.round(progress.percent),
+      transferred: progress.transferred,
+      total: progress.total,
+      bytesPerSecond: progress.bytesPerSecond,
+    });
+  }
+});
+
     autoUpdater.on("update-downloaded", async (info) => {
       console.log("Update downloaded:", info.version);
 

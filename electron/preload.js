@@ -142,6 +142,18 @@ getWeeklyReportById: (id) =>
   checkForUpdates: () => ipcRenderer.invoke("app:checkForUpdates"),
   getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
 
+  onUpdateProgress: (callback) => {
+  const listener = (_event, progress) => {
+    callback(progress);
+  };
+
+  ipcRenderer.on("app:update-progress", listener);
+
+  return () => {
+    ipcRenderer.removeListener("app:update-progress", listener);
+  };
+},
+
 
   // Application / Company Gateway
   getStartupState: () => ipcRenderer.invoke("app:startupState"),
