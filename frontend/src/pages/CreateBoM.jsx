@@ -5,6 +5,8 @@ import "bootstrap/dist/css/bootstrap.min.css";
 export default function CreateBOM({ onClose }) {
   const [bomName, setBomName] = useState("");
   const [finishedProduct, setFinishedProduct] = useState("");
+  const [finishedProductText, setFinishedProductText] = useState("");
+  const [finishedProductTouched, setFinishedProductTouched] = useState(false);
   const [outputQty, setOutputQty] = useState("");
   const [unit, setUnit] = useState("");
   const [stockItems, setStockItems] = useState([]);
@@ -55,6 +57,7 @@ const consumptionItems = stockItems.filter(
   const [rawMaterials, setRawMaterials] = useState([
     {
       stockItemId: "",
+      itemText: "",
       quantity: "",
       unit: "",
     },
@@ -63,6 +66,7 @@ const consumptionItems = stockItems.filter(
   const [packagingMaterials, setPackagingMaterials] = useState([
     {
       stockItemId: "",
+      itemText: "",
       quantity: "",
       unit: "",
     },
@@ -73,6 +77,7 @@ const consumptionItems = stockItems.filter(
       ...current,
       {
         stockItemId: "",
+        itemText: "",
         quantity: "",
         unit: "",
       },
@@ -90,6 +95,7 @@ const consumptionItems = stockItems.filter(
       ...current,
       {
         stockItemId: "",
+        itemText: "",
         quantity: "",
         unit: "",
       },
@@ -179,12 +185,15 @@ const consumptionItems = stockItems.filter(
 
     setBomName("");
 setFinishedProduct("");
+setFinishedProductText("");
+setFinishedProductTouched(false);
 setOutputQty("");
 setUnit("");
 
 setRawMaterials([
   {
     stockItemId: "",
+    itemText: "",
     quantity: "",
     unit: "",
   },
@@ -193,6 +202,7 @@ setRawMaterials([
 setPackagingMaterials([
   {
     stockItemId: "",
+    itemText: "",
     quantity: "",
     unit: "",
   },
@@ -261,24 +271,47 @@ setPackagingMaterials([
               </label>
 
               <div className="col-md-6">
-                <select
-                  className="form-select"
-                  value={finishedProduct}
+                <input
+                  type="text"
+                  className={`form-control ${
+                    finishedProductText &&
+                    !finishedProduct &&
+                    finishedProductTouched
+                      ? "is-invalid"
+                      : ""
+                  }`}
+                  list="finished-product-list"
+                  value={finishedProductText}
                   onChange={(e) => {
-  const value = e.target.value;
+                    const value = e.target.value;
+                    const match = finishedProducts.find(
+                      (item) =>
+                        item.item_name.toLowerCase() === value.toLowerCase(),
+                    );
 
-  setFinishedProduct(value);
-  setUnit(getItemUnit(value));
-}}
-                >
-                  <option value="">Select Finished Product</option>
+                    setFinishedProductText(value);
+                    setFinishedProductTouched(false);
+                    setFinishedProduct(match ? String(match.id) : "");
+                    setUnit(match ? getItemUnit(match.id) : "");
+                  }}
+                  onBlur={() => setFinishedProductTouched(true)}
+                  placeholder="Type to search item"
+                  autoComplete="off"
+                />
 
-{finishedProducts.map((item) => (
-  <option key={item.id} value={item.id}>
-    {item.item_name}
-  </option>
-))}
-                </select>
+                <datalist id="finished-product-list">
+                  {finishedProducts.map((item) => (
+                    <option key={item.id} value={item.item_name} />
+                  ))}
+                </datalist>
+
+                {finishedProductText &&
+                  !finishedProduct &&
+                  finishedProductTouched && (
+                    <div className="invalid-feedback">
+                      Pick an item from the list.
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -345,35 +378,69 @@ setPackagingMaterials([
                   {rawMaterials.map((material, index) => (
                     <tr key={index}>
                       <td>
-                        <select
-                          className="form-select"
-                          value={material.stockItemId}
+                        <input
+                          type="text"
+                          className={`form-control ${
+                            material.itemText &&
+                            !material.stockItemId &&
+                            material.touched
+                              ? "is-invalid"
+                              : ""
+                          }`}
+                          list={`raw-material-list-${index}`}
+                          value={material.itemText}
                           onChange={(e) => {
-  const value = e.target.value;
+                            const value = e.target.value;
+                            const match = consumptionItems.find(
+                              (item) =>
+                                item.item_name.toLowerCase() ===
+                                value.toLowerCase(),
+                            );
 
-  setRawMaterials((current) =>
-    current.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            stockItemId: value,
-            unit: getItemUnit(value),
-          }
-        : item
-    )
-  );
-}}
-                        >
-                          <option value="">
-  Select Raw Material
-</option>
+                            setRawMaterials((current) =>
+                              current.map((item, i) =>
+                                i === index
+                                  ? {
+                                      ...item,
+                                      itemText: value,
+                                      stockItemId: match
+                                        ? String(match.id)
+                                        : "",
+                                      unit: match
+                                        ? getItemUnit(match.id)
+                                        : "",
+                                      touched: false,
+                                    }
+                                  : item,
+                              ),
+                            );
+                          }}
+                          onBlur={() =>
+                            setRawMaterials((current) =>
+                              current.map((item, i) =>
+                                i === index
+                                  ? { ...item, touched: true }
+                                  : item,
+                              ),
+                            )
+                          }
+                          placeholder="Type to search item"
+                          autoComplete="off"
+                        />
 
-{consumptionItems.map((item) => (
-  <option key={item.id} value={item.id}>
-    {item.item_name}
-  </option>
-))}
-                        </select>
+                        <datalist id={`raw-material-list-${index}`}>
+                          {consumptionItems.map((item) => (
+                            <option key={item.id} value={item.item_name} />
+                          ))}
+                        </datalist>
+
+                        {material.itemText &&
+                          !material.stockItemId &&
+                          material.touched && (
+                            <div className="invalid-feedback">
+                              Pick an item from the list.
+                            </div>
+                          )}
                       </td>
 
                       <td>
@@ -458,35 +525,69 @@ setPackagingMaterials([
                   {packagingMaterials.map((material, index) => (
                     <tr key={index}>
                       <td>
-                        <select
-                          className="form-select"
-                          value={material.stockItemId}
+                        <input
+                          type="text"
+                          className={`form-control ${
+                            material.itemText &&
+                            !material.stockItemId &&
+                            material.touched
+                              ? "is-invalid"
+                              : ""
+                          }`}
+                          list={`packaging-material-list-${index}`}
+                          value={material.itemText}
                           onChange={(e) => {
-  const value = e.target.value;
+                            const value = e.target.value;
+                            const match = consumptionItems.find(
+                              (item) =>
+                                item.item_name.toLowerCase() ===
+                                value.toLowerCase(),
+                            );
 
-  setPackagingMaterials((current) =>
-    current.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            stockItemId: value,
-            unit: getItemUnit(value),
-          }
-        : item
-    )
-  );
-}}
-                        >
-                          <option value="">
-  Select Packaging Material
-</option>
+                            setPackagingMaterials((current) =>
+                              current.map((item, i) =>
+                                i === index
+                                  ? {
+                                      ...item,
+                                      itemText: value,
+                                      stockItemId: match
+                                        ? String(match.id)
+                                        : "",
+                                      unit: match
+                                        ? getItemUnit(match.id)
+                                        : "",
+                                      touched: false,
+                                    }
+                                  : item,
+                              ),
+                            );
+                          }}
+                          onBlur={() =>
+                            setPackagingMaterials((current) =>
+                              current.map((item, i) =>
+                                i === index
+                                  ? { ...item, touched: true }
+                                  : item,
+                              ),
+                            )
+                          }
+                          placeholder="Type to search item"
+                          autoComplete="off"
+                        />
 
-{consumptionItems.map((item) => (
-  <option key={item.id} value={item.id}>
-    {item.item_name}
-  </option>
-))}
-                        </select>
+                        <datalist id={`packaging-material-list-${index}`}>
+                          {consumptionItems.map((item) => (
+                            <option key={item.id} value={item.item_name} />
+                          ))}
+                        </datalist>
+
+                        {material.itemText &&
+                          !material.stockItemId &&
+                          material.touched && (
+                            <div className="invalid-feedback">
+                              Pick an item from the list.
+                            </div>
+                          )}
                       </td>
 
                       <td>

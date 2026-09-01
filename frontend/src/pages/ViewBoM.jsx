@@ -14,6 +14,8 @@ export default function ViewBoM({ bomId, onClose }) {
 
   const [bomName, setBomName] = useState("");
   const [finishedProductId, setFinishedProductId] = useState("");
+  const [finishedProductText, setFinishedProductText] = useState("");
+  const [finishedProductTouched, setFinishedProductTouched] = useState(false);
   const [outputQty, setOutputQty] = useState("");
   const [unit, setUnit] = useState("");
 
@@ -74,12 +76,15 @@ export default function ViewBoM({ bomId, onClose }) {
   const startEditing = () => {
     setBomName(bom.bom_name || "");
     setFinishedProductId(String(bom.finished_product_id || ""));
+    setFinishedProductText(bom.finished_product || "");
+    setFinishedProductTouched(false);
     setOutputQty(bom.output_qty ?? "");
     setUnit(bom.unit || "");
 
     setConsumption(
       (bom.consumption || []).map((item) => ({
         stockItemId: String(item.stock_item_id || ""),
+        itemText: item.item_name || "",
         quantity: item.quantity ?? "",
         unit: item.unit || "",
       }))
@@ -94,6 +99,7 @@ export default function ViewBoM({ bomId, onClose }) {
     setEditing(false);
     setFeedback("");
     setFeedbackType("");
+    setFinishedProductTouched(false);
   };
 
   const addConsumption = () => {
@@ -101,6 +107,7 @@ export default function ViewBoM({ bomId, onClose }) {
       ...current,
       {
         stockItemId: "",
+        itemText: "",
         quantity: "",
         unit: "",
       },
@@ -118,6 +125,21 @@ export default function ViewBoM({ bomId, onClose }) {
       current.map((item, i) => {
         if (i !== index) {
           return item;
+        }
+
+        if (field === "itemText") {
+          const match = consumptionItems.find(
+            (stockItem) =>
+              stockItem.item_name.toLowerCase() === value.toLowerCase(),
+          );
+
+          return {
+            ...item,
+            itemText: value,
+            stockItemId: match ? String(match.id) : "",
+            unit: match ? getItemUnit(match.id) : "",
+            touched: false,
+          };
         }
 
         if (field === "stockItemId") {
@@ -359,26 +381,50 @@ export default function ViewBoM({ bomId, onClose }) {
 
             <div className="col-md-6">
               {editing ? (
-                <select
-                  className="form-select"
-                  value={finishedProductId}
-                  onChange={(e) => {
-                    const value = e.target.value;
+                <>
+                  <input
+                    type="text"
+                    className={`form-control ${
+                      finishedProductText &&
+                      !finishedProductId &&
+                      finishedProductTouched
+                        ? "is-invalid"
+                        : ""
+                    }`}
+                    list="finished-product-list"
+                    value={finishedProductText}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const match = finishedProducts.find(
+                        (item) =>
+                          item.item_name.toLowerCase() ===
+                          value.toLowerCase(),
+                      );
 
-                    setFinishedProductId(value);
-                    setUnit(getItemUnit(value));
-                  }}
-                >
-                  <option value="">
-                    Select Finished Product
-                  </option>
+                      setFinishedProductText(value);
+                      setFinishedProductTouched(false);
+                      setFinishedProductId(match ? String(match.id) : "");
+                      setUnit(match ? getItemUnit(match.id) : "");
+                    }}
+                    onBlur={() => setFinishedProductTouched(true)}
+                    placeholder="Type to search item"
+                    autoComplete="off"
+                  />
 
-                  {finishedProducts.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.item_name}
-                    </option>
-                  ))}
-                </select>
+                  <datalist id="finished-product-list">
+                    {finishedProducts.map((item) => (
+                      <option key={item.id} value={item.item_name} />
+                    ))}
+                  </datalist>
+
+                  {finishedProductText &&
+                    !finishedProductId &&
+                    finishedProductTouched && (
+                      <div className="invalid-feedback">
+                        Pick an item from the list.
+                      </div>
+                    )}
+                </>
               ) : (
                 <input
                   type="text"
@@ -502,32 +548,47 @@ export default function ViewBoM({ bomId, onClose }) {
                   consumption.map((item, index) => (
                     <tr key={index}>
                       <td>
-                        <select
-                          className="form-select"
-                          value={item.stockItemId}
+                        <input
+                          type="text"
+                          className={`form-control ${
+                            item.itemText &&
+                            !item.stockItemId &&
+                            item.touched
+                              ? "is-invalid"
+                              : ""
+                          }`}
+                          list={`consumption-item-list-${index}`}
+                          value={item.itemText}
                           onChange={(e) =>
                             updateConsumptionItem(
                               index,
-                              "stockItemId",
+                              "itemText",
                               e.target.value
                             )
                           }
-                        >
-                          <option value="">
-                            Select Stock Item
-                          </option>
+                          onBlur={() =>
+                            updateConsumptionItem(index, "touched", true)
+                          }
+                          placeholder="Type to search item"
+                          autoComplete="off"
+                        />
 
-                          {consumptionItems.map(
-                            (stockItem) => (
-                              <option
-                                key={stockItem.id}
-                                value={stockItem.id}
-                              >
-                                {stockItem.item_name}
-                              </option>
-                            )
+                        <datalist id={`consumption-item-list-${index}`}>
+                          {consumptionItems.map((stockItem) => (
+                            <option
+                              key={stockItem.id}
+                              value={stockItem.item_name}
+                            />
+                          ))}
+                        </datalist>
+
+                        {item.itemText &&
+                          !item.stockItemId &&
+                          item.touched && (
+                            <div className="invalid-feedback">
+                              Pick an item from the list.
+                            </div>
                           )}
-                        </select>
                       </td>
 
                       <td>

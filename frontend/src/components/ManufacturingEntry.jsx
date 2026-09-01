@@ -3,6 +3,7 @@ import api from "../services/api";
 
 const blankRow = () => ({
   item: "",
+  itemText: "",
   qty: "",
   unit: "",
 });
@@ -63,12 +64,18 @@ export default function ManufacturingEntry({
         consumption: entry.consumption?.length
           ? entry.consumption.map((row) => ({
               ...row,
+              itemText:
+                stockItems.find((si) => si.id === Number(row.item))
+                  ?.item_name || "",
             }))
           : [blankRow()],
 
         production: entry.production?.length
           ? entry.production.map((row) => ({
               ...row,
+              itemText:
+                stockItems.find((si) => si.id === Number(row.item))
+                  ?.item_name || "",
             }))
           : [blankRow()],
       });
@@ -104,6 +111,9 @@ export default function ManufacturingEntry({
           data.consumption?.length > 0
             ? data.consumption.map((row) => ({
                 item: String(row.stock_item_id),
+                itemText:
+                  stockItems.find((si) => si.id === row.stock_item_id)
+                    ?.item_name || "",
                 qty: row.quantity,
                 unit: row.unit || "",
               }))
@@ -112,6 +122,9 @@ export default function ManufacturingEntry({
         production: [
           {
             item: String(data.finished_product_id),
+            itemText:
+              stockItems.find((si) => si.id === data.finished_product_id)
+                ?.item_name || "",
             qty: data.output_qty,
             unit: data.unit || "",
           },
@@ -225,6 +238,9 @@ export default function ManufacturingEntry({
         item.data.consumption?.length > 0
           ? item.data.consumption.map((row) => ({
               item: row.item,
+              itemText:
+                stockItems.find((si) => si.id === Number(row.item))
+                  ?.item_name || "",
               qty: row.qty,
               unit: row.unit,
             }))
@@ -234,6 +250,9 @@ export default function ManufacturingEntry({
         item.data.production?.length > 0
           ? item.data.production.map((row) => ({
               item: row.item,
+              itemText:
+                stockItems.find((si) => si.id === Number(row.item))
+                  ?.item_name || "",
               qty: row.qty,
               unit: row.unit,
             }))
@@ -246,21 +265,26 @@ export default function ManufacturingEntry({
   const updateItem = (side, index, field, value) => {
     setForm((prev) => ({
       ...prev,
-      [side]: prev[side].map((row, i) =>
-        i === index
-          ? {
-              ...row,
-              [field]: value,
-              ...(field === "item"
-                ? {
-                    unit:
-                      stockItems.find((item) => item.id === Number(value))
-                        ?.unit || "",
-                  }
-                : {}),
-            }
-          : row,
-      ),
+      [side]: prev[side].map((row, i) => {
+        if (i !== index) return row;
+
+        if (field === "itemText") {
+          const match = stockItems.find(
+            (stockItem) =>
+              stockItem.item_name.toLowerCase() === value.toLowerCase(),
+          );
+
+          return {
+            ...row,
+            itemText: value,
+            item: match ? match.id : "",
+            unit: match ? match.unit || "" : "",
+            touched: false,
+          };
+        }
+
+        return { ...row, [field]: value };
+      }),
     }));
   };
 
@@ -402,26 +426,45 @@ export default function ManufacturingEntry({
                       {form.consumption.map((row, index) => (
                         <tr key={index}>
                           <td>
-                            <select
-                              className="form-select"
-                              value={row.item}
+                            <input
+                              className={`form-control ${
+                                row.itemText && !row.item && row.touched
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
+                              list={`consumption-items-${index}`}
+                              value={row.itemText}
                               onChange={(e) =>
                                 updateItem(
                                   "consumption",
                                   index,
-                                  "item",
+                                  "itemText",
                                   e.target.value,
                                 )
                               }
-                            >
-                              <option value="">Select item</option>
+                              onBlur={() =>
+                                updateItem(
+                                  "consumption",
+                                  index,
+                                  "touched",
+                                  true,
+                                )
+                              }
+                              placeholder="Type to search item"
+                              autoComplete="off"
+                            />
 
+                            <datalist id={`consumption-items-${index}`}>
                               {stockItems.map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.item_name}
-                                </option>
+                                <option key={item.id} value={item.item_name} />
                               ))}
-                            </select>
+                            </datalist>
+
+                            {row.itemText && !row.item && row.touched && (
+                              <div className="invalid-feedback">
+                                Pick an item from the list.
+                              </div>
+                            )}
                           </td>
 
                           <td
@@ -499,26 +542,40 @@ export default function ManufacturingEntry({
                       {form.production.map((row, index) => (
                         <tr key={index}>
                           <td>
-                            <select
-                              className="form-select"
-                              value={row.item}
+                            <input
+                              className={`form-control ${
+                                row.itemText && !row.item && row.touched
+                                  ? "is-invalid"
+                                  : ""
+                              }`}
+                              list={`production-items-${index}`}
+                              value={row.itemText}
                               onChange={(e) =>
                                 updateItem(
                                   "production",
                                   index,
-                                  "item",
+                                  "itemText",
                                   e.target.value,
                                 )
                               }
-                            >
-                              <option value="">Select item</option>
+                              onBlur={() =>
+                                updateItem("production", index, "touched", true)
+                              }
+                              placeholder="Type to search item"
+                              autoComplete="off"
+                            />
 
+                            <datalist id={`production-items-${index}`}>
                               {stockItems.map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.item_name}
-                                </option>
+                                <option key={item.id} value={item.item_name} />
                               ))}
-                            </select>
+                            </datalist>
+
+                            {row.itemText && !row.item && row.touched && (
+                              <div className="invalid-feedback">
+                                Pick an item from the list.
+                              </div>
+                            )}
                           </td>
 
                           <td

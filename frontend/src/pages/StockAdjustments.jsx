@@ -10,6 +10,7 @@ export default function StockAdjustment({ onClose, onViewAdjustments }) {
   const [items, setItems] = useState([
     {
       stock_item_id: "",
+      itemText: "",
       adjustment_type: "add",
       qty: "",
       unit: "",
@@ -78,6 +79,22 @@ export default function StockAdjustment({ onClose, onViewAdjustments }) {
       prev.map((item, i) => {
         if (i !== index) return item;
 
+        if (field === "itemText") {
+          const match = stockItems.find(
+            (stockItem) =>
+              stockItem.item_name.toLowerCase() === value.toLowerCase(),
+          );
+
+          return {
+            ...item,
+            itemText: value,
+            stock_item_id: match ? match.id : "",
+            unit: match ? match.unit || "" : "",
+            balance_qty: match ? getBalance(match.id) : 0,
+            touched: false,
+          };
+        }
+
         if (field === "stock_item_id") {
           const stockItem = getStockItem(value);
 
@@ -102,6 +119,7 @@ export default function StockAdjustment({ onClose, onViewAdjustments }) {
       ...prev,
       {
         stock_item_id: "",
+        itemText: "",
         adjustment_type: "add",
         qty: "",
         unit: "",
@@ -211,6 +229,7 @@ export default function StockAdjustment({ onClose, onViewAdjustments }) {
       setItems([
         {
           stock_item_id: "",
+          itemText: "",
           adjustment_type: "add",
           qty: "",
           unit: "",
@@ -335,26 +354,42 @@ export default function StockAdjustment({ onClose, onViewAdjustments }) {
 
                       {/* Stock Item */}
                       <td>
-                        <select
-                          className="form-select"
-                          value={item.stock_item_id}
+                        <input
+                          type="text"
+                          className={`form-control ${
+                            item.itemText && !item.stock_item_id && item.touched
+                              ? "is-invalid"
+                              : ""
+                          }`}
+                          list={`stock-item-list-${index}`}
+                          value={item.itemText}
                           onChange={(e) =>
-                            handleItemChange(
-                              index,
-                              "stock_item_id",
-                              e.target.value,
-                            )
+                            handleItemChange(index, "itemText", e.target.value)
                           }
+                          onBlur={() =>
+                            handleItemChange(index, "touched", true)
+                          }
+                          placeholder="Type to search item"
+                          autoComplete="off"
                           disabled={loading}
-                        >
-                          <option value="">Select Stock Item</option>
+                        />
 
+                        <datalist id={`stock-item-list-${index}`}>
                           {stockItems.map((stockItem) => (
-                            <option key={stockItem.id} value={stockItem.id}>
-                              {stockItem.item_name}
-                            </option>
+                            <option
+                              key={stockItem.id}
+                              value={stockItem.item_name}
+                            />
                           ))}
-                        </select>
+                        </datalist>
+
+                        {item.itemText &&
+                          !item.stock_item_id &&
+                          item.touched && (
+                            <div className="invalid-feedback">
+                              Pick an item from the list.
+                            </div>
+                          )}
                       </td>
 
                       {/* Current Balance */}
