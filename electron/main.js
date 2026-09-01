@@ -416,6 +416,46 @@ const relaunch = () => {
   app.quit();
 };
 
+
+
+// =======================
+// App Updates
+// =======================
+
+
+ipcMain.handle("app:getVersion", () => {
+    return {
+    version: packageInfo.version,
+  };
+});
+
+ipcMain.handle("app:checkForUpdates", async () => {
+  if (isDev) {
+    return {
+      success: false,
+      error: "Update checking is only available in the installed app.",
+    };
+  }
+
+  try {
+    const result = await autoUpdater.checkForUpdates();
+
+    return {
+      success: true,
+      updateAvailable: Boolean(result?.updateInfo),
+      version: result?.updateInfo?.version || null,
+    };
+  } catch (error) {
+    console.error("Manual update check failed:", error);
+
+    return {
+      success: false,
+      error: error?.message || "Unable to check for updates.",
+    };
+  }
+});
+
+
 // =======================
 // Settings
 // =======================

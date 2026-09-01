@@ -138,6 +138,11 @@ getWeeklyReportById: (id) =>
     id
 ),
 
+  // Application Updates
+  checkForUpdates: () => ipcRenderer.invoke("app:checkForUpdates"),
+  getAppVersion: () => ipcRenderer.invoke("app:getVersion"),
+
+
   // Application / Company Gateway
   getStartupState: () => ipcRenderer.invoke("app:startupState"),
   getCompanies: () => ipcRenderer.invoke("company:list"),

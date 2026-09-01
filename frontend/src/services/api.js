@@ -213,6 +213,17 @@ getWeeklyReportById(id) {
   return window.api.markDailyReportExported(id);
 },
 
+
+  // Application Updates
+  checkForUpdates() {
+    return window.api.checkForUpdates();
+  },
+
+   getAppVersion() {
+    return window.api.getAppVersion();
+  },
+
+
   // Application / Company Gateway
   getStartupState() {
     return window.api.getStartupState();

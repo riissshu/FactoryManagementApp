@@ -19,6 +19,8 @@ export default function FactoryProfile({
   const [openPdfAfterExport, setOpenPdfAfterExport] = useState(true);
 
   const [folders, setFolders] = useState(null);
+  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
+  const [appVersion, setAppVersion] = useState("");
 
   const fileInputRef = useRef(null);
 
@@ -32,7 +34,20 @@ export default function FactoryProfile({
   useEffect(() => {
     loadProfile();
     loadFolders();
+    loadAppVersion();
+
   }, []);
+
+
+  const loadAppVersion = async () => {
+
+    try {
+      const data = await api.getAppVersion();
+      setAppVersion(data.version);
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   const loadProfile = async () => {
     const settings = await api.getSettings();
@@ -111,6 +126,37 @@ export default function FactoryProfile({
       loadFolders();
     }
   };
+
+
+  const handleCheckForUpdates = async () => {
+  if (checkingForUpdates) return;
+
+  setCheckingForUpdates(true);
+
+  try {
+    const result = await api.checkForUpdates();
+
+    if (!result?.success) {
+      showMessage(
+        "Update Check",
+        result?.error || "Unable to check for updates."
+      );
+    } else if (!result.updateAvailable) {
+      showMessage(
+        "Update Check",
+        "You are using the latest version of FactoryBook."
+      );
+    }
+  } catch (error) {
+    console.error("Update check failed:", error);
+    showMessage(
+      "Update Check",
+      "Unable to check for updates. Please check your internet connection and try again."
+    );
+  } finally {
+    setCheckingForUpdates(false);
+  }
+};
 
   const handleCloseCompany = async () => {
     setShowConfirmModal(false);
@@ -579,6 +625,49 @@ export default function FactoryProfile({
         </div>
 
       </div>
+
+      <div className="card shadow-sm mt-4">
+  <div className="card-body p-4">
+    <h5 className="fw-bold mb-1">
+      <i className="bi bi-arrow-repeat me-2"></i>
+      Application Updates
+    </h5>
+
+    <p className="text-muted mb-3">
+      Check whether a newer version of FactoryBook is available.
+    </p>
+
+    <div className="mb-3">
+  <div className="fw-bold">Current Version</div>
+  <div className="text-muted">
+    Version {appVersion || "Loading..."}
+  </div>
+</div>
+
+    <button
+      type="button"
+      className="btn btn-outline-primary"
+      onClick={handleCheckForUpdates}
+      disabled={checkingForUpdates}
+    >
+      {checkingForUpdates ? (
+        <>
+          <span
+            className="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></span>
+          Checking...
+        </>
+      ) : (
+        <>
+          <i className="bi bi-arrow-repeat me-2"></i>
+          Check for Updates
+        </>
+      )}
+    </button>
+  </div>
+</div>
 
       <div className="card shadow-sm mt-4">
 
