@@ -51,11 +51,24 @@ const [downloadProgress, setDownloadProgress] = useState(0);
   }
 });
 
+ const removeUpdateNotAvailableListener =
+    api.onUpdateNotAvailable(() => {
+      showMessage(
+        "Update Check",
+        "You are using the latest version of FactoryBook."
+      );
+    });
+
   return () => {
     if (removeUpdateListener) {
       removeUpdateListener();
     }
-  }
+
+     if (removeUpdateNotAvailableListener) {
+      removeUpdateNotAvailableListener();
+    }
+
+  };
 
   }, []);
 
@@ -162,12 +175,7 @@ const [downloadProgress, setDownloadProgress] = useState(0);
         "Update Check",
         result?.error || "Unable to check for updates."
       );
-    } else if (!result.updateAvailable) {
-      showMessage(
-        "Update Check",
-        "You are using the latest version of FactoryBook."
-      );
-    }
+    } 
   } catch (error) {
     console.error("Update check failed:", error);
     showMessage(

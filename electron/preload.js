@@ -154,6 +154,18 @@ getWeeklyReportById: (id) =>
   };
 },
 
+onUpdateNotAvailable: (callback) => {
+  const listener = (_event, data) => {
+    callback(data);
+  };
+
+  ipcRenderer.on("app:update-not-available", listener);
+
+  return () => {
+    ipcRenderer.removeListener("app:update-not-available", listener);
+  };
+},
+
 
   // Application / Company Gateway
   getStartupState: () => ipcRenderer.invoke("app:startupState"),

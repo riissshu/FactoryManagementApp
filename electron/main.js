@@ -348,6 +348,13 @@ app.whenReady().then(() => {
 
     autoUpdater.on("update-not-available", (info) => {
       console.log("No update available:", info.version);
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("app:update-not-available", {
+      version: info.version,
+    });
+  }
+
     });
 
     autoUpdater.on("error", (error) => {

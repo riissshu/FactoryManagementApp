@@ -223,6 +223,10 @@ getWeeklyReportById(id) {
   return window.api.onUpdateProgress(callback);
 },
 
+onUpdateNotAvailable(callback) {
+  return window.api.onUpdateNotAvailable(callback);
+},
+
    getAppVersion() {
     return window.api.getAppVersion();
   },
