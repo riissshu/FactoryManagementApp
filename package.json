@@ -1,5 +1,5 @@
 {
-  "name": "factory-stock-app",
+  "name": "FactoryBook",
   "version": "1.0.0",
   "description": "",
   "main": "electron/main.js",
@@ -13,19 +13,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/riissshu/FACTORY-STOCK-APP.git"
+    "url": "git+https://github.com/riissshu/FactoryManagementApp.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/riissshu/FACTORY-STOCK-APP/issues"
+    "url": "https://github.com/riissshu/FactoryManagementApp/issues"
   },
-  "homepage": "https://github.com/riissshu/FACTORY-STOCK-APP#readme",
+  "homepage": "https://github.com/riissshu/FactoryManagementApp#readme",
   "dependencies": {
     "better-sqlite3": "^13.0.2",
     "electron-updater": "^6.8.9",
+    "electron-window-state": "^5.0.3",
     "exceljs": "^4.4.0"
   },
   "devDependencies": {
@@ -49,7 +50,8 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "electron/FactoryBook.ico"
     },
     "publish": {
       "provider": "github",

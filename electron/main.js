@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
+const packageInfo = require("../package.json");
+const windowStateKeeper = require("electron-window-state");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -29,10 +31,7 @@ function encryptBackup(dbBuffer) {
   const iv = crypto.randomBytes(12);
 
   const cipher = crypto.createCipheriv("aes-256-gcm", BACKUP_KEY, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(compressed),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()]);
   const authTag = cipher.getAuthTag();
 
   return Buffer.concat([
@@ -47,10 +46,7 @@ function encryptBackup(dbBuffer) {
 function decryptBackup(backupBuffer) {
   const magicLength = BACKUP_MAGIC.length;
 
-  if (
-    backupBuffer.length <
-    magicLength + 1 + 12 + 16
-  ) {
+  if (backupBuffer.length < magicLength + 1 + 12 + 16) {
     throw new Error("Invalid or corrupted backup file.");
   }
 
@@ -73,11 +69,7 @@ function decryptBackup(backupBuffer) {
   const encryptedStart = tagStart + 16;
   const encrypted = backupBuffer.subarray(encryptedStart);
 
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    BACKUP_KEY,
-    iv,
-  );
+  const decipher = crypto.createDecipheriv("aes-256-gcm", BACKUP_KEY, iv);
   decipher.setAuthTag(authTag);
 
   const compressed = Buffer.concat([
@@ -106,7 +98,6 @@ function createEncryptedBackup(db, backupPath) {
     }
   }
 }
-
 
 let mainWindow;
 let database = null; // bound functions for the currently open db file
@@ -185,7 +176,8 @@ function ensureFactoryMetadata(dbPath) {
 // marker once so existing user data remains usable. Arbitrary .db files are
 // never auto-migrated; they must be explicitly opened/imported first.
 function migrateConfiguredLegacyDatabase(dbPath) {
-  if (!hasFactoryTables(dbPath) || validateFactoryDatabase(dbPath)) return false;
+  if (!hasFactoryTables(dbPath) || validateFactoryDatabase(dbPath))
+    return false;
 
   let probe;
   try {
@@ -208,11 +200,15 @@ function migrateConfiguredLegacyDatabase(dbPath) {
       return false;
     }
 
-    probe.prepare(`
+    probe
+      .prepare(
+        `
       INSERT OR IGNORE INTO app_metadata
         (id, database_type, database_version, database_id)
       VALUES (1, 'factory_book', 1, ?)
-    `).run(require("crypto").randomUUID());
+    `,
+      )
+      .run(require("crypto").randomUUID());
     return true;
   } catch (error) {
     console.error("Legacy database migration failed:", error);
@@ -232,15 +228,19 @@ function getCompanyInfo(dbPath, requireMetadata = true) {
     let metadata = null;
     try {
       metadata = probe
-        .prepare("SELECT database_id, database_version, database_type FROM app_metadata WHERE id = 1")
+        .prepare(
+          "SELECT database_id, database_version, database_type FROM app_metadata WHERE id = 1",
+        )
         .get();
     } catch (_) {}
 
-    if (requireMetadata && metadata?.database_type !== "factory_book") return null;
+    if (requireMetadata && metadata?.database_type !== "factory_book")
+      return null;
 
     return {
       path: dbPath,
-      name: settings?.factory_name || path.basename(dbPath, path.extname(dbPath)),
+      name:
+        settings?.factory_name || path.basename(dbPath, path.extname(dbPath)),
       logo: settings?.factory_logo || null,
       setupComplete: Boolean(settings?.master_password_hash),
       databaseId: metadata?.database_id || null,
@@ -264,7 +264,10 @@ function scanCompanies() {
   }
 
   return entries
-    .filter((entry) => entry.isFile() && path.extname(entry.name).toLowerCase() === ".db")
+    .filter(
+      (entry) =>
+        entry.isFile() && path.extname(entry.name).toLowerCase() === ".db",
+    )
     .map((entry) => getCompanyInfo(path.join(dir, entry.name)))
     .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -278,9 +281,18 @@ function resolveStartupCompany() {
 }
 
 function createWindow() {
+  const windowState = windowStateKeeper({
+    defaultWidth: 1400,
+    defaultHeight: 850,
+  });
+
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 850,
+    title: `${packageInfo.name} — ${packageInfo.version}`,
+    icon: path.join(__dirname, "FactoryBook.ico"),
+    width: windowState.width,
+    height: windowState.height,
+    x: windowState.x,
+    y: windowState.y,
     minWidth: 1200,
     minHeight: 700,
     autoHideMenuBar: true,
@@ -292,6 +304,8 @@ function createWindow() {
     },
   });
 
+  windowState.manage(mainWindow);
+
   if (isDev) {
     mainWindow.loadURL("http://localhost:5173");
   } else {
@@ -300,30 +314,67 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    if (!isDev) {
-  autoUpdater.on("checking-for-update", () => {
-    console.log("Checking for update...");
-  });
+  if (!isDev) {
+    // Don't download or install automatically — wait for explicit user consent
+    // at each step, since this app can have an open database / unsaved data.
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
 
-  autoUpdater.on("update-available", (info) => {
-    console.log("Update available:", info.version);
-  });
+    autoUpdater.on("checking-for-update", () => {
+      console.log("Checking for update...");
+    });
 
-  autoUpdater.on("update-not-available", (info) => {
-    console.log("No update available:", info.version);
-  });
+    autoUpdater.on("update-available", async (info) => {
+      console.log("Update available:", info.version);
 
-  autoUpdater.on("error", (error) => {
-    console.error("Auto update error:", error);
-  });
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "Update Available",
+        message: `FactoryBook ${info.version} is available.`,
+        detail: "Do you want to download and install this update?",
+        buttons: ["Yes", "No"],
+        defaultId: 0,
+        cancelId: 1,
+      });
 
-  autoUpdater.on("update-downloaded", (info) => {
-    console.log("Update downloaded:", info.version);
-  });
+      if (result.response === 0) {
+        autoUpdater.downloadUpdate().catch((error) => {
+          console.error("Update download failed:", error);
+        });
+      } else {
+        console.log("User chose not to update.");
+      }
+    });
 
-  autoUpdater.checkForUpdatesAndNotify();
-}
-  
+    autoUpdater.on("update-not-available", (info) => {
+      console.log("No update available:", info.version);
+    });
+
+    autoUpdater.on("error", (error) => {
+      console.error("Auto update error:", error);
+    });
+
+    autoUpdater.on("update-downloaded", async (info) => {
+      console.log("Update downloaded:", info.version);
+
+      const result = await dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "Update Ready",
+        message: `FactoryBook ${info.version} has been downloaded.`,
+        detail: "Restart now to install it? Any unsaved work should be saved first.",
+        buttons: ["Restart Now", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      });
+
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      } else {
+        console.log("User deferred update install until next quit.");
+      }
+    });
+  }
+
   const legacy = config.getDbPath();
   if (legacy && fs.existsSync(legacy) && hasFactoryTables(legacy)) {
     migrateConfiguredLegacyDatabase(legacy);
@@ -349,6 +400,10 @@ app.whenReady().then(() => {
 
   createWindow();
 
+  if (!isDev) {
+    autoUpdater.checkForUpdates();
+  }
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -368,83 +423,75 @@ const relaunch = () => {
 ipcMain.handle("settings:get", () => database.getSettings());
 
 ipcMain.handle("settings:save", (event, data) => {
-  return database.saveSettings(data.factoryName, data.factoryLogo, data.masterPassword,  data.openPdfAfterExport);
+  return database.saveSettings(
+    data.factoryName,
+    data.factoryLogo,
+    data.masterPassword,
+    data.openPdfAfterExport,
+  );
 });
 
 ipcMain.handle("settings:updateProfile", (event, data) => {
-  return database.updateFactoryProfile(data.factoryName, data.factoryLogo, data.password);
+  return database.updateFactoryProfile(
+    data.factoryName,
+    data.factoryLogo,
+    data.password,
+  );
 });
 
 ipcMain.handle("settings:verifyPassword", (event, password) =>
   database.verifyMasterPassword(password),
 );
 
-
-ipcMain.handle(
-  "bomStockGroups:get",
-  () => database.getBOMStockGroupSettings()
-);
+ipcMain.handle("bomStockGroups:get", () => database.getBOMStockGroupSettings());
 
 ipcMain.handle(
   "bomStockGroups:setAvailability",
   (event, stockGroupId, availableForBOM) =>
-    database.setBOMStockGroupAvailability(
-      stockGroupId,
-      availableForBOM
-    )
+    database.setBOMStockGroupAvailability(stockGroupId, availableForBOM),
 );
 
-ipcMain.handle(
-  "bom:create",
-  (event, bomData) => database.createBOM(bomData)
-);
+ipcMain.handle("bom:create", (event, bomData) => database.createBOM(bomData));
 
-ipcMain.handle(
-  "bom:getAll",
-  () => database.getBOMs()
-);
+ipcMain.handle("bom:getAll", () => database.getBOMs());
 
-ipcMain.handle(
-  "bom:get",
-  (event, bomId) => database.getBOM(bomId)
-);
+ipcMain.handle("bom:get", (event, bomId) => database.getBOM(bomId));
 
-ipcMain.handle(
-  "bom:update",
-  (event, bomData) => database.updateBOM(bomData)
-);
+ipcMain.handle("bom:update", (event, bomData) => database.updateBOM(bomData));
 
-ipcMain.handle(
-  "bom:delete",
-  (event, bomId) => database.deleteBOM(bomId)
-);
+ipcMain.handle("bom:delete", (event, bomId) => database.deleteBOM(bomId));
 
 // =======================
 // Stock Groups / Units
 // =======================
 
 ipcMain.handle("stockGroups:get", () => database.getStockGroups());
-ipcMain.handle("stockGroups:add", (event, name) => database.addStockGroup(name));
-ipcMain.handle("stockGroups:rename", (event, id, name) => database.renameStockGroup(id, name));
-ipcMain.handle("stockGroups:deactivate", (event, id) => database.deactivateStockGroup(id));
-
-ipcMain.handle(
-  "stockGroups:hasTransactions",
-  (event, id) =>
-    database.hasStockGroupTransactions(id)
+ipcMain.handle("stockGroups:add", (event, name) =>
+  database.addStockGroup(name),
+);
+ipcMain.handle("stockGroups:rename", (event, id, name) =>
+  database.renameStockGroup(id, name),
+);
+ipcMain.handle("stockGroups:deactivate", (event, id) =>
+  database.deactivateStockGroup(id),
 );
 
-ipcMain.handle(
-  "stockUnits:hasTransactions",
-  (event, id) =>
-    database.hasStockUnitTransactions(id)
+ipcMain.handle("stockGroups:hasTransactions", (event, id) =>
+  database.hasStockGroupTransactions(id),
 );
 
+ipcMain.handle("stockUnits:hasTransactions", (event, id) =>
+  database.hasStockUnitTransactions(id),
+);
 
 ipcMain.handle("stockUnits:get", () => database.getStockUnits());
 ipcMain.handle("stockUnits:add", (event, name) => database.addStockUnit(name));
-ipcMain.handle("stockUnits:rename", (event, id, name) => database.renameStockUnit(id, name));
-ipcMain.handle("stockUnits:deactivate", (event, id) => database.deactivateStockUnit(id));
+ipcMain.handle("stockUnits:rename", (event, id, name) =>
+  database.renameStockUnit(id, name),
+);
+ipcMain.handle("stockUnits:deactivate", (event, id) =>
+  database.deactivateStockUnit(id),
+);
 
 // =======================
 // Stock Items
@@ -452,14 +499,11 @@ ipcMain.handle("stockUnits:deactivate", (event, id) => database.deactivateStockU
 
 ipcMain.handle("stock:get", () => database.getStockItems());
 
-ipcMain.handle("stock:getById", (event, id) =>
-  database.getStockItemById(id)
-);
+ipcMain.handle("stock:getById", (event, id) => database.getStockItemById(id));
 
 ipcMain.handle("stock:hasTransactions", (event, id) =>
-  database.hasStockItemTransactions(id)
+  database.hasStockItemTransactions(id),
 );
-
 
 ipcMain.handle("stock:save", (event, item) => {
   try {
@@ -478,16 +522,15 @@ ipcMain.handle("stock:update", (event, item) => database.updateStockItem(item));
 ipcMain.handle("stock:updateLowQtyAlert", (event, id, value) =>
   database.updateLowQtyAlert(id, value),
 );
-ipcMain.handle("stock:inactivate", (event, id) => database.inactivateStockItem(id));
-
-ipcMain.handle("stock:delete", (event, id) =>
-  database.deleteStockItem(id)
+ipcMain.handle("stock:inactivate", (event, id) =>
+  database.inactivateStockItem(id),
 );
 
+ipcMain.handle("stock:delete", (event, id) => database.deleteStockItem(id));
+
 ipcMain.handle("stock:report", () => database.getStockReport());
-ipcMain.handle(
-  "stock:itemTransactions",
-  (event, stockItemId) => database.getStockItemTransactions(stockItemId)
+ipcMain.handle("stock:itemTransactions", (event, stockItemId) =>
+  database.getStockItemTransactions(stockItemId),
 );
 ipcMain.handle("stockAdjustment:save", (event, adjustment) => {
   try {
@@ -507,25 +550,20 @@ ipcMain.handle("get-stock-adjustments", () => {
   return database.getStockAdjustments();
 });
 
-ipcMain.handle("stock:bulkUpdate", (event, items) => database.bulkUpdateStockItems(items));
-ipcMain.handle("stock:bulkCreate", (event, items) => database.bulkCreateStockItems(items));
-
-ipcMain.handle(
-  "purchaseRegister:get",
-  () => database.getPurchaseRegister()
+ipcMain.handle("stock:bulkUpdate", (event, items) =>
+  database.bulkUpdateStockItems(items),
+);
+ipcMain.handle("stock:bulkCreate", (event, items) =>
+  database.bulkCreateStockItems(items),
 );
 
-ipcMain.handle(
-  "dispatchRegister:get",
-  () => database.getDispatchRegister()
+ipcMain.handle("purchaseRegister:get", () => database.getPurchaseRegister());
+
+ipcMain.handle("dispatchRegister:get", () => database.getDispatchRegister());
+
+ipcMain.handle("productionRegister:get", () =>
+  database.getProductionRegister(),
 );
-
-ipcMain.handle(
-  "productionRegister:get",
-  () => database.getProductionRegister()
-);
-
-
 
 // =======================
 // Clipboard
@@ -534,10 +572,7 @@ ipcMain.handle(
 ipcMain.handle("clipboard:get", () => {
   const pinned = database.getPinnedClipboard();
 
-  return [
-    ...temporaryClipboard,
-    ...pinned,
-  ];
+  return [...temporaryClipboard, ...pinned];
 });
 
 ipcMain.handle("clipboard:add", (event, item) => {
@@ -560,7 +595,7 @@ ipcMain.handle("clipboard:pin", (event, item) => {
   const saved = database.savePinnedClipboard(item);
 
   temporaryClipboard = temporaryClipboard.filter(
-    (clipboardItem) => clipboardItem.id !== item.id
+    (clipboardItem) => clipboardItem.id !== item.id,
   );
 
   return saved;
@@ -586,7 +621,7 @@ ipcMain.handle("clipboard:delete", (event, item) => {
     database.deleteClipboardItem(item.id);
   } else {
     temporaryClipboard = temporaryClipboard.filter(
-      (clipboardItem) => clipboardItem.id !== item.id
+      (clipboardItem) => clipboardItem.id !== item.id,
     );
   }
 
@@ -599,43 +634,42 @@ ipcMain.handle("clipboard:clear", () => {
   return true;
 });
 
-
 // =======================
 // Weekly Reports
 // =======================
 
-ipcMain.handle(
-  "weeklyReport:save",
-  (event, report) => database.saveWeeklyReport(report)
+ipcMain.handle("weeklyReport:save", (event, report) =>
+  database.saveWeeklyReport(report),
 );
 
-ipcMain.handle(
-  "weeklyReport:get",
-  () => database.getWeeklyReports()
-);
+ipcMain.handle("weeklyReport:get", () => database.getWeeklyReports());
 
-ipcMain.handle(
-  "weeklyReport:getById",
-  (event, id) => database.getWeeklyReportById(id)
+ipcMain.handle("weeklyReport:getById", (event, id) =>
+  database.getWeeklyReportById(id),
 );
-
 
 // =======================
 // Daily Reports
 // =======================
 
 ipcMain.handle("dailyReport:get", () => database.getDailyReports());
-ipcMain.handle("dailyReport:save", (event, report) => database.saveDailyReport(report));
-ipcMain.handle("dailyReport:getById", (event, id) => database.getDailyReportById(id));
-ipcMain.handle("dailyReport:getByDate", (event, date) => database.getDailyReportByDate(date));
+ipcMain.handle("dailyReport:save", (event, report) =>
+  database.saveDailyReport(report),
+);
+ipcMain.handle("dailyReport:getById", (event, id) =>
+  database.getDailyReportById(id),
+);
+ipcMain.handle("dailyReport:getByDate", (event, date) =>
+  database.getDailyReportByDate(date),
+);
 ipcMain.handle("dailyReport:update", (event, id, report, masterPassword) =>
   database.updateDailyReport(id, report, masterPassword),
 );
-ipcMain.handle("dailyReport:delete", (event, id, masterPassword) => database.deleteDailyReport(id,  masterPassword));
-ipcMain.handle(
-  "dailyReport:markExported",
-  (event, id) =>
-    database.markDailyReportExported(id)
+ipcMain.handle("dailyReport:delete", (event, id, masterPassword) =>
+  database.deleteDailyReport(id, masterPassword),
+);
+ipcMain.handle("dailyReport:markExported", (event, id) =>
+  database.markDailyReportExported(id),
 );
 
 // =======================
@@ -643,19 +677,22 @@ ipcMain.handle(
 // =======================
 
 const safeName = (value) =>
-  (value || "factory")
-    .replace(/[^a-z0-9]+/gi, "-")
-    .replace(/^-|-$/g, "") || "factory";
+  (value || "factory").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") ||
+  "factory";
 
 ipcMain.handle("app:startupState", () => {
   const currentPath = config.getDbPath();
   const active = Boolean(database && currentPath && fs.existsSync(currentPath));
   const defaultPath = config.getDefaultCompany();
-  const defaultAvailable = Boolean(defaultPath && validateFactoryDatabase(defaultPath));
+  const defaultAvailable = Boolean(
+    defaultPath && validateFactoryDatabase(defaultPath),
+  );
 
   return {
     active,
-    setupComplete: active ? Boolean(database.getSettings()?.master_password_hash) : false,
+    setupComplete: active
+      ? Boolean(database.getSettings()?.master_password_hash)
+      : false,
     currentPath: active ? currentPath : null,
     defaultCompanyPath: defaultPath,
     defaultAvailable,
@@ -707,11 +744,13 @@ ipcMain.handle("company:create", async (event, { folder, fileName } = {}) => {
 
 ipcMain.handle("company:open", async (event, dbPath) => {
   if (!ensureFactoryMetadata(dbPath)) {
-    return { error: "The selected file is not a valid Factory Book company database." };
+    return {
+      error: "The selected file is not a valid Factory Book company database.",
+    };
   }
 
   openDatabaseAt(dbPath);
-  
+
   return { opened: true, path: dbPath };
 });
 
@@ -753,7 +792,10 @@ ipcMain.handle("company:restore", async () => {
   }
 
   let info = getCompanyInfo(backupPath, false);
-  if (!info) return { error: "Unable to read the company information from this backup." };
+  if (!info)
+    return {
+      error: "Unable to read the company information from this backup.",
+    };
 
   const companyDir = config.getCompanyDir();
   fs.mkdirSync(companyDir, { recursive: true });
@@ -773,14 +815,13 @@ ipcMain.handle("company:restore", async () => {
   }
 
   if (database) {
-     database.close();
-       database = null;
+    database.close();
+    database = null;
   }
   fs.copyFileSync(backupPath, target);
   config.setDbPath(target);
   config.setDefaultCompany(target);
 
-  
   return { restored: true, path: target, name: info.name };
 });
 
@@ -790,11 +831,10 @@ ipcMain.handle("backup:create", async () => {
   const backupDir = config.getBackupDir();
   fs.mkdirSync(backupDir, { recursive: true });
 
-
   const fileName = `${safeName(settings?.factory_name)}.005`;
   const backupPath = path.join(backupDir, fileName);
 
-   // Ask before replacing an existing backup
+  // Ask before replacing an existing backup
   if (fs.existsSync(backupPath)) {
     const overwrite = await dialog.showMessageBox(mainWindow, {
       type: "warning",
@@ -848,10 +888,7 @@ ipcMain.handle("backup:restore", async () => {
     const companyDir = config.getCompanyDir();
     fs.mkdirSync(companyDir, { recursive: true });
 
-    const target = path.join(
-      companyDir,
-      `${safeName(info.name)}.db`,
-    );
+    const target = path.join(companyDir, `${safeName(info.name)}.db`);
 
     if (fs.existsSync(target)) {
       const overwrite = await dialog.showMessageBox(mainWindow, {
@@ -901,26 +938,30 @@ ipcMain.handle("dbLocation:get", () => {
 });
 
 // Legacy APIs retained for existing Factory Profile UI.
-ipcMain.handle("dbLocation:createNew", async (event, { folder, fileName } = {}) => {
-  let targetDir = folder;
-  if (targetDir === "pick") {
-    const picked = await dialog.showOpenDialog(mainWindow, {
-      title: "Choose a folder for the new company",
-      defaultPath: config.getCompanyDir(),
-      properties: ["openDirectory", "createDirectory"],
-    });
-    if (picked.canceled || !picked.filePaths[0]) return { canceled: true };
-    targetDir = picked.filePaths[0];
-  }
-  targetDir = targetDir || config.getCompanyDir();
-  const cleanName = safeName(fileName);
-  const newPath = path.join(targetDir, `${cleanName}.db`);
-  if (fs.existsSync(newPath)) return { error: `A company database already exists at ${newPath}.` };
-  openDatabaseAt(newPath);
-  config.setCompanyDir(targetDir);
-  config.setDefaultCompany(newPath);
-  return { path: newPath };
-});
+ipcMain.handle(
+  "dbLocation:createNew",
+  async (event, { folder, fileName } = {}) => {
+    let targetDir = folder;
+    if (targetDir === "pick") {
+      const picked = await dialog.showOpenDialog(mainWindow, {
+        title: "Choose a folder for the new company",
+        defaultPath: config.getCompanyDir(),
+        properties: ["openDirectory", "createDirectory"],
+      });
+      if (picked.canceled || !picked.filePaths[0]) return { canceled: true };
+      targetDir = picked.filePaths[0];
+    }
+    targetDir = targetDir || config.getCompanyDir();
+    const cleanName = safeName(fileName);
+    const newPath = path.join(targetDir, `${cleanName}.db`);
+    if (fs.existsSync(newPath))
+      return { error: `A company database already exists at ${newPath}.` };
+    openDatabaseAt(newPath);
+    config.setCompanyDir(targetDir);
+    config.setDefaultCompany(newPath);
+    return { path: newPath };
+  },
+);
 
 ipcMain.handle("dbLocation:selectExisting", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -932,7 +973,9 @@ ipcMain.handle("dbLocation:selectExisting", async () => {
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
   const selectedPath = result.filePaths[0];
   if (!ensureFactoryMetadata(selectedPath)) {
-    return { error: "The selected file is not a valid Factory Book company database." };
+    return {
+      error: "The selected file is not a valid Factory Book company database.",
+    };
   }
   config.setCompanyDir(path.dirname(selectedPath));
   config.setDbPath(selectedPath);
@@ -940,7 +983,7 @@ ipcMain.handle("dbLocation:selectExisting", async () => {
   return { switched: true, path: selectedPath };
 });
 ipcMain.handle("company:close", () => {
-   temporaryClipboard = [];
+  temporaryClipboard = [];
 
   if (database) {
     database.close();
@@ -951,7 +994,11 @@ ipcMain.handle("company:close", () => {
 });
 ipcMain.handle("dbLocation:move", async () => {
   const current = config.getDbPath();
-  if (!current || !fs.existsSync(current) || !validateFactoryDatabase(current)) {
+  if (
+    !current ||
+    !fs.existsSync(current) ||
+    !validateFactoryDatabase(current)
+  ) {
     return { error: "The current company database could not be found." };
   }
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -961,7 +1008,8 @@ ipcMain.handle("dbLocation:move", async () => {
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
   const targetDir = result.filePaths[0];
   const newPath = path.join(targetDir, path.basename(current));
-  if (fs.existsSync(newPath)) return { error: `A database already exists at ${newPath}.` };
+  if (fs.existsSync(newPath))
+    return { error: `A database already exists at ${newPath}.` };
   if (database) database.close();
   fs.mkdirSync(targetDir, { recursive: true });
   fs.copyFileSync(current, newPath);
@@ -1004,15 +1052,7 @@ ipcMain.handle("dbLocation:getFolders", () => {
 
 ipcMain.handle(
   "report:exportPdf",
-  async (
-    event,
-    {
-      title,
-      filename,
-      pdfData,
-      openPdfAfterExport = false,
-    },
-  ) => {
+  async (event, { title, filename, pdfData, openPdfAfterExport = false }) => {
     const result = await dialog.showSaveDialog(mainWindow, {
       title: "Export PDF",
       defaultPath: filename || `${safeName(title)}.pdf`,
@@ -1036,23 +1076,14 @@ ipcMain.handle(
       const pdfBuffer = Buffer.from(pdfData);
 
       // Write the exact jsPDF-generated PDF.
-      fs.writeFileSync(
-        result.filePath,
-        pdfBuffer
-      );
+      fs.writeFileSync(result.filePath, pdfBuffer);
 
       // Automatically open if enabled
-      if (  Number(openPdfAfterExport) === 1 ||
-  openPdfAfterExport === true ) {
-        const openError = await shell.openPath(
-          result.filePath
-        );
+      if (Number(openPdfAfterExport) === 1 || openPdfAfterExport === true) {
+        const openError = await shell.openPath(result.filePath);
 
         if (openError) {
-          console.error(
-            "Unable to open exported PDF:",
-            openError
-          );
+          console.error("Unable to open exported PDF:", openError);
         }
       }
 
@@ -1061,120 +1092,86 @@ ipcMain.handle(
         opened: openPdfAfterExport,
       };
     } catch (error) {
-      console.error(
-        "PDF export failed:",
-        error
-      );
+      console.error("PDF export failed:", error);
 
       throw error;
     }
-  }
+  },
 );
 
-ipcMain.handle(
-  "report:exportExcel",
-  async (
-    event,
-    {
-      filename,
-      excelData,
-    },
-  ) => {
-    const result = await dialog.showSaveDialog(
-      mainWindow,
+ipcMain.handle("report:exportExcel", async (event, { filename, excelData }) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Export Excel",
+    defaultPath: filename || "Daily Report.xlsx",
+    filters: [
       {
-        title: "Export Excel",
-        defaultPath:
-          filename || "Daily Report.xlsx",
-        filters: [
-          {
-            name: "Excel Workbook",
-            extensions: ["xlsx"],
-          },
-        ],
-      }
-    );
+        name: "Excel Workbook",
+        extensions: ["xlsx"],
+      },
+    ],
+  });
 
-    if (
-      result.canceled ||
-      !result.filePath
-    ) {
-      return {
-        canceled: true,
-      };
-    }
-
-    try {
-      const excelBuffer =
-        Buffer.from(excelData);
-
-      fs.writeFileSync(
-        result.filePath,
-        excelBuffer
-      );
-
-      return {
-        path: result.filePath,
-      };
-    } catch (error) {
-      console.error(
-        "Excel export failed:",
-        error
-      );
-
-      throw error;
-    }
+  if (result.canceled || !result.filePath) {
+    return {
+      canceled: true,
+    };
   }
-);
 
-ipcMain.handle(
-  "template:downloadStockItems",
-  async () => {
-    const templatePath = path.join(
-      __dirname,
-      "templates",
-      "stock_items_template.xlsx"
-    );
+  try {
+    const excelBuffer = Buffer.from(excelData);
 
-    const result = await dialog.showSaveDialog(mainWindow, {
-      title: "Save Stock Items Template",
-      defaultPath: "stock_items_template.xlsx",
-      filters: [
-        {
-          name: "Excel Workbook",
-          extensions: ["xlsx"],
-        },
-      ],
-    });
+    fs.writeFileSync(result.filePath, excelBuffer);
 
-    if (result.canceled || !result.filePath) {
-      return {
-        canceled: true,
-      };
-    }
+    return {
+      path: result.filePath,
+    };
+  } catch (error) {
+    console.error("Excel export failed:", error);
 
-    try {
-      const templateBuffer = fs.readFileSync(templatePath);
-
-      fs.writeFileSync(result.filePath, templateBuffer);
-
-      return {
-        path: result.filePath,
-      };
-    } catch (error) {
-      console.error(
-        "Stock item template export failed:",
-        error
-      );
-
-      return {
-        error:
-          error?.message ||
-          "Unable to save the stock item template.",
-      };
-    }
+    throw error;
   }
-);
+});
+
+ipcMain.handle("template:downloadStockItems", async () => {
+  const templatePath = path.join(
+    __dirname,
+    "templates",
+    "stock_items_template.xlsx",
+  );
+
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Save Stock Items Template",
+    defaultPath: "stock_items_template.xlsx",
+    filters: [
+      {
+        name: "Excel Workbook",
+        extensions: ["xlsx"],
+      },
+    ],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return {
+      canceled: true,
+    };
+  }
+
+  try {
+    const templateBuffer = fs.readFileSync(templatePath);
+
+    fs.writeFileSync(result.filePath, templateBuffer);
+
+    return {
+      path: result.filePath,
+    };
+  } catch (error) {
+    console.error("Stock item template export failed:", error);
+
+    return {
+      error: error?.message || "Unable to save the stock item template.",
+    };
+  }
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
